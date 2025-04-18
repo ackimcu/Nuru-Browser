@@ -2,7 +2,7 @@
 
 A modern, optimized Electron-based web browser with a minimalistic interface, inspired by the Arc browser design. Features hardware acceleration, tabs management, animated controls, and a focus on performance and aesthetics.
 
-![Nuru Browser](screenshots/nuru-browser-screenshot.png)
+![Nuru Browser](screenshots/Interface.png)
 
 ## Features
 
