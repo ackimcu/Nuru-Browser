@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nuru Browser - Diagnostics</title>
+  <style>
+    :root {
+      --bg-color: #1a1a1a;
+      --text-color: #f2f2f2;
+      --accent-color: #5661F4;
+      --success-color: #4CAF50;
+      --error-color: #F44336;
+      --warning-color: #FFC107;
+      --border-color: #444444;
+      --overlay-bg: rgba(0, 0, 0, 0.7);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-size: 14px;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    
+    h1 {
+      font-size: 24px;
+      color: var(--accent-color);
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    
+    h2 {
+      font-size: 18px;
+      margin-bottom: 15px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 5px;
+    }
+    
+    .section {
+      background-color: #222222;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+    
+    table td {
+      padding: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    table td:first-child {
+      font-weight: bold;
+      width: 40%;
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .success {
+      color: var(--success-color);
+    }
+    
+    .error {
+      color: var(--error-color);
+    }
+    
+    .webgl-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    
+    .indicator.success {
+      background-color: var(--success-color);
+    }
+    
+    .indicator.error {
+      background-color: var(--error-color);
+    }
+    
+    .logs {
+      height: 200px;
+      overflow-y: auto;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      justify-content: flex-end;
+    }
+    
+    button {
+      background-color: var(--bg-tertiary, #333333);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+    
+    button.primary-button {
+      background-color: var(--accent-color);
+    }
+    
+    button:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button.loading {
+      position: relative;
+      color: transparent;
+    }
+    
+    button.loading:after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 16px;
+      height: 16px;
+      margin-left: -8px;
+      margin-top: -8px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Update dialog styles */
+    #update-dialog {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--overlay-bg);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    #update-dialog.active {
+      display: flex;
+      opacity: 1;
+    }
+    
+    .dialog-content {
+      background-color: #2a2a2a;
+      border-radius: 10px;
+      padding: 24px;
+      max-width: 450px;
+      width: 100%;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+      color: var(--text-color);
+      font-family: 'Poppins', sans-serif;
+    }
+    
+    .dialog-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--accent-color);
+    }
+    
+    .dialog-message {
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    
+    .version-comparison {
+      display: flex;
+      justify-content: space-around;
+      margin: 20px 0;
+      padding: 10px 0;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .version-box {
+      text-align: center;
+      padding: 10px;
+    }
+    
+    .version-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 5px;
+    }
+    
+    .version-number {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .arrow {
+      display: flex;
+      align-items: center;
+      color: var(--accent-color);
+      font-size: 20px;
+    }
+    
+    .dialog-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    
+    .progress-container {
+      margin-top: 20px;
+      display: none;
+    }
+    
+    .progress-bar {
+      height: 6px;
+      background-color: #444;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background-color: var(--accent-color);
+      transition: width 0.3s ease;
+    }
+    
+    .progress-text {
+      font-size: 12px;
+      text-align: right;
+    }
+    
+    .footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Nuru Browser Diagnostics</h1>
+    </div>
+    
+    <div class="section">
+      <h2>System Information</h2>
+      <table id="system-info">
+        <tr>
+          <td>App Version:</td>
+          <td id="app-version">Loading...</td>
+        </tr>
+        <tr>
+          <td>Electron Version:</td>
+          <td id="electron-version">Loading...</td>
+        </tr>
+        <tr>
+          <td>Chrome Version:</td>
+          <td id="chrome-version">Loading...</td>
+        </tr>
+        <tr>
+          <td>Node.js Version:</td>
+          <td id="node-version">Loading...</td>
+        </tr>
+        <tr>
+          <td>Platform:</td>
+          <td id="platform">Loading...</td>
+        </tr>
+        <tr>
+          <td>Architecture:</td>
+          <td id="architecture">Loading...</td>
+        </tr>
+        <tr>
+          <td>Update Status:</td>
+          <td id="update-status">Loading...</td>
+        </tr>
+      </table>
+      
+      <div class="action-buttons">
+        <button id="check-updates-btn" class="primary-button">Check for Updates</button>
+        <button id="refresh-system-btn">Refresh Info</button>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>WebGL Status</h2>
+      <div class="webgl-status">
+        <span class="indicator" id="webgl-indicator"></span>
+        <span id="webgl-status-text">Checking WebGL...</span>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>Logs</h2>
+      <div class="logs" id="logs">Loading logs...</div>
+      <button id="refresh-logs">Refresh Logs</button>
+    </div>
+    
+    <!-- Update Dialog -->
+    <div id="update-dialog">
+      <div class="dialog-content">
+        <div class="dialog-title">Update Available</div>
+        <div class="dialog-message">
+          A new version of Nuru Browser is available. Would you like to update now?
+        </div>
+        
+        <div class="version-comparison">
+          <div class="version-box">
+            <div class="version-label">Current</div>
+            <div id="current-version" class="version-number">1.0.0</div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="version-box">
+            <div class="version-label">New</div>
+            <div id="new-version" class="version-number">1.0.1</div>
+          </div>
+        </div>
+        
+        <div id="progress-container" class="progress-container">
+          <div class="progress-bar">
+            <div id="progress-bar-fill" class="progress-bar-fill"></div>
+          </div>
+          <div id="progress-text" class="progress-text">0%</div>
+        </div>
+        
+        <div class="dialog-buttons" id="update-dialog-buttons">
+          <button id="cancel-update" class="cancel-button">Later</button>
+          <button id="download-update" class="primary-button">Update Now</button>
+        </div>
+      </div>
+    </div>
+  
+  <div class="footer">
+    <p> 2025 Nuru Browser | <span id="timestamp"></span></p>
+  </div>
+  
+  <script>
+    // Update timestamp
+    function updateTimestamp() {
+      const now = new Date();
+      document.getElementById('timestamp').textContent = `Updated: ${now.toLocaleTimeString()}`;
+    }
+    
+    // Load system information
+    async function loadSystemInfo() {
+      try {
+        console.log('Requesting system info...');
+        const info = await window.diagnosticsAPI.getSystemInfo();
+        console.log('System info received:', info);
+        
+        document.getElementById('app-version').textContent = info.appVersion || '1.0.0';
+        document.getElementById('electron-version').textContent = info.electronVersion || 'Unknown';
+        document.getElementById('chrome-version').textContent = info.chromeVersion || 'Unknown';
+        document.getElementById('node-version').textContent = info.nodeVersion || 'Unknown';
+        document.getElementById('platform').textContent = info.platform || 'Unknown';
+        document.getElementById('architecture').textContent = info.arch || 'Unknown';
+        document.getElementById('update-status').textContent = info.updateStatus || 'Unknown';
+        
+        // Add success styling to all elements
+        document.querySelectorAll('#system-info td:nth-child(2)').forEach(el => {
+          el.classList.remove('error', 'warning');
+          el.classList.add('success');
+        });
+      } catch (error) {
+        console.error('Failed to load system info:', error);
+        document.querySelectorAll('#system-info td:nth-child(2)').forEach(el => {
+          if (el.id && el.textContent === 'Loading...') {
+            el.textContent = 'Error loading';
+            el.classList.add('error');
+          }
+        });
+      }
+    }
+    
+    // Check WebGL status
+    async function checkWebGL() {
+      try {
+        console.log('Checking WebGL status...');
+        const indicator = document.getElementById('webgl-indicator');
+        const statusText = document.getElementById('webgl-status-text');
+        
+        const webGLInfo = await window.diagnosticsAPI.checkWebGL();
+        console.log('WebGL status:', webGLInfo);
+        
+        if (webGLInfo.available) {
+          indicator.classList.add('success');
+          statusText.textContent = webGLInfo.info;
+          statusText.classList.add('success');
+        } else {
+          indicator.classList.add('error');
+          statusText.textContent = webGLInfo.info;
+          statusText.classList.add('error');
+        }
+      } catch (error) {
+        console.error('Failed to check WebGL:', error);
+        const indicator = document.getElementById('webgl-indicator');
+        const statusText = document.getElementById('webgl-status-text');
+        
+        indicator.classList.add('error');
+        statusText.textContent = 'Error checking WebGL';
+        statusText.classList.add('error');
+      }
+    }
+    
+    // Load logs
+    async function loadLogs() {
+      try {
+        console.log('Loading logs...');
+        const logsElement = document.getElementById('logs');
+        logsElement.textContent = 'Loading logs...';
+        
+        const logContent = await window.diagnosticsAPI.getLogs();
+        console.log('Logs received');
+        
+        logsElement.textContent = logContent || 'No logs available';
+      } catch (error) {
+        console.error('Failed to load logs:', error);
+        document.getElementById('logs').textContent = `Error loading logs: ${error.message}`;
+      }
+    }
+    
+    // Check for updates
+    async function checkForUpdates() {
+      try {
+        const updateStatusEl = document.getElementById('update-status');
+        const checkUpdatesBtn = document.getElementById('check-updates-btn');
+        
+        // Show loading state
+        updateStatusEl.textContent = 'Checking for updates...';
+        updateStatusEl.classList.remove('success', 'error');
+        updateStatusEl.classList.add('warning');
+        
+        checkUpdatesBtn.classList.add('loading');
+        checkUpdatesBtn.disabled = true;
+        
+        console.log('Requesting update check...');
+        const result = await window.diagnosticsAPI.checkForUpdates();
+        console.log('Update check result:', result);
+        
+        // Update the status
+        if (result.success) {
+          if (result.updateAvailable) {
+            updateStatusEl.textContent = result.message || 'Update available';
+            updateStatusEl.classList.remove('warning', 'error');
+            updateStatusEl.classList.add('success');
+            
+            // Show the update dialog
+            showUpdateDialog(result.currentVersion, result.newVersion);
+          } else {
+            updateStatusEl.textContent = result.message || 'No updates available';
+            updateStatusEl.classList.remove('warning', 'error');
+            updateStatusEl.classList.add('success');
+          }
+        } else {
+          updateStatusEl.textContent = result.error || 'Failed to check for updates';
+          updateStatusEl.classList.remove('warning', 'success');
+          updateStatusEl.classList.add('error');
+        }
+        
+        // Restore button state after a delay
+        setTimeout(() => {
+          checkUpdatesBtn.classList.remove('loading');
+          checkUpdatesBtn.disabled = false;
+        }, 500);
+        
+      } catch (error) {
+        console.error('Error checking for updates:', error);
+        const updateStatusEl = document.getElementById('update-status');
+        updateStatusEl.textContent = 'Error: ' + error.message;
+        updateStatusEl.classList.remove('warning', 'success');
+        updateStatusEl.classList.add('error');
+        
+        // Restore button state
+        const checkUpdatesBtn = document.getElementById('check-updates-btn');
+        checkUpdatesBtn.classList.remove('loading');
+        checkUpdatesBtn.disabled = false;
+      }
+    }
+    
+    // Show update dialog
+    function showUpdateDialog(currentVersion, newVersion) {
+      const dialog = document.getElementById('update-dialog');
+      const currentVersionEl = document.getElementById('current-version');
+      const newVersionEl = document.getElementById('new-version');
+      
+      // Set versions
+      currentVersionEl.textContent = currentVersion || '1.0.0';
+      newVersionEl.textContent = newVersion || '1.0.1';
+      
+      // Reset progress if previously shown
+      const progressContainer = document.getElementById('progress-container');
+      const progressBarFill = document.getElementById('progress-bar-fill');
+      const progressText = document.getElementById('progress-text');
+      
+      progressContainer.style.display = 'none';
+      progressBarFill.style.width = '0%';
+      progressText.textContent = '0%';
+      
+      // Reset buttons
+      const downloadBtn = document.getElementById('download-update');
+      downloadBtn.textContent = 'Update Now';
+      downloadBtn.disabled = false;
+      downloadBtn.classList.remove('loading');
+      
+      // Show dialog with animation
+      dialog.classList.add('active');
+    }
+    
+    // Download the update
+    async function downloadUpdate() {
+      try {
+        const downloadBtn = document.getElementById('download-update');
+        const cancelBtn = document.getElementById('cancel-update');
+        const progressContainer = document.getElementById('progress-container');
+        
+        // Show loading state
+        downloadBtn.textContent = 'Downloading...';
+        downloadBtn.classList.add('loading');
+        downloadBtn.disabled = true;
+        cancelBtn.disabled = true;
+        
+        // Show progress container
+        progressContainer.style.display = 'block';
+        
+        // Request download
+        console.log('Requesting update download...');
+        const result = await window.diagnosticsAPI.downloadUpdate();
+        console.log('Download result:', result);
+        
+        if (result.success) {
+          // Update button to restart
+          downloadBtn.textContent = 'Restart Now';
+          downloadBtn.classList.remove('loading');
+          downloadBtn.disabled = false;
+          cancelBtn.disabled = false;
+          
+          // Change button action to install
+          downloadBtn.setAttribute('data-action', 'install');
+        } else {
+          // Show error
+          downloadBtn.textContent = 'Failed';
+          downloadBtn.classList.remove('loading');
+          downloadBtn.disabled = true;
+          cancelBtn.disabled = false;
+          
+          const progressText = document.getElementById('progress-text');
+          progressText.textContent = 'Error: ' + (result.error || 'Download failed');
+        }
+      } catch (error) {
+        console.error('Error downloading update:', error);
+        
+        // Reset UI
+        const downloadBtn = document.getElementById('download-update');
+        const cancelBtn = document.getElementById('cancel-update');
+        
+        downloadBtn.textContent = 'Retry';
+        downloadBtn.classList.remove('loading');
+        downloadBtn.disabled = false;
+        cancelBtn.disabled = false;
+        
+        const progressText = document.getElementById('progress-text');
+        progressText.textContent = 'Error: ' + error.message;
+      }
+    }
+    
+    // Install and restart
+    async function installUpdate() {
+      try {
+        console.log('Installing update and restarting...');
+        await window.diagnosticsAPI.installUpdate();
+      } catch (error) {
+        console.error('Error installing update:', error);
+        alert('Failed to install update: ' + error.message);
+      }
+    }
+    
+    // Initialize
+    function initialize() {
+      console.log('Initializing diagnostics...');
+      
+      try {
+        // Load data
+        loadSystemInfo();
+        checkWebGL();
+        loadLogs();
+        updateTimestamp();
+        
+        // Setup buttons for main UI
+        document.getElementById('refresh-logs').addEventListener('click', () => {
+          loadLogs();
+          updateTimestamp();
+        });
+        
+        document.getElementById('check-updates-btn').addEventListener('click', () => {
+          checkForUpdates();
+          updateTimestamp();
+        });
+        
+        document.getElementById('refresh-system-btn').addEventListener('click', () => {
+          loadSystemInfo();
+          updateTimestamp();
+        });
+        
+        // Setup buttons for update dialog
+        document.getElementById('cancel-update').addEventListener('click', () => {
+          document.getElementById('update-dialog').classList.remove('active');
+        });
+        
+        document.getElementById('download-update').addEventListener('click', (e) => {
+          const action = e.target.getAttribute('data-action');
+          if (action === 'install') {
+            installUpdate();
+          } else {
+            downloadUpdate();
+          }
+        });
+        
+        // Update download progress listener
+        document.addEventListener('update-download-progress', (e) => {
+          const percent = e.detail.percent || 0;
+          const progressBarFill = document.getElementById('progress-bar-fill');
+          const progressText = document.getElementById('progress-text');
+          
+          progressBarFill.style.width = percent + '%';
+          progressText.textContent = Math.round(percent) + '%';
+        });
+        
+        // Update downloaded listener
+        document.addEventListener('update-downloaded', () => {
+          const downloadBtn = document.getElementById('download-update');
+          const cancelBtn = document.getElementById('cancel-update');
+          
+          downloadBtn.textContent = 'Restart Now';
+          downloadBtn.classList.remove('loading');
+          downloadBtn.disabled = false;
+          cancelBtn.disabled = false;
+          
+          // Change button action to install
+          downloadBtn.setAttribute('data-action', 'install');
+        });
+        
+        console.log('Initialization complete');
+      } catch (error) {
+        console.error('Error during initialization:', error);
+      }
+    }
+    
+    // Wait for DOM to load
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+      // DOM already loaded
+      initialize();
+    }
+  </script>
+</body>
+</html>

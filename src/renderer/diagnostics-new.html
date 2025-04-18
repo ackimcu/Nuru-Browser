@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com">
+  <title>Nuru Browser - Diagnostics</title>
+  <link rel="stylesheet" href="diagnostics-new.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="diagnostics-container">
+    <header class="diagnostics-header">
+      <h1>Nuru Browser Diagnostics</h1>
+      <div class="timestamp" id="current-time">Refreshed: Loading...</div>
+    </header>
+    
+    <div class="sections-container">
+      <!-- App Info Section -->
+      <section class="diagnostics-section" id="section-app-info">
+        <div class="section-header">
+          <h2>Application Information</h2>
+          <span class="status-badge" id="app-info-status">Loading...</span>
+        </div>
+        
+        <div class="section-content">
+          <table class="info-table">
+            <tr>
+              <td class="label">App Name:</td>
+              <td class="value" id="app-name">Loading...</td>
+            </tr>
+            <tr>
+              <td class="label">App Version:</td>
+              <td class="value" id="app-version">Loading...</td>
+            </tr>
+            <tr>
+              <td class="label">Electron Version:</td>
+              <td class="value" id="electron-version">Loading...</td>
+            </tr>
+            <tr>
+              <td class="label">Chrome Version:</td>
+              <td class="value" id="chrome-version">Loading...</td>
+            </tr>
+            <tr>
+              <td class="label">Node.js Version:</td>
+              <td class="value" id="node-version">Loading...</td>
+            </tr>
+            <tr>
+              <td class="label">Platform:</td>
+              <td class="value" id="platform">Loading...</td>
+            </tr>
+            <tr>
+              <td class="label">Architecture:</td>
+              <td class="value" id="architecture">Loading...</td>
+            </tr>
+            <tr>
+              <td class="label">Auto-Update:</td>
+              <td class="value" id="update-status">Loading...</td>
+            </tr>
+          </table>
+          
+          <div class="actions">
+            <button id="check-updates-btn" class="action-button primary">
+              <span class="button-text">Check for Updates</span>
+              <span class="spinner"></span>
+            </button>
+            <button id="refresh-info-btn" class="action-button">
+              <span class="button-text">Refresh Info</span>
+              <span class="spinner"></span>
+            </button>
+          </div>
+        </div>
+      </section>
+      
+      <!-- System Info Section -->
+      <section class="diagnostics-section" id="section-system-info">
+        <div class="section-header">
+          <h2>System Information</h2>
+          <span class="status-badge" id="system-info-status">Loading...</span>
+        </div>
+        
+        <div class="section-content">
+          <div class="columns">
+            <div class="column">
+              <table class="info-table">
+                <tr>
+                  <td class="label">CPU Model:</td>
+                  <td class="value" id="cpu-model">Loading...</td>
+                </tr>
+                <tr>
+                  <td class="label">CPU Cores:</td>
+                  <td class="value" id="cpu-cores">Loading...</td>
+                </tr>
+                <tr>
+                  <td class="label">Total Memory:</td>
+                  <td class="value" id="total-memory">Loading...</td>
+                </tr>
+                <tr>
+                  <td class="label">Free Memory:</td>
+                  <td class="value" id="free-memory">Loading...</td>
+                </tr>
+              </table>
+            </div>
+            <div class="column">
+              <table class="info-table">
+                <tr>
+                  <td class="label">OS Type:</td>
+                  <td class="value" id="os-type">Loading...</td>
+                </tr>
+                <tr>
+                  <td class="label">OS Release:</td>
+                  <td class="value" id="os-release">Loading...</td>
+                </tr>
+                <tr>
+                  <td class="label">Hostname:</td>
+                  <td class="value" id="hostname">Loading...</td>
+                </tr>
+                <tr>
+                  <td class="label">Uptime:</td>
+                  <td class="value" id="uptime">Loading...</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Hardware Acceleration Section -->
+      <section class="diagnostics-section" id="section-webgl">
+        <div class="section-header">
+          <h2>Hardware Acceleration</h2>
+        </div>
+        
+        <div class="section-content">
+          <div class="webgl-container">
+            <div class="webgl-status">
+              <div class="webgl-indicator" id="webgl-indicator">
+                <div class="indicator-dot"></div>
+                <span id="webgl-status-text">Checking WebGL...</span>
+              </div>
+              <button id="check-webgl-btn" class="action-button">
+                <span class="button-text">Recheck</span>
+                <span class="spinner"></span>
+              </button>
+            </div>
+            
+            <div id="webgl-details" class="webgl-details">
+              <table class="info-table compact">
+                <tr>
+                  <td class="label">Renderer:</td>
+                  <td class="value" id="webgl-renderer">Loading...</td>
+                </tr>
+                <tr>
+                  <td class="label">Vendor:</td>
+                  <td class="value" id="webgl-vendor">Loading...</td>
+                </tr>
+                <tr>
+                  <td class="label">Version:</td>
+                  <td class="value" id="webgl-version">Loading...</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Logs Section -->
+      <section class="diagnostics-section" id="section-logs">
+        <div class="section-header">
+          <h2>Application Logs</h2>
+          <div class="log-controls">
+            <label class="toggle">
+              <input type="checkbox" id="auto-scroll-toggle" checked>
+              <span class="toggle-label">Auto-scroll</span>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" id="auto-refresh-toggle" checked>
+              <span class="toggle-label">Auto-refresh</span>
+            </label>
+            <button id="refresh-logs-btn" class="action-button small">
+              <span class="button-text">Refresh</span>
+              <span class="spinner"></span>
+            </button>
+            <button id="clear-logs-btn" class="action-button small warning">
+              <span class="button-text">Clear View</span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="section-content">
+          <div class="log-container">
+            <pre id="log-content" class="log-content">Loading logs...</pre>
+          </div>
+        </div>
+      </section>
+    </div>
+    
+    <footer class="diagnostics-footer">
+      <span>© 2025 Nuru Browser</span>
+      <span id="app-uptime">Uptime: Calculating...</span>
+    </footer>
+  </div>
+  
+  <script src="diagnostics-new.js"></script>
+</body>
+</html>

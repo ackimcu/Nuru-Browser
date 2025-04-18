@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com">
+  <title>Nuru Browser - Diagnostics</title>
+  <link rel="stylesheet" href="diagnostics.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="diagnostics-container">
+    <h1>Nuru Browser Diagnostics</h1>
+    
+    <div class="section">
+      <h2>Application Info</h2>
+      <table id="app-info">
+        <tr>
+          <td>App Name:</td>
+          <td id="app-name">Loading...</td>
+        </tr>
+        <tr>
+          <td>App Version:</td>
+          <td id="app-version">Loading...</td>
+        </tr>
+        <tr>
+          <td>Electron Version:</td>
+          <td id="electron-version">Loading...</td>
+        </tr>
+        <tr>
+          <td>Chrome Version:</td>
+          <td id="chrome-version">Loading...</td>
+        </tr>
+        <tr>
+          <td>Node.js Version:</td>
+          <td id="node-version">Loading...</td>
+        </tr>
+        <tr>
+          <td>Platform:</td>
+          <td id="platform">Loading...</td>
+        </tr>
+        <tr>
+          <td>Architecture:</td>
+          <td id="architecture">Loading...</td>
+        </tr>
+        <tr>
+          <td>Auto-Update:</td>
+          <td id="update-status">Loading...</td>
+        </tr>
+      </table>
+      <div class="button-container">
+        <button id="check-updates-btn" class="action-button">Check for Updates</button>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>Hardware Acceleration</h2>
+      <div class="status-container">
+        <div id="webgl-status" class="status-indicator">
+          <span id="webgl-text">Checking...</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>Application Logs</h2>
+      <div class="log-container">
+        <div id="log-content"></div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="diagnostics.js"></script>
+</body>
+</html>

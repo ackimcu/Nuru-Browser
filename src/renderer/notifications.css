@@ -1,0 +1,53 @@
+/* Notification Styling */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: rgba(28, 28, 28, 0.9);
+  border-left: 4px solid #64B5F6;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 16px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  min-width: 280px;
+  max-width: 320px;
+  transform: translateX(120%);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.notification.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.notification-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 6px;
+}
+
+.notification-message {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Different notification types */
+.notification.success {
+  border-left-color: #81C784;
+}
+
+.notification.warning {
+  border-left-color: #FFD54F;
+}
+
+.notification.error {
+  border-left-color: #E57373;
+}
+
+.notification.info {
+  border-left-color: #64B5F6;
+}

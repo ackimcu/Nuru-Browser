@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nuru Browser - Simple Diagnostics</title>
+  <style>
+    :root {
+      --bg-color: #1a1a1a;
+      --text-color: #f2f2f2;
+      --accent-color: #5661F4;
+      --success-color: #4CAF50;
+      --error-color: #F44336;
+      --border-color: #444444;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-size: 14px;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    
+    h1 {
+      font-size: 24px;
+      color: var(--accent-color);
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    
+    h2 {
+      font-size: 18px;
+      margin-bottom: 15px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 5px;
+    }
+    
+    .section {
+      background-color: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+    
+    table td {
+      padding: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    table td:first-child {
+      font-weight: bold;
+      width: 40%;
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .success {
+      color: var(--success-color);
+    }
+    
+    .error {
+      color: var(--error-color);
+    }
+    
+    .webgl-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    
+    .indicator.success {
+      background-color: var(--success-color);
+    }
+    
+    .indicator.error {
+      background-color: var(--error-color);
+    }
+    
+    .logs {
+      height: 200px;
+      overflow-y: auto;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    
+    button {
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    
+    button:hover {
+      opacity: 0.9;
+    }
+    
+    .footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <h1>Nuru Browser Diagnostics</h1>
+  
+  <div class="section">
+    <h2>System Information</h2>
+    <table id="system-info">
+      <tr>
+        <td>App Name:</td>
+        <td>Nuru Browser</td>
+      </tr>
+      <tr>
+        <td>Electron Version:</td>
+        <td id="electron-version">Loading...</td>
+      </tr>
+      <tr>
+        <td>Chrome Version:</td>
+        <td id="chrome-version">Loading...</td>
+      </tr>
+      <tr>
+        <td>Node.js Version:</td>
+        <td id="node-version">Loading...</td>
+      </tr>
+      <tr>
+        <td>Platform:</td>
+        <td id="platform">Loading...</td>
+      </tr>
+      <tr>
+        <td>Architecture:</td>
+        <td id="architecture">Loading...</td>
+      </tr>
+      <tr>
+        <td>CPU Model:</td>
+        <td id="cpu-model">Loading...</td>
+      </tr>
+      <tr>
+        <td>CPU Cores:</td>
+        <td id="cpu-cores">Loading...</td>
+      </tr>
+      <tr>
+        <td>Total Memory:</td>
+        <td id="total-memory">Loading...</td>
+      </tr>
+      <tr>
+        <td>Free Memory:</td>
+        <td id="free-memory">Loading...</td>
+      </tr>
+    </table>
+  </div>
+  
+  <div class="section">
+    <h2>WebGL Status</h2>
+    <div class="webgl-status">
+      <span class="indicator" id="webgl-indicator"></span>
+      <span id="webgl-status-text">Checking WebGL...</span>
+    </div>
+  </div>
+  
+  <div class="section">
+    <h2>Application Logs</h2>
+    <div class="logs" id="logs">Loading logs...</div>
+    <button id="refresh-logs">Refresh Logs</button>
+  </div>
+  
+  <div class="footer">
+    <p>© 2025 Nuru Browser | <span id="timestamp"></span></p>
+  </div>
+  
+  <script>
+    // Load system information
+    async function loadSystemInfo() {
+      try {
+        const info = await window.diagnosticsAPI.getBasicInfo();
+        document.getElementById('electron-version').textContent = info.electronVersion || 'Unknown';
+        document.getElementById('chrome-version').textContent = info.chromeVersion || 'Unknown';
+        document.getElementById('node-version').textContent = info.nodeVersion || 'Unknown';
+        document.getElementById('platform').textContent = info.platform || 'Unknown';
+        document.getElementById('architecture').textContent = info.arch || 'Unknown';
+        document.getElementById('cpu-model').textContent = info.cpuModel || 'Unknown';
+        document.getElementById('cpu-cores').textContent = info.cpuCores || 'Unknown';
+        document.getElementById('total-memory').textContent = info.totalMemory ? `${info.totalMemory} GB` : 'Unknown';
+        document.getElementById('free-memory').textContent = info.freeMemory ? `${info.freeMemory} GB` : 'Unknown';
+        
+        console.log('System info loaded:', info);
+      } catch (error) {
+        console.error('Failed to load system info:', error);
+        document.querySelectorAll('#system-info td:nth-child(2)').forEach(el => {
+          if (el.id && el.textContent === 'Loading...') {
+            el.textContent = 'Error loading';
+            el.classList.add('error');
+          }
+        });
+      }
+    }
+    
+    // Check WebGL status
+    async function checkWebGL() {
+      try {
+        const indicator = document.getElementById('webgl-indicator');
+        const statusText = document.getElementById('webgl-status-text');
+        
+        const webGLInfo = await window.diagnosticsAPI.checkWebGL();
+        
+        if (webGLInfo.available) {
+          indicator.classList.add('success');
+          statusText.textContent = webGLInfo.info;
+          statusText.classList.add('success');
+        } else {
+          indicator.classList.add('error');
+          statusText.textContent = webGLInfo.info;
+          statusText.classList.add('error');
+        }
+        
+        console.log('WebGL status:', webGLInfo);
+      } catch (error) {
+        console.error('Failed to check WebGL:', error);
+        const indicator = document.getElementById('webgl-indicator');
+        const statusText = document.getElementById('webgl-status-text');
+        
+        indicator.classList.add('error');
+        statusText.textContent = 'Error checking WebGL';
+        statusText.classList.add('error');
+      }
+    }
+    
+    // Load logs
+    async function loadLogs() {
+      try {
+        const logsElement = document.getElementById('logs');
+        logsElement.textContent = 'Loading logs...';
+        
+        const logContent = await window.diagnosticsAPI.getLogContent();
+        logsElement.textContent = logContent || 'No logs available';
+        
+        console.log('Logs loaded');
+      } catch (error) {
+        console.error('Failed to load logs:', error);
+        document.getElementById('logs').textContent = `Error loading logs: ${error.message}`;
+      }
+    }
+    
+    // Update timestamp
+    function updateTimestamp() {
+      const now = new Date();
+      document.getElementById('timestamp').textContent = `Updated: ${now.toLocaleTimeString()}`;
+    }
+    
+    // Initialize
+    function initialize() {
+      console.log('Initializing simple diagnostics...');
+      
+      // Load initial data
+      loadSystemInfo();
+      checkWebGL();
+      loadLogs();
+      updateTimestamp();
+      
+      // Set up event listener for refresh logs button
+      document.getElementById('refresh-logs').addEventListener('click', () => {
+        loadLogs();
+        updateTimestamp();
+      });
+    }
+    
+    // Start initialization
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+      initialize();
+    }
+  </script>
+</body>
+</html>

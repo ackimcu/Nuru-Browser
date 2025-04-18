@@ -1,0 +1,377 @@
+/* URL Search Section Styling - Arc Browser Inspired */
+.url-search-section {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background-color: rgba(28, 28, 28, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.tabs-divider {
+  height: 1px;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.01));
+  margin: 10px 15px;
+  opacity: 0.7;
+}
+
+.tabs-list-header {
+  padding: 12px 18px 5px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* Browser actions in header */
+.browser-actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 8px;
+}
+
+.browser-action-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.browser-action-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+}
+
+.browser-action-btn:active {
+  transform: translateY(0);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Special styling for each button */
+#update-check-btn {
+  color: #64B5F6;
+}
+
+#diagnostics-btn {
+  color: #81C784;
+}
+
+#dev-mode-toggle {
+  color: #FFD54F;
+}
+
+#dev-mode-toggle.active {
+  background: rgba(255, 213, 79, 0.2);
+  box-shadow: 0 0 8px rgba(255, 213, 79, 0.3);
+}
+
+/* Add ripple effect */
+.browser-action-btn::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%);
+  opacity: 0;
+  transform: scale(0);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.browser-action-btn:active::after {
+  opacity: 1;
+  transform: scale(2);
+  transition: 0s;
+}
+
+/* URL Search Container - Arc Style */
+.url-search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.url-search-container:focus-within {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.25);
+}
+
+.url-security-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+  font-size: 13px;
+  color: #aaa;
+  transition: all 0.2s ease;
+}
+
+.url-security-indicator.secure {
+  color: #4CAF50; /* Green for secure */
+}
+
+.url-security-indicator.not-secure {
+  color: #F44336; /* Red for not secure */
+}
+
+.url-security-indicator.warning {
+  color: #FFC107; /* Amber for warning */
+}
+
+/* Enhanced security indicator with background */
+.enhanced-security .url-security-indicator {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.25);
+  margin-right: 10px;
+}
+
+.enhanced-security .url-security-indicator.secure {
+  background-color: rgba(76, 175, 80, 0.15);
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+}
+
+.enhanced-security .url-security-indicator.not-secure {
+  background-color: rgba(244, 67, 54, 0.15);
+  box-shadow: 0 0 5px rgba(244, 67, 54, 0.3);
+}
+
+.enhanced-security .url-security-indicator.warning {
+  background-color: rgba(255, 193, 7, 0.15);
+  box-shadow: 0 0 5px rgba(255, 193, 7, 0.3);
+}
+
+.url-search-icon {
+  position: absolute;
+  left: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  transition: color 0.2s ease;
+}
+
+.url-search-icon.active {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.url-search-input {
+  width: 100%;
+  padding: 14px 36px;
+  border-radius: 12px;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 14px;
+  font-family: 'Poppins SemiBold', 'Segoe UI', Arial, sans-serif;
+  outline: none;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  -webkit-appearance: none;
+  appearance: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  flex-shrink: 0;
+}
+
+.url-search-input:focus {
+  background-color: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.url-search-engine {
+  position: absolute;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background-color: rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.url-search-engine:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+}
+
+/* URL suggestions */
+.url-suggestions {
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: rgba(28, 28, 28, 0.85);
+  border-radius: 10px;
+  margin-top: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  display: none;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.url-suggestions.has-suggestions {
+  display: block;
+}
+
+.url-suggestion-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  margin: 2px 5px;
+}
+
+.url-suggestion-item:first-child {
+  border-top: none;
+}
+
+.url-suggestion-item:hover,
+.url-suggestion-item.highlighted {
+  background-color: rgba(255, 255, 255, 0.08);
+  transform: translateX(2px);
+}
+
+.url-suggestion-item:active {
+  background-color: rgba(255, 255, 255, 0.12);
+  transform: translateX(3px);
+}
+
+.url-suggestion-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+}
+
+.url-suggestion-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+}
+
+.url-suggestion-detail {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+/* Search engine dropdown */
+.search-engine-selector {
+  position: absolute;
+  top: 44px;
+  right: 10px;
+  background-color: rgba(30, 30, 30, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  padding: 8px 0;
+  z-index: 9999;
+  min-width: 180px;
+  transform: scale(0.95);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+}
+
+.search-engine-selector.active {
+  transform: scale(1);
+  opacity: 1;
+  visibility: visible;
+}
+
+.search-engine-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  margin: 2px 5px;
+  position: relative;
+}
+
+.search-engine-item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  transform: translateX(2px);
+}
+
+.search-engine-item.active {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.search-engine-icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 12px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.search-engine-favicon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+.search-engine-name {
+  flex: 1;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.search-engine-selected {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4CAF50;
+  font-size: 12px;
+  flex-shrink: 0;
+  display: none;
+}
+
+:root {
+  --accent-color-rgb: 245, 66, 66;
+}

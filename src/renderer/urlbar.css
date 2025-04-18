@@ -1,0 +1,349 @@
+/* URL viewport styling (Arc Browser style) */
+.url-viewport {
+  position: fixed;
+  left: 0;
+  top: 15px;
+  height: auto;
+  width: 280px;
+  background-color: rgba(28, 28, 30, 0.92);
+  z-index: 9950;
+  transform: translateX(-100%);
+  box-shadow: 5px 0 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: calc(100vh - 30px);
+}
+
+.url-viewport.active {
+  transform: translateX(0);
+}
+
+/* Responsive positioning when both viewports are active */
+body.tabs-active .url-viewport.active {
+  left: 250px;
+}
+
+/* When tabs are active and URL is active, adjust shadow */
+body.tabs-active .url-viewport.active {
+  box-shadow: 3px 0 15px rgba(0, 0, 0, 0.25);
+}
+
+.url-trigger-area {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 15px;
+  height: 50vh;
+  z-index: 9800;
+}
+
+.url-header {
+  padding: 12px 18px; /* Reduced padding */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgba(30, 30, 30, 0.2);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+}
+
+.url-header h3 {
+  margin: 0;
+  font-size: 15px; /* Reduced font size */
+  font-weight: 600;
+  color: #f5f5f7;
+  letter-spacing: 0.2px;
+}
+
+.url-trigger:hover {
+  background-color: rgba(40, 40, 40, 0.85);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
+}
+
+.url-trigger-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  color: #aaa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.url-trigger-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  color: #ddd;
+}
+
+.url-secure-indicator {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  color: #4CAF50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.url-trigger-prefix {
+  color: #888;
+  margin-right: 4px;
+}
+
+.url-viewport-content {
+  width: 100%;
+}
+
+.url-search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  margin-top: 2px;
+}
+
+.url-search-icon {
+  position: absolute;
+  left: 30px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  transition: color 0.2s ease;
+}
+
+.url-search-icon.active {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.url-search-engine {
+  position: absolute;
+  right: 28px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background-color: rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.url-search-engine:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+}
+
+.url-search-input {
+  width: 100%;
+  padding: 12px 36px;
+  border-radius: 10px;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  font-size: 14px;
+  font-family: 'Poppins SemiBold', 'Segoe UI', Arial, sans-serif;
+  outline: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  -webkit-appearance: none;
+  appearance: none;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.url-search-input:focus {
+  background-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 0 0 2px rgba(var(--accent-color-rgb), 0.25);
+}
+
+/* Security indicator for URL */
+.url-security-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+  font-size: 13px;
+  color: #aaa;
+  transition: all 0.2s ease;
+}
+
+.url-security-indicator.secure {
+  color: #4CAF50; /* Green for secure */
+}
+
+.url-security-indicator.not-secure {
+  color: #F44336; /* Red for not secure */
+}
+
+.url-security-indicator.warning {
+  color: #FFC107; /* Amber for warning */
+}
+
+/* Enhanced security indicator with background */
+.enhanced-security .url-security-indicator {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.25);
+  margin-right: 10px;
+}
+
+.enhanced-security .url-security-indicator.secure {
+  background-color: rgba(76, 175, 80, 0.15);
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+}
+
+.enhanced-security .url-security-indicator.not-secure {
+  background-color: rgba(244, 67, 54, 0.15);
+  box-shadow: 0 0 5px rgba(244, 67, 54, 0.3);
+}
+
+.enhanced-security .url-security-indicator.warning {
+  background-color: rgba(255, 193, 7, 0.15);
+  box-shadow: 0 0 5px rgba(255, 193, 7, 0.3);
+}
+
+/* Variables for colors */
+:root {
+  --accent-color-rgb: 245, 66, 66;
+}
+
+/* URL suggestions */
+.url-suggestions {
+  max-height: 320px;
+  overflow-y: auto;
+  background-color: rgba(20, 20, 20, 0.5);
+  border-bottom-right-radius: 12px;
+  border-bottom-left-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.url-suggestion-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background-color 0.15s ease;
+}
+
+.url-suggestion-item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.url-suggestion-item:active {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Search engine dropdown */
+.search-engine-selector {
+  position: absolute;
+  right: 12px;
+  top: 55px;
+  background-color: rgba(30, 30, 30, 0.95);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  z-index: 9960;
+  width: 200px;
+  display: none;
+}
+
+.search-engine-selector.active {
+  display: block;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.search-engine-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 10px;
+  margin-bottom: 2px;
+}
+
+.search-engine-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateX(2px);
+}
+
+.search-engine-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 12px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+/* Specific search engine styling */
+.search-engine-google {
+  background-color: rgba(66, 133, 244, 0.2);
+  color: #4285F4;
+}
+
+.search-engine-bing {
+  background-color: rgba(0, 120, 215, 0.2);
+  color: #00A4EF;
+}
+
+.search-engine-duckduckgo {
+  background-color: rgba(221, 75, 57, 0.2);
+  color: #DE5833;
+}
+
+.search-engine-yahoo {
+  background-color: rgba(113, 36, 160, 0.2);
+  color: #6001D2;
+}
+
+.search-engine-item:hover .search-engine-icon {
+  transform: scale(1.1);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+}
+
+.search-engine-name {
+  flex: 1;
+  font-size: 14px;
+  color: #fff;
+  font-weight: 500;
+}
+
+.search-engine-selected {
+  color: rgb(var(--accent-color-rgb));
+  font-size: 13px;
+  background-color: rgba(var(--accent-color-rgb), 0.1);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
