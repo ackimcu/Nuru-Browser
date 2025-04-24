@@ -7,7 +7,7 @@ A modern, optimized Electron-based web browser with a minimalistic interface, in
 ## Features
 
 - **Modern UI**: Arc-inspired frameless window with a modern tab system and rounded borders
-- **Dark Mode**: Sleek dark theme with Poppins SemiBold font
+- **Dark Mode**: Sleek dark theme with Poppins SemiBold font, automatic detection of system theme, and adjustable brightness/contrast settings
 - **Animated Controls**: Interactive animated navigation buttons and menu controls
 - **Minimal Interface**: Clean, distraction-free browsing experience
 - **Hardware Acceleration**: WebGL support with automatic detection
@@ -57,6 +57,11 @@ Settings are stored in `nuru_browser_settings.json` in the app's user data direc
 - Dark mode: Enabled
 - Frameless mode: Enabled
 - Zoom factor: 1.5 (150%)
+- Search engine: Google (`https://www.google.com/search?q=`, icon: `fab fa-google`)
+- Development mode: Disabled
+- Ad blocker: Enabled
+- Sponsor skipper: Enabled
+- Dark mode settings: autoDetect: true, brightnessReduction: 85, contrastEnhancement: 10
 
 ## Keyboard Shortcuts
 
