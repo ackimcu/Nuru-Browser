@@ -1,47 +1,35 @@
 /* URL viewport styling (Arc Browser style) */
+/* URL viewport nested inside tabs; hidden by default */
 .url-viewport {
-  position: fixed;
-  left: 0;
-  top: 15px;
-  height: auto;
-  width: 280px;
+  display: none;
+  width: 100%;
   background-color: rgba(28, 28, 30, 0.92);
-  z-index: 9950;
-  transform: translateX(-100%);
-  box-shadow: 5px 0 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
-  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border-top-right-radius: 12px;
-  border-bottom-right-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  max-height: calc(100vh - 30px);
+  padding: 12px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  margin-bottom: 12px;
 }
 
-.url-viewport.active {
-  transform: translateX(0);
+/* Show when active */
+.tabs-active .url-viewport {
+  display: block;
 }
 
 /* Responsive positioning when both viewports are active */
-body.tabs-active .url-viewport.active {
-  left: 250px;
-}
+/* Removed fixed positioning and shadows */
 
 /* When tabs are active and URL is active, adjust shadow */
-body.tabs-active .url-viewport.active {
-  box-shadow: 3px 0 15px rgba(0, 0, 0, 0.25);
-}
+/* Shadow can be managed by parent */
 
-.url-trigger-area {
+/* Removed url-trigger-area styles */
+/*.url-trigger-area {
   position: fixed;
   top: 0;
   left: 0;
   width: 15px;
   height: 50vh;
   z-index: 9800;
-}
+}*/
 
 .url-header {
   padding: 12px 18px; /* Reduced padding */

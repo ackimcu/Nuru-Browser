@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nuru Browser Settings</title>
+  <style>
+    :root {
+      --bg-color: #272727;
+      --bg-light: #333333;
+      --bg-lighter: #3a3a3a;
+      --text-color: #e0e0e0;
+      --text-light: #aaaaaa;
+      --accent-color: #2196F3;
+      --error-color: #f44336;
+      --success-color: #4caf50;
+      --border-color: #444444;
+      --header-height: 50px;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      user-select: none;
+    }
+    
+    .header {
+      height: var(--header-height);
+      background-color: var(--bg-light);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 15px;
+      -webkit-app-region: drag;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .close-button {
+      -webkit-app-region: no-drag;
+      background: none;
+      border: none;
+      color: var(--text-light);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 5px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+    
+    .close-button:hover {
+      color: var(--text-color);
+    }
+    
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    
+    .settings-section {
+      margin-bottom: 30px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 20px;
+    }
+    
+    .settings-section:last-child {
+      border-bottom: none;
+    }
+    
+    .section-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .section-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      flex: 1;
+    }
+    
+    .setting-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .setting-label {
+      flex: 1;
+      font-size: 14px;
+    }
+    
+    /* Toggle Switch */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+    }
+    
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--bg-lighter);
+      transition: 0.4s;
+      border-radius: 22px;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 2px;
+      background-color: white;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+      background-color: var(--accent-color);
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+    
+    /* Range Slider */
+    .range-slider {
+      width: 100%;
+    }
+    
+    .slider-container {
+      display: flex;
+      align-items: center;
+      margin-top: 5px;
+    }
+    
+    .slider-value {
+      width: 40px;
+      text-align: right;
+      margin-left: 10px;
+      font-size: 14px;
+      color: var(--text-light);
+    }
+    
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 5px;
+      background: var(--bg-lighter);
+      outline: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-color);
+      cursor: pointer;
+    }
+    
+    input[type="range"]::-moz-range-thumb {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-color);
+      cursor: pointer;
+      border: none;
+    }
+
+    /* Category Toggles */
+    .category-toggles {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    
+    /* Custom Filters */
+    .filters-container {
+      margin-top: 15px;
+    }
+    
+    .filter-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      background-color: var(--bg-lighter);
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    
+    .filter-name {
+      font-size: 14px;
+    }
+    
+    .filter-actions button {
+      background: none;
+      border: none;
+      color: var(--text-light);
+      cursor: pointer;
+      padding: 4px 8px;
+      transition: color 0.2s;
+    }
+    
+    .filter-actions button:hover {
+      color: var(--error-color);
+    }
+    
+    .add-filter {
+      display: flex;
+      margin-top: 15px;
+    }
+    
+    .add-filter input {
+      flex: 1;
+      padding: 8px 10px;
+      background-color: var(--bg-lighter);
+      border: 1px solid var(--border-color);
+      border-radius: 4px 0 0 4px;
+      color: var(--text-color);
+      font-family: inherit;
+    }
+    
+    .add-filter button {
+      padding: 8px 15px;
+      background-color: var(--accent-color);
+      border: none;
+      color: white;
+      border-radius: 0 4px 4px 0;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .add-filter button:hover {
+      background-color: #1976D2;
+    }
+    
+    /* Statistics */
+    .statistics {
+      margin-top: 15px;
+      font-size: 14px;
+      color: var(--text-light);
+    }
+    
+    .statistics p {
+      margin: 5px 0;
+    }
+    
+    /* Save Button */
+    .save-container {
+      position: sticky;
+      bottom: 0;
+      background-color: var(--bg-color);
+      padding: 15px 0;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: center;
+    }
+    
+    .save-button {
+      padding: 10px 30px;
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      transition: background-color 0.2s;
+    }
+    
+    .save-button:hover {
+      background-color: #1976D2;
+    }
+    
+    /* Notification */
+    .notification {
+      position: fixed;
+      bottom: -50px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      background-color: var(--success-color);
+      color: white;
+      border-radius: 4px;
+      transition: bottom 0.3s;
+      z-index: 1000;
+    }
+    
+    .notification.show {
+      bottom: 20px;
+    }
+    
+    .notification.error {
+      background-color: var(--error-color);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Nuru Browser Settings</h1>
+    <button class="close-button" id="close-button">✕</button>
+  </div>
+  
+  <div class="content">
+    <!-- Browser Settings -->
+    <div class="settings-section">
+      <div class="section-header">
+        <h2 class="section-title">Browser Settings</h2>
+      </div>
+      
+      <div class="setting-row">
+        <span class="setting-label">Dark Mode</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="dark-mode-toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      
+      <div class="setting-row">
+        <span class="setting-label">Zoom Level</span>
+        <div class="range-slider">
+          <div class="slider-container">
+            <input type="range" id="zoom-slider" min="0.5" max="3" step="0.1" value="1">
+            <span class="slider-value" id="zoom-value">1x</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Ad Blocker -->
+    <div class="settings-section">
+      <div class="section-header">
+        <h2 class="section-title">Ad Blocker</h2>
+        <label class="toggle-switch">
+          <input type="checkbox" id="ad-blocker-toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      
+      <div id="ad-blocker-settings" class="feature-settings">
+        <h3>Custom Filters</h3>
+        <div class="filters-container" id="custom-filters-list">
+          <!-- Custom filters will be added here dynamically -->
+        </div>
+        
+        <div class="add-filter">
+          <input type="text" id="new-filter" placeholder="Enter filter rule (e.g. ||example.com/ads^)">
+          <button id="add-filter-btn">Add</button>
+        </div>
+        
+        <div class="statistics" id="ad-blocker-stats">
+          <!-- Statistics will be added here dynamically -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- Sponsor Skipper -->
+    <div class="settings-section">
+      <div class="section-header">
+        <h2 class="section-title">Sponsor Skipper</h2>
+        <label class="toggle-switch">
+          <input type="checkbox" id="sponsor-skipper-toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      
+      <div id="sponsor-skipper-settings" class="feature-settings">
+        <h3>Skip Categories</h3>
+        <div class="category-toggles" id="sponsor-categories">
+          <div class="setting-row">
+            <span class="setting-label">Sponsor</span>
+            <label class="toggle-switch">
+              <input type="checkbox" data-category="sponsor" class="category-toggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Self Promotion</span>
+            <label class="toggle-switch">
+              <input type="checkbox" data-category="selfpromo" class="category-toggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Interaction Reminder</span>
+            <label class="toggle-switch">
+              <input type="checkbox" data-category="interaction" class="category-toggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Intro</span>
+            <label class="toggle-switch">
+              <input type="checkbox" data-category="intro" class="category-toggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Outro</span>
+            <label class="toggle-switch">
+              <input type="checkbox" data-category="outro" class="category-toggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Preview/Recap</span>
+            <label class="toggle-switch">
+              <input type="checkbox" data-category="preview" class="category-toggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Music Offtopic</span>
+            <label class="toggle-switch">
+              <input type="checkbox" data-category="music_offtopic" class="category-toggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="statistics" id="sponsor-skipper-stats">
+          <!-- Statistics will be added here dynamically -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- Enhanced Dark Mode -->
+    <div class="settings-section">
+      <div class="section-header">
+        <h2 class="section-title">Enhanced Dark Mode</h2>
+        <label class="toggle-switch">
+          <input type="checkbox" id="enhanced-dark-mode-toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      
+      <div id="enhanced-dark-mode-settings" class="feature-settings">
+        <div class="setting-row">
+          <span class="setting-label">Auto-detect existing dark mode</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="auto-detect-toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        
+        <div class="setting-row">
+          <span class="setting-label">Brightness Reduction</span>
+          <div class="range-slider">
+            <div class="slider-container">
+              <input type="range" id="brightness-slider" min="40" max="95" step="1" value="85">
+              <span class="slider-value" id="brightness-value">85%</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="setting-row">
+          <span class="setting-label">Contrast Enhancement</span>
+          <div class="range-slider">
+            <div class="slider-container">
+              <input type="range" id="contrast-slider" min="0" max="30" step="1" value="10">
+              <span class="slider-value" id="contrast-value">10%</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="statistics" id="dark-mode-stats">
+          <!-- Statistics will be added here dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="save-container">
+    <button id="save-button" class="save-button">Save Settings</button>
+  </div>
+  
+  <div id="notification" class="notification"></div>
+  
+  <script>
+    // Get references to DOM elements
+    const closeButton = document.getElementById('close-button');
+    const saveButton = document.getElementById('save-button');
+    const notification = document.getElementById('notification');
+    
+    // Browser settings
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    const zoomSlider = document.getElementById('zoom-slider');
+    const zoomValue = document.getElementById('zoom-value');
+    
+    // Ad Blocker
+    const adBlockerToggle = document.getElementById('ad-blocker-toggle');
+    const adBlockerSettings = document.getElementById('ad-blocker-settings');
+    const customFiltersList = document.getElementById('custom-filters-list');
+    const newFilterInput = document.getElementById('new-filter');
+    const addFilterBtn = document.getElementById('add-filter-btn');
+    const adBlockerStats = document.getElementById('ad-blocker-stats');
+    
+    // Sponsor Skipper
+    const sponsorSkipperToggle = document.getElementById('sponsor-skipper-toggle');
+    const sponsorSkipperSettings = document.getElementById('sponsor-skipper-settings');
+    const sponsorCategories = document.querySelectorAll('.category-toggle');
+    const sponsorSkipperStats = document.getElementById('sponsor-skipper-stats');
+    
+    // Enhanced Dark Mode
+    const enhancedDarkModeToggle = document.getElementById('enhanced-dark-mode-toggle');
+    const enhancedDarkModeSettings = document.getElementById('enhanced-dark-mode-settings');
+    const autoDetectToggle = document.getElementById('auto-detect-toggle');
+    const brightnessSlider = document.getElementById('brightness-slider');
+    const brightnessValue = document.getElementById('brightness-value');
+    const contrastSlider = document.getElementById('contrast-slider');
+    const contrastValue = document.getElementById('contrast-value');
+    const darkModeStats = document.getElementById('dark-mode-stats');
+    
+    // Store settings
+    let currentSettings = {
+      browser: {
+        dark_mode: false,
+        zoom_factor: 1.0
+      },
+      features: {
+        adBlocker: {
+          enabled: false,
+          customFilters: []
+        },
+        sponsorSkipper: {
+          enabled: false,
+          categories: {}
+        },
+        darkMode: {
+          enabled: false,
+          autoDetect: true,
+          brightnessReduction: 85,
+          contrastEnhancement: 10
+        }
+      }
+    };
+    
+    // Initialize UI
+    function initializeUI(data) {
+      if (!data) return;
+      
+      // Browser settings
+      if (data.browserSettings) {
+        currentSettings.browser = data.browserSettings;
+        darkModeToggle.checked = data.browserSettings.dark_mode;
+        zoomSlider.value = data.browserSettings.zoom_factor;
+        zoomValue.textContent = `${data.browserSettings.zoom_factor}x`;
+      }
+      
+      // Features
+      if (data.featuresConfig) {
+        // Ad Blocker
+        if (data.featuresConfig.adBlocker) {
+          currentSettings.features.adBlocker.enabled = data.featuresConfig.adBlocker.enabled;
+          adBlockerToggle.checked = data.featuresConfig.adBlocker.enabled;
+          toggleSettingsVisibility(adBlockerSettings, data.featuresConfig.adBlocker.enabled);
+          
+          // Custom filters
+          if (data.featuresConfig.adBlocker.customFilters) {
+            currentSettings.features.adBlocker.customFilters = data.featuresConfig.adBlocker.customFilters;
+            renderCustomFilters(data.featuresConfig.adBlocker.customFilters);
+          }
+          
+          // Statistics
+          if (data.featuresConfig.adBlocker.statistics) {
+            renderAdBlockerStats(data.featuresConfig.adBlocker.statistics);
+          }
+        }
+        
+        // Sponsor Skipper
+        if (data.featuresConfig.sponsorSkipper) {
+          currentSettings.features.sponsorSkipper.enabled = data.featuresConfig.sponsorSkipper.enabled;
+          sponsorSkipperToggle.checked = data.featuresConfig.sponsorSkipper.enabled;
+          toggleSettingsVisibility(sponsorSkipperSettings, data.featuresConfig.sponsorSkipper.enabled);
+          
+          // Categories
+          if (data.featuresConfig.sponsorSkipper.categories) {
+            currentSettings.features.sponsorSkipper.categories = data.featuresConfig.sponsorSkipper.categories;
+            sponsorCategories.forEach(category => {
+              const categoryName = category.dataset.category;
+              if (data.featuresConfig.sponsorSkipper.categories[categoryName]) {
+                category.checked = data.featuresConfig.sponsorSkipper.categories[categoryName].skip;
+              }
+            });
+          }
+          
+          // Statistics
+          if (data.featuresConfig.sponsorSkipper.statistics) {
+            renderSponsorSkipperStats(data.featuresConfig.sponsorSkipper.statistics);
+          }
+        }
+        
+        // Enhanced Dark Mode
+        if (data.featuresConfig.darkMode) {
+          currentSettings.features.darkMode.enabled = data.featuresConfig.darkMode.enabled;
+          enhancedDarkModeToggle.checked = data.featuresConfig.darkMode.enabled;
+          toggleSettingsVisibility(enhancedDarkModeSettings, data.featuresConfig.darkMode.enabled);
+          
+          autoDetectToggle.checked = data.featuresConfig.darkMode.autoDetect;
+          brightnessSlider.value = data.featuresConfig.darkMode.brightnessReduction;
+          brightnessValue.textContent = `${data.featuresConfig.darkMode.brightnessReduction}%`;
+          contrastSlider.value = data.featuresConfig.darkMode.contrastEnhancement;
+          contrastValue.textContent = `${data.featuresConfig.darkMode.contrastEnhancement}%`;
+          
+          // Statistics
+          if (data.featuresConfig.darkMode.statistics) {
+            renderDarkModeStats(data.featuresConfig.darkMode.statistics);
+          }
+        }
+      }
+    }
+    
+    // Toggle settings visibility
+    function toggleSettingsVisibility(element, visible) {
+      element.style.display = visible ? 'block' : 'none';
+    }
+    
+    // Render custom filters
+    function renderCustomFilters(filters) {
+      customFiltersList.innerHTML = '';
+      
+      if (!filters || filters.length === 0) {
+        customFiltersList.innerHTML = '<p>No custom filters added.</p>';
+        return;
+      }
+      
+      filters.forEach(filter => {
+        const filterItem = document.createElement('div');
+        filterItem.className = 'filter-item';
+        filterItem.innerHTML = `
+          <span class="filter-name">${filter.name}</span>
+          <div class="filter-actions">
+            <button data-id="${filter.id}" class="remove-filter">Remove</button>
+          </div>
+        `;
+        customFiltersList.appendChild(filterItem);
+        
+        // Add click event to remove button
+        filterItem.querySelector('.remove-filter').addEventListener('click', async function() {
+          const filterId = this.dataset.id;
+          const result = await window.settingsAPI.removeAdBlockerFilter(filterId);
+          
+          if (result.success) {
+            showNotification('Filter removed successfully', false);
+            renderCustomFilters(result.filters);
+          } else {
+            showNotification(`Error: ${result.error}`, true);
+          }
+        });
+      });
+    }
+    
+    // Render Ad Blocker stats
+    function renderAdBlockerStats(stats) {
+      if (!stats) return;
+      
+      adBlockerStats.innerHTML = `
+        <p>Blocked requests: ${stats.blocked || 0}</p>
+        <p>Total requests: ${stats.total || 0}</p>
+        <p>Block rate: ${stats.blockRate || '0%'}</p>
+      `;
+    }
+    
+    // Render Sponsor Skipper stats
+    function renderSponsorSkipperStats(stats) {
+      if (!stats) return;
+      
+      let categoryStats = '';
+      if (stats.skipped && stats.skipped.categories) {
+        for (const [category, count] of Object.entries(stats.skipped.categories)) {
+          categoryStats += `<p>${category}: ${count} segments</p>`;
+        }
+      }
+      
+      sponsorSkipperStats.innerHTML = `
+        <p>Total segments skipped: ${stats.skipped ? stats.skipped.total : 0}</p>
+        ${categoryStats}
+      `;
+    }
+    
+    // Render Dark Mode stats
+    function renderDarkModeStats(stats) {
+      if (!stats) return;
+      
+      darkModeStats.innerHTML = `
+        <p>Sites with dark mode applied: ${stats.sitesModified || 0}</p>
+        <p>Sites skipped (already dark): ${stats.sitesSkipped || 0}</p>
+      `;
+    }
+    
+    // Show notification
+    function showNotification(message, isError = false) {
+      notification.textContent = message;
+      notification.className = 'notification' + (isError ? ' error' : '');
+      notification.classList.add('show');
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
+    }
+    
+    // Event Listeners
+    
+    // Close button
+    closeButton.addEventListener('click', () => {
+      window.settingsAPI.closeSettings();
+    });
+    
+    // Save button
+    saveButton.addEventListener('click', async () => {
+      try {
+        // Prepare browser settings
+        const browserSettings = {
+          dark_mode: darkModeToggle.checked,
+          zoom_factor: parseFloat(zoomSlider.value)
+        };
+        
+        // Prepare ad blocker settings
+        const adBlockerSettings = {
+          enabled: adBlockerToggle.checked
+        };
+        
+        // Prepare sponsor skipper settings
+        const categorySettings = {};
+        sponsorCategories.forEach(category => {
+          const categoryName = category.dataset.category;
+          categorySettings[categoryName] = {
+            skip: category.checked,
+            notification: true
+          };
+        });
+        
+        const sponsorSkipperSettings = {
+          enabled: sponsorSkipperToggle.checked,
+          categories: categorySettings
+        };
+        
+        // Prepare dark mode settings
+        const darkModeSettings = {
+          enabled: enhancedDarkModeToggle.checked,
+          autoDetect: autoDetectToggle.checked,
+          brightnessReduction: parseInt(brightnessSlider.value),
+          contrastEnhancement: parseInt(contrastSlider.value)
+        };
+        
+        // Save all settings at once
+        const result = await window.settingsAPI.saveAllSettings({
+          browser: browserSettings,
+          features: {
+            adBlocker: adBlockerSettings,
+            sponsorSkipper: sponsorSkipperSettings,
+            darkMode: darkModeSettings
+          }
+        });
+        
+        if (result.success) {
+          showNotification('Settings saved successfully!');
+        } else {
+          showNotification(`Error: ${result.error || 'Could not save settings'}`, true);
+        }
+      } catch (error) {
+        console.error('Error saving settings:', error);
+        showNotification('Error saving settings. Please try again.', true);
+      }
+    });
+    
+    // Ad Blocker toggle
+    adBlockerToggle.addEventListener('change', () => {
+      toggleSettingsVisibility(adBlockerSettings, adBlockerToggle.checked);
+    });
+    
+    // Add filter button
+    addFilterBtn.addEventListener('click', async () => {
+      const filterContent = newFilterInput.value.trim();
+      
+      if (!filterContent) {
+        showNotification('Please enter a filter rule', true);
+        return;
+      }
+      
+      const filter = {
+        name: `Custom filter ${new Date().toLocaleString()}`,
+        content: filterContent
+      };
+      
+      const result = await window.settingsAPI.addAdBlockerFilter(filter);
+      
+      if (result.success) {
+        newFilterInput.value = '';
+        showNotification('Filter added successfully', false);
+        renderCustomFilters(result.filters);
+      } else {
+        showNotification(`Error: ${result.error}`, true);
+      }
+    });
+    
+    // Sponsor Skipper toggle
+    sponsorSkipperToggle.addEventListener('change', () => {
+      toggleSettingsVisibility(sponsorSkipperSettings, sponsorSkipperToggle.checked);
+    });
+    
+    // Enhanced Dark Mode toggle
+    enhancedDarkModeToggle.addEventListener('change', () => {
+      toggleSettingsVisibility(enhancedDarkModeSettings, enhancedDarkModeToggle.checked);
+    });
+    
+    // Range sliders
+    zoomSlider.addEventListener('input', () => {
+      zoomValue.textContent = `${zoomSlider.value}x`;
+    });
+    
+    brightnessSlider.addEventListener('input', () => {
+      brightnessValue.textContent = `${brightnessSlider.value}%`;
+    });
+    
+    contrastSlider.addEventListener('input', () => {
+      contrastValue.textContent = `${contrastSlider.value}%`;
+    });
+    
+    // Receive settings data from main process
+    window.settingsAPI.onSettingsDataReceived((data) => {
+      initializeUI(data);
+    });
+  </script>
+</body>
+</html>

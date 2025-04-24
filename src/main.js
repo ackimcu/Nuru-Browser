@@ -3,6 +3,8 @@ const path = require('path');
 const fs = require('fs');
 const log = require('electron-log');
 const { autoUpdater } = require('electron-updater');
+const features = require('./features/index'); // Import native features
+const settingsModal = require('./settings-modal'); // Import settings modal
 
 // Determine if running in production environment
 const isProduction = process.env.NODE_ENV === 'production' || app.isPackaged;
@@ -30,7 +32,30 @@ const DEFAULT_SETTINGS = {
     url: 'https://www.google.com/search?q=',
     icon: 'fab fa-google'
   },
-  development_mode: false // Added development mode setting
+  development_mode: false, // Added development mode setting
+  features: {
+    adBlocker: {
+      enabled: true
+    },
+    sponsorSkipper: {
+      enabled: true,
+      categories: {
+        sponsor: { skip: true, notification: true },
+        selfpromo: { skip: true, notification: true },
+        interaction: { skip: true, notification: true },
+        intro: { skip: true, notification: true },
+        outro: { skip: true, notification: true },
+        preview: { skip: true, notification: true },
+        music_offtopic: { skip: false, notification: true }
+      }
+    },
+    darkMode: {
+      enabled: true,
+      autoDetect: true,
+      brightnessReduction: 85,
+      contrastEnhancement: 10
+    }
+  }
 };
 
 let mainWindow;
@@ -57,14 +82,50 @@ function loadSettings() {
 
 function saveSettings() {
   try {
+    log.info('Saving settings to:', SETTINGS_PATH);
+    
+    // Ensure the settings directory exists
+    const settingsDir = path.dirname(SETTINGS_PATH);
+    if (!fs.existsSync(settingsDir)) {
+      fs.mkdirSync(settingsDir, { recursive: true });
+    }
+    
     fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
     log.info('Settings saved successfully');
+    
+    // Notify renderer process if available
+    if (mainWindow) {
+      mainWindow.webContents.send('settings-updated', settings);
+    }
   } catch (error) {
     log.error('Failed to save settings:', error);
   }
 }
 
-function createMainWindow() {
+async function createMainWindow() {
+  // Initialize native features before creating the window
+  try {
+    const featuresConfig = await features.initialize();
+    log.info('Native features initialized successfully');
+    
+    // Update settings with feature configurations if needed
+    if (!settings.features) {
+      settings.features = {
+        adBlocker: { enabled: featuresConfig.adBlocker.enabled },
+        sponsorSkipper: { enabled: featuresConfig.sponsorSkipper.enabled, categories: featuresConfig.sponsorSkipper.userSettings },
+        darkMode: { 
+          enabled: featuresConfig.darkMode.enabled, 
+          autoDetect: featuresConfig.darkMode.autoDetect,
+          brightnessReduction: featuresConfig.darkMode.brightnessReduction,
+          contrastEnhancement: featuresConfig.darkMode.contrastEnhancement
+        }
+      };
+      saveSettings();
+    }
+  } catch (error) {
+    log.error('Failed to initialize native features:', error);
+  }
+  
   const { width, height, x, y } = settings.geometry;
   
   mainWindow = new BrowserWindow({
@@ -132,6 +193,14 @@ function createMainWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+
+  // Fullscreen change notifications
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow.webContents.send('fullscreen-changed', true);
+  });
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow.webContents.send('fullscreen-changed', false);
   });
 }
 
@@ -521,6 +590,61 @@ ipcMain.handle('update-zoom', (event, zoomFactor) => {
   return settings.zoom_factor;
 });
 
+// Add IPC handler for saving all settings at once
+ipcMain.handle('save-all-settings', (event, newSettings) => {
+  try {
+    log.info('Saving all settings');
+    
+    // Update settings object with new values
+    if (newSettings.browser) {
+      // Update browser settings
+      Object.assign(settings, newSettings.browser);
+      
+      // Apply zoom immediately if changed
+      if (newSettings.browser.zoom_factor && mainWindow) {
+        mainWindow.webContents.setZoomFactor(newSettings.browser.zoom_factor);
+      }
+    }
+    
+    // Update features settings if available
+    if (newSettings.features && features) {
+      // Update ad blocker settings
+      if (newSettings.features.adBlocker && features.adBlocker) {
+        features.adBlocker.setEnabled(newSettings.features.adBlocker.enabled);
+        settings.features.adBlocker = newSettings.features.adBlocker;
+      }
+      
+      // Update sponsor skipper settings
+      if (newSettings.features.sponsorSkipper && features.sponsorSkipper) {
+        features.sponsorSkipper.setEnabled(newSettings.features.sponsorSkipper.enabled);
+        if (newSettings.features.sponsorSkipper.categories) {
+          features.sponsorSkipper.updateSettings(newSettings.features.sponsorSkipper.categories);
+        }
+        settings.features.sponsorSkipper = newSettings.features.sponsorSkipper;
+      }
+      
+      // Update dark mode settings
+      if (newSettings.features.darkMode && features.darkMode) {
+        features.darkMode.setEnabled(newSettings.features.darkMode.enabled);
+        features.darkMode.updateSettings({
+          autoDetect: newSettings.features.darkMode.autoDetect,
+          brightnessReduction: newSettings.features.darkMode.brightnessReduction,
+          contrastEnhancement: newSettings.features.darkMode.contrastEnhancement
+        });
+        settings.features.darkMode = newSettings.features.darkMode;
+      }
+    }
+    
+    // Save all settings to disk
+    saveSettings();
+    
+    return { success: true };
+  } catch (err) {
+    log.error('Error saving all settings:', err);
+    return { success: false, error: err.message };
+  }
+});
+
 // DNS prediction and search engine handling
 ipcMain.handle('get-dns-predictions', async (event, url) => {
   try {
@@ -728,16 +852,21 @@ ipcMain.handle('toggle-frameless', () => {
   return settings.frameless;
 });
 
-ipcMain.handle('toggle-dark-mode', () => {
-  settings.dark_mode = !settings.dark_mode;
+ipcMain.handle('set-dark-mode', async (event, darkMode) => {
+  settings.dark_mode = darkMode;
   saveSettings();
   
-  // Update renderer
-  if (mainWindow) {
-    mainWindow.webContents.send('dark-mode-changed', settings.dark_mode);
+  // Update enhanced dark mode feature if it's initialized
+  if (features && features.darkMode) {
+    features.darkMode.setEnabled(darkMode);
   }
   
-  return settings.dark_mode;
+  // Notify renderer
+  if (mainWindow) {
+    mainWindow.webContents.send('dark-mode-changed', darkMode);
+  }
+  
+  return darkMode;
 });
 
 ipcMain.on('webgl-status', (event, status) => {
@@ -863,12 +992,12 @@ function setupAutoUpdater() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Load settings
   loadSettings();
   
-  // Create main window
-  createMainWindow();
+  // Create main window (now async to handle feature initialization)
+  await createMainWindow();
   
   // Setup auto-updater if not in development
   if (app.isPackaged) {
@@ -879,6 +1008,49 @@ app.whenReady().then(() => {
   globalShortcut.register('CommandOrControl+D', () => {
     createDiagnosticsWindow();
   });
+  
+  // Register Ctrl+S for Settings
+  globalShortcut.register('CommandOrControl+S', () => {
+    settingsModal.showSettingsModal(mainWindow, settings, features);
+  });
+  
+  // Add IPC handler for showing settings modal
+  ipcMain.on('show-settings', () => {
+    log.info('Showing settings modal');
+    settingsModal.showSettingsModal(mainWindow, settings, features);
+  });
+
+  // Set up native features from settings
+  if (features && settings.features) {
+    try {
+      // Apply ad blocker settings
+      if (settings.features.adBlocker) {
+        features.adBlocker.setEnabled(settings.features.adBlocker.enabled);
+      }
+      
+      // Apply sponsor skipper settings
+      if (settings.features.sponsorSkipper) {
+        features.sponsorSkipper.setEnabled(settings.features.sponsorSkipper.enabled);
+        if (settings.features.sponsorSkipper.categories) {
+          features.sponsorSkipper.updateSettings(settings.features.sponsorSkipper.categories);
+        }
+      }
+      
+      // Apply dark mode settings
+      if (settings.features.darkMode) {
+        features.darkMode.setEnabled(settings.features.darkMode.enabled);
+        features.darkMode.updateSettings({
+          autoDetect: settings.features.darkMode.autoDetect,
+          brightnessReduction: settings.features.darkMode.brightnessReduction,
+          contrastEnhancement: settings.features.darkMode.contrastEnhancement
+        });
+      }
+      
+      log.info('Native features configured from settings');
+    } catch (error) {
+      log.error('Error applying feature settings:', error);
+    }
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -927,4 +1099,14 @@ app.on('window-all-closed', () => {
 app.on('will-quit', () => {
   // Unregister shortcuts
   globalShortcut.unregisterAll();
+  
+  // Save feature statistics if available
+  if (features) {
+    try {
+      const stats = features.getStatistics();
+      log.info('Feature statistics at exit:', JSON.stringify(stats, null, 2));
+    } catch (error) {
+      log.error('Error saving feature statistics:', error);
+    }
+  }
 });

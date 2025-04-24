@@ -4,20 +4,30 @@ const activeWebview = document.getElementById('webview-0');
 const tabsList = document.getElementById('tabs-list');
 const tabsViewport = document.querySelector('.tabs-viewport');
 const tabsTriggerArea = document.querySelector('.tabs-trigger-area');
-const urlInput = document.getElementById('url-search-input');
-const urlSuggestions = document.getElementById('url-suggestions');
-const searchEngineButton = document.getElementById('search-engine-button');
-const searchEngineSelector = document.getElementById('search-engine-selector');
+const urlInput = document.getElementById('url-search-input') || { addEventListener: () => {}, value: '', focus: () => {}, select: () => {}, blur: () => {} };
+const urlSuggestions = document.getElementById('url-suggestions') || { classList: { add: () => {}, remove: () => {} } };
+const searchEngineButton = document.getElementById('search-engine-button') || { addEventListener: () => {}, classList: { add: () => {}, remove: () => {} } };
+const searchEngineSelector = document.getElementById('search-engine-selector') || { classList: { add: () => {}, remove: () => {} } };
 const appContainer = document.getElementById('app');
 const loadingStrip = document.getElementById('loading-strip');
-const securityIndicator = document.getElementById('url-security-indicator');
-const urlViewport = document.querySelector('.url-search-section');
+const securityIndicator = document.getElementById('url-security-indicator') || { classList: { add: () => {}, remove: () => {} } };
+const urlViewport = document.getElementById('url-viewport') || { classList: { add: () => {}, remove: () => {} } };
 const errorOverlay = document.getElementById('error-overlay');
 const errorTitle = document.getElementById('error-title');
 const errorMessage = document.getElementById('error-message');
 const errorDismiss = document.getElementById('error-dismiss');
 const updateCheckBtn = document.getElementById('update-check-btn');
 const diagnosticsBtn = document.getElementById('diagnostics-btn');
+const urlTriggerArea = document.getElementById('url-trigger-area') || { addEventListener: () => {} };
+const urlCloseTrigger = document.getElementById('url-close-trigger') || { addEventListener: () => {} };
+const historyTriggerArea = document.querySelector('.history-trigger-area');
+const historyViewport = document.querySelector('.history-viewport');
+const historyList = document.getElementById('history-list');
+const clearHistoryBtn = document.getElementById('clear-history-btn');
+const homeBtn = document.getElementById('home-btn') || { addEventListener: () => {} };
+
+// Visit counts storage for suggestions
+let visitCounts = JSON.parse(localStorage.getItem('visitCounts') || '{}');
 
 // Settings
 let settings = {
@@ -40,6 +50,42 @@ let urlSuggestionResults = [];
 let tabs = [];
 let activeTabId = 'webview-0';
 let tabCounter = 1; // Start at 1 since webview-0 is already created
+
+// History management
+let historyData = JSON.parse(localStorage.getItem('historyData') || '[]');
+let historyHoverTimer, historyCloseTimer;
+
+function saveHistory() {
+  localStorage.setItem('historyData', JSON.stringify(historyData));
+}
+
+function renderHistory() {
+  historyList.innerHTML = historyData.map((item, idx) => {
+    const date = new Date(item.timestamp);
+    const formatted = date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    return `
+      <div class="history-item" data-index="${idx}">
+        <div class="history-title">${item.title}</div>
+        <div class="history-meta">${formatted}</div>
+        <div class="history-item-close" data-index="${idx}"><i class="fas fa-times"></i></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function addHistoryEntry(webview) {
+  const url = webview.getURL();
+  const title = webview.getTitle() || url;
+  historyData = historyData.filter(item => item.url !== url);
+  historyData.unshift({ url, title, timestamp: Date.now() });
+  saveHistory();
+  renderHistory();
+}
 
 // Load settings on startup
 async function loadSettings() {
@@ -316,10 +362,16 @@ function updateTabsUI() {
       }
     }
     
+    // Title and site meta
     const titleElement = document.createElement('div');
     titleElement.className = 'tab-title';
-    titleElement.textContent = tab.title || 'New Tab';
-    titleElement.title = tab.title || 'New Tab'; // Add tooltip for long titles
+    const displayTitle = tab.title && tab.title !== tab.url ? tab.title : 'New Tab';
+    titleElement.textContent = displayTitle;
+    titleElement.title = tab.title || displayTitle;
+    const domain = tab.url ? new URL(tab.url).hostname : '';
+    const metaElement = document.createElement('div');
+    metaElement.className = 'tab-meta';
+    metaElement.textContent = domain;
     
     const closeElement = document.createElement('div');
     closeElement.className = 'tab-close';
@@ -328,6 +380,7 @@ function updateTabsUI() {
     
     tabItem.appendChild(faviconElement);
     tabItem.appendChild(titleElement);
+    tabItem.appendChild(metaElement);
     tabItem.appendChild(closeElement);
     
     // Event listeners
@@ -448,6 +501,13 @@ function setupWebviewEvents(webviewElement) {
         updateNavigationButtons();
         updateUrlInput(event.url);
       }
+      
+      // Increment visit count
+      try {
+        const hostname = new URL(event.url).hostname.toLowerCase();
+        visitCounts[hostname] = (visitCounts[hostname] || 0) + 1;
+        localStorage.setItem('visitCounts', JSON.stringify(visitCounts));
+      } catch {}
     }
   });
   
@@ -597,6 +657,10 @@ function setupWebviewEvents(webviewElement) {
       logMessage('info', `Auto-denied ${event.permission} permission`);
     }
   });
+  
+  // Hook this webview into history tracking
+  webviewElement.addEventListener('did-navigate', () => addHistoryEntry(webviewElement));
+  webviewElement.addEventListener('did-navigate-in-page', () => addHistoryEntry(webviewElement));
 }
 
 // Inject custom CSS for scrollbar styling in webviews
@@ -1205,6 +1269,112 @@ function navigateToUrl(url) {
   }
 }
 
+function navigateTo(input) {
+  const q = input.trim();
+  let dest;
+  // Check if looks like domain
+  const isDomain = q.includes('.') && !q.includes(' ');
+  const visits = visitCounts[q.toLowerCase()] || 0;
+  if (isDomain && visits < 3) {
+    // not enough visits: treat as search
+    dest = settings.search_engine.url + encodeURIComponent(q);
+  } else if (!/^https?:\/\//i.test(q)) {
+    if (isDomain) {
+      dest = `https://${q}`;
+    } else {
+      dest = settings.search_engine.url + encodeURIComponent(q);
+    }
+  } else {
+    dest = q;
+  }
+  const active = document.querySelector('webview.active');
+  if (active) active.loadURL(dest);
+}
+
+// URL viewport show/hide, input handling, engine selection, and navigation helper
+function showUrlViewport() {
+  urlViewport.classList.add('active');
+  document.body.classList.add('url-active');
+  urlInput.focus();
+  urlInput.select();
+}
+
+function hideUrlViewport() {
+  urlViewport.classList.remove('active');
+  document.body.classList.remove('url-active');
+  urlSuggestions.innerHTML = '';
+  urlSuggestions.classList.remove('has-suggestions');
+}
+
+function toggleUrlViewport() {
+  urlViewport.classList.contains('active') ? hideUrlViewport() : showUrlViewport();
+}
+
+urlTriggerArea.addEventListener('click', showUrlViewport);
+urlCloseTrigger.addEventListener('click', hideUrlViewport);
+
+document.addEventListener('click', e => {
+  if (urlViewport.classList.contains('active') &&
+      !urlViewport.contains(e.target) &&
+      !urlTriggerArea.contains(e.target) &&
+      e.target.id !== 'search-engine-button') {
+    hideUrlViewport();
+  }
+});
+
+urlInput.addEventListener('input', () => {
+  const q = urlInput.value.trim().toLowerCase();
+  urlSuggestions.innerHTML = '';
+  if (q) {
+    const matches = Object.keys(visitCounts)
+      .filter(domain => visitCounts[domain] >= 3 && domain.startsWith(q));
+    if (matches.length) {
+      matches.forEach(domain => {
+        const item = document.createElement('div');
+        item.className = 'url-suggestion-item';
+        item.textContent = domain;
+        item.addEventListener('click', () => {
+          navigateTo(domain);
+          hideUrlViewport();
+        });
+        urlSuggestions.appendChild(item);
+      });
+    } else {
+      const item = document.createElement('div');
+      item.className = 'url-suggestion-item';
+      item.textContent = `${settings.search_engine.name} search "${q}"`;
+      item.addEventListener('click', () => {
+        navigateTo(q);
+        hideUrlViewport();
+      });
+      urlSuggestions.appendChild(item);
+    }
+    urlSuggestions.classList.add('has-suggestions');
+  } else {
+    urlSuggestions.classList.remove('has-suggestions');
+  }
+});
+
+urlInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    processUrlInput();
+    e.preventDefault();
+  }
+});
+
+searchEngineButton.addEventListener('click', () => {
+  processUrlInput();
+});
+
+document.querySelectorAll('.search-engine-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const engine = item.dataset.name;
+    const url = item.dataset.url;
+    const icon = item.dataset.icon;
+    setSearchEngine(engine, url, icon);
+  });
+});
+
 function processUrlInput() {
   const inputValue = urlInput.value.trim();
   if (!inputValue) return;
@@ -1238,7 +1408,7 @@ function processUrlInput() {
     logMessage('info', `Searching for "${inputValue}" with ${settings.search_engine.name}`);
   }
   
-  navigateToUrl(url);
+  navigateTo(url);
   hideUrlViewport();
 }
 
@@ -1415,9 +1585,9 @@ function setupUrlInputEvents() {
   const searchEngineItems = document.querySelectorAll('.search-engine-item');
   searchEngineItems.forEach(item => {
     item.addEventListener('click', () => {
-      const engine = item.getAttribute('data-engine');
-      const url = item.getAttribute('data-url');
-      const icon = item.getAttribute('data-icon');
+      const engine = item.dataset.name;
+      const url = item.dataset.url;
+      const icon = item.dataset.icon;
       setSearchEngine(engine, url, icon);
     });
   });
@@ -1529,10 +1699,121 @@ diagnosticsBtn?.addEventListener('click', () => {
   showNotification('Diagnostics', 'Opening diagnostics window...', 'info');
 });
 
+// Fullscreen date/time panel
+document.addEventListener('DOMContentLoaded', () => {
+  const panel = document.createElement('div');
+  panel.id = 'fullscreen-date-time';
+  panel.classList.add('hidden');
+  panel.innerHTML = `<div class="date"></div><div class="time"></div>`;
+  document.body.appendChild(panel);
+  const dateEl = panel.querySelector('.date');
+  const timeEl = panel.querySelector('.time');
+  let timerId;
+  window.electronAPI.onFullscreenChanged((isFullscreen) => {
+    if (isFullscreen) {
+      panel.classList.remove('hidden');
+      const updateDateTime = () => {
+        const now = new Date();
+        dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+        timeEl.textContent = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      };
+      updateDateTime();
+      timerId = setInterval(updateDateTime, 1000);
+    } else {
+      panel.classList.add('hidden');
+      clearInterval(timerId);
+    }
+  });
+});
+
+// History hover detection
+historyTriggerArea.addEventListener('mouseenter', () => {
+  clearTimeout(historyCloseTimer);
+  historyHoverTimer = setTimeout(() => {
+    historyViewport.classList.add('active');
+  }, 300);
+});
+historyTriggerArea.addEventListener('mouseleave', () => {
+  clearTimeout(historyHoverTimer);
+});
+historyViewport.addEventListener('mouseleave', (e) => {
+  // Check if we're not moving to the trigger area
+  if (e.relatedTarget !== historyTriggerArea) {
+    historyCloseTimer = setTimeout(() => {
+      historyViewport.classList.remove('active');
+    }, 500);
+  }
+});
+
+// Prevent hover timer from closing viewport if mouse enters back
+historyViewport.addEventListener('mouseenter', () => {
+  clearTimeout(historyCloseTimer);
+});
+
+// Click outside to close history viewport
+document.addEventListener('click', (e) => {
+  if (historyViewport.classList.contains('active') &&
+      !historyViewport.contains(e.target) &&
+      !historyTriggerArea.contains(e.target)) {
+    historyViewport.classList.remove('active');
+  }
+});
+
+// History item click handlers
+historyList.addEventListener('click', (e) => {
+  const closeBtn = e.target.closest('.history-item-close');
+  if (closeBtn) {
+    const idx = parseInt(closeBtn.getAttribute('data-index'));
+    historyData.splice(idx, 1);
+    saveHistory();
+    renderHistory();
+    return;
+  }
+  const item = e.target.closest('.history-item');
+  if (item) {
+    const idx = parseInt(item.getAttribute('data-index'));
+    const entry = historyData[idx];
+    if (entry) {
+      navigateTo(entry.url);
+      historyViewport.classList.remove('active');
+    }
+  }
+});
+
+// Clear all history
+clearHistoryBtn.addEventListener('click', () => {
+  historyData = [];
+  saveHistory();
+  renderHistory();
+});
+
+// Hook into navigation events to save history
+document.querySelectorAll('webview').forEach(webview => {
+  webview.addEventListener('did-navigate', () => {
+    addHistoryEntry(webview);
+  });
+  webview.addEventListener('did-navigate-in-page', () => {
+    addHistoryEntry(webview);
+  });
+});
+
+// Render history on startup
+renderHistory();
+
 // Initialize
 loadSettings();
 initializeTabs();
 setupUrlInputEvents();
 
+// Auto-highlight on focus/click
+urlInput.addEventListener('focus', () => urlInput.select());
+urlInput.addEventListener('click', () => urlInput.select());
+
 // Log startup
 logMessage('info', 'Renderer process started');
+
+// Wire up the Home button to navigate to a default home URL
+homeBtn.addEventListener('click', () => {
+  // Navigate to home URL (default Google)
+  navigateTo('https://www.google.com/');
+});

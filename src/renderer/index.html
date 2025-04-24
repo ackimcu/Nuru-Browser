@@ -3,15 +3,17 @@
 <head>
 
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com; connect-src *; img-src 'self' data: https:; frame-src *;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src *; img-src 'self' data: https:; frame-src *;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nuru Browser</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="features-panel.js" defer></script>
   <link rel="stylesheet" href="titlebar.css">
   <link rel="stylesheet" href="tabs.css">
   <link rel="stylesheet" href="tabs-combined.css">
   <link rel="stylesheet" href="loadingstrip.css">
   <link rel="stylesheet" href="notifications.css">
+  <link rel="stylesheet" href="urlbar.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
 </head>
@@ -30,63 +32,32 @@
         <button class="browser-action-btn" id="diagnostics-btn" title="Open Diagnostics">
           <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg>
         </button>
+        <button class="browser-action-btn" id="home-btn" title="Home">
+          <i class="fas fa-home"></i>
+        </button>
         <button class="browser-action-btn" id="dev-mode-toggle" title="Toggle Development Mode">
           <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
         </button>
       </div>
     </div>
-    
-    <!-- URL Search Section -->
-    <div class="url-search-section">
+    <!-- Unified Search Section -->
+    <div class="url-viewport" id="url-viewport">
+      <div class="url-header">
+        <h3>Search</h3>
+        <div class="url-security-indicator" id="url-security-indicator"></div>
+      </div>
       <div class="url-search-container">
-        <div class="url-security-indicator" id="url-security-indicator">
-          <i class="fas fa-lock"></i>
-        </div>
-        <div class="url-search-icon">
-          <i class="fas fa-search"></i>
-        </div>
-        <input type="text" class="url-search-input" id="url-search-input" placeholder="Search or enter web address" autocomplete="off" spellcheck="false">
-
-        <div class="url-search-engine" id="search-engine-button">
-          <img src="https://www.google.com/favicon.ico" class="search-engine-favicon" id="search-engine-favicon" alt="Google">
-        </div>
+        <i class="fas fa-search url-search-icon"></i>
+        <input type="text" class="url-search-input" id="url-search-input" placeholder="Search or enter website name">
+        <div class="url-search-engine" id="search-engine-button"><i class="fab fa-google"></i></div>
       </div>
-      <div class="url-suggestions" id="url-suggestions">
-        <!-- Suggestions will be dynamically added here -->
+      <div class="url-viewport-content" id="url-suggestions"></div>
+      <div class="search-engine-selector" id="search-engine-selector">
+        <div class="search-engine-item" data-name="google" data-url="https://www.google.com/search?q="><i class="fab fa-google search-engine-icon"></i> Google</div>
+        <div class="search-engine-item" data-name="bing" data-url="https://www.bing.com/search?q="><i class="fab fa-microsoft search-engine-icon"></i> Bing</div>
+        <div class="search-engine-item" data-name="duckduckgo" data-url="https://duckduckgo.com/?q="><i class="fab fa-duckduckgo search-engine-icon"></i> DuckDuckGo</div>
       </div>
     </div>
-    
-    <div class="search-engine-selector" id="search-engine-selector">
-      <div class="search-engine-item" data-engine="google" data-url="https://www.google.com/search?q=" data-favicon="https://www.google.com/favicon.ico">
-        <div class="search-engine-icon">
-          <img src="https://www.google.com/favicon.ico" alt="Google" class="search-engine-favicon">
-        </div>
-        <div class="search-engine-name">Google</div>
-        <div class="search-engine-selected"><i class="fas fa-check"></i></div>
-      </div>
-      <div class="search-engine-item" data-engine="bing" data-url="https://www.bing.com/search?q=" data-favicon="https://www.bing.com/favicon.ico">
-        <div class="search-engine-icon">
-          <img src="https://www.bing.com/favicon.ico" alt="Bing" class="search-engine-favicon">
-        </div>
-        <div class="search-engine-name">Bing</div>
-        <div class="search-engine-selected"><i class="fas fa-check"></i></div>
-      </div>
-      <div class="search-engine-item" data-engine="duckduckgo" data-url="https://duckduckgo.com/?q=" data-favicon="https://duckduckgo.com/favicon.ico">
-        <div class="search-engine-icon">
-          <img src="https://duckduckgo.com/favicon.ico" alt="DuckDuckGo" class="search-engine-favicon">
-        </div>
-        <div class="search-engine-name">DuckDuckGo</div>
-        <div class="search-engine-selected"><i class="fas fa-check"></i></div>
-      </div>
-      <div class="search-engine-item" data-engine="yahoo" data-url="https://search.yahoo.com/search?p=" data-favicon="https://www.yahoo.com/favicon.ico">
-        <div class="search-engine-icon">
-          <img src="https://www.yahoo.com/favicon.ico" alt="Yahoo" class="search-engine-favicon">
-        </div>
-        <div class="search-engine-name">Yahoo</div>
-        <div class="search-engine-selected"><i class="fas fa-check"></i></div>
-      </div>
-    </div>
-    
     <!-- Divider -->
     <div class="tabs-divider"></div>
     
@@ -106,7 +77,20 @@
     </div>
   </div>
   
-  <!-- Models Viewport removed -->
+  <div class="history-trigger-area"></div>
+  <div class="history-viewport">
+    <div class="tabs-header">
+      <h3>History</h3>
+      <div class="browser-actions">
+        <button class="browser-action-btn" id="clear-history-btn" title="Delete All History">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>
+    <div class="tabs-list history-list" id="history-list">
+      <!-- History items dynamically added here -->
+    </div>
+  </div>
   
   <div id="app">
     <div id="loading-strip"></div>
