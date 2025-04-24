@@ -15,6 +15,11 @@ A modern, optimized Electron-based web browser with a minimalistic interface, in
 - **Diagnostics**: Built-in diagnostics window (Ctrl+D) with app info, WebGL status, and logs
 - **Zoom Control**: Built-in zoom functionality (Ctrl+/Ctrl-)
 - **Persistent Settings**: Remembers window geometry, zoom level, and other preferences
+- **Ad Blocker**: Blocks ads on web pages for a cleaner browsing experience
+- **Sponsor Skipper**: Automatically skips sponsored segments in videos with customizable categories and notifications
+- **Search Engine Customization**: Configure default search engine name, URL, and icon
+- **Settings UI**: Access and modify settings via a built-in settings modal
+- **Development Mode**: Enable development mode for additional debugging features
 
 ## Development
 
