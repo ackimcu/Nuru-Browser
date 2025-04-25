@@ -20,6 +20,7 @@ A modern, optimized Electron-based web browser with a minimalistic interface, in
 - **Search Engine Customization**: Configure default search engine name, URL, and icon
 - **Settings UI**: Access and modify settings via a built-in settings modal
 - **Development Mode**: Enable development mode for additional debugging features
+- **Custom Taskbar Icon**: Displays a 48×48 Nuru logo in the taskbar, configured via `src/main.js`
 
 ## Development
 
@@ -49,6 +50,17 @@ npm run build
 ```
 
 This will create distributable packages in the `dist` directory.
+
+## Running Without Terminal
+
+To run Nuru Browser without using the terminal, you can use the provided desktop shortcut:
+
+1. Ensure the `NuruBrowser.desktop` file is located in `~/.local/share/applications/` or on your desktop.
+2. Make the file executable:
+   ```bash
+   chmod +x ~/path/to/NuruBrowser.desktop
+   ```
+3. Double-click the shortcut to launch Nuru Browser with the app logo.
 
 ## Configuration
 

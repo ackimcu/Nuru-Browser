@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, dialog, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const log = require('electron-log');
@@ -140,6 +140,7 @@ async function createMainWindow() {
     roundedCorners: true,
     vibrancy: 'ultra-dark',
     visualEffectState: 'active',
+    icon: nativeImage.createFromPath(path.join(__dirname, '..', 'logo', 'Nuru.png')).resize({ width: 48, height: 48 }),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
