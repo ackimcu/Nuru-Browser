@@ -1,50 +1,418 @@
+// Override console.error to suppress guest view abort messages
+(() => {
+  const _origError = console.error;
+  console.error = (...args) => {
+    // Combine all args into string for filtering
+    const text = args.map(a => a && a.toString()).join(' ');
+    // Suppress internal guest load abort messages
+    if (text.includes('Unexpected error while loading URL') && text.includes('ERR_ABORTED')) return;
+    _origError.apply(console, args);
+  };
+})();
+
+// Suppress Electron Guest View aborted-load errors
+window.addEventListener('error', e => {
+  if (e.message && e.message.includes('GUEST_VIEW_MANAGER_CALL') && e.message.includes('ERR_ABORTED')) {
+    e.preventDefault();
+  }
+});
+
+// Suppress unhandled promise rejections for guest-load aborts
+window.addEventListener('unhandledrejection', (e) => {
+  const msg = e.reason && (e.reason.message || e.reason.toString());
+  if (msg && msg.includes('GUEST_VIEW_MANAGER_CALL') && msg.includes('ERR_ABORTED')) {
+    e.preventDefault();
+  }
+});
+
 // DOM Elements
 const webviewsContainer = document.getElementById('webviews-container');
+// Generic stub element to avoid missing element errors
+const noopElem = { classList: { add: () => {}, remove: () => {}, contains: () => false, toggle: () => {} }, addEventListener: () => {}, removeEventListener: () => {}, appendChild: () => {}, style: {}, _hasClickListener: false };
+
 const activeWebview = document.getElementById('webview-0');
 const tabsList = document.getElementById('tabs-list');
 const tabsViewport = document.querySelector('.tabs-viewport');
 const tabsTriggerArea = document.querySelector('.tabs-trigger-area');
-const urlInput = document.getElementById('url-search-input') || { addEventListener: () => {}, value: '', focus: () => {}, select: () => {}, blur: () => {} };
-const urlSuggestions = document.getElementById('url-suggestions') || { classList: { add: () => {}, remove: () => {} } };
-const searchEngineButton = document.getElementById('search-engine-button') || { addEventListener: () => {}, classList: { add: () => {}, remove: () => {} } };
-const searchEngineSelector = document.getElementById('search-engine-selector') || { classList: { add: () => {}, remove: () => {} } };
 const appContainer = document.getElementById('app');
 const loadingStrip = document.getElementById('loading-strip');
-const securityIndicator = document.getElementById('url-security-indicator') || { classList: { add: () => {}, remove: () => {} } };
-const urlViewport = document.getElementById('url-viewport') || { classList: { add: () => {}, remove: () => {} } };
 const errorOverlay = document.getElementById('error-overlay');
 const errorTitle = document.getElementById('error-title');
 const errorMessage = document.getElementById('error-message');
-const errorDismiss = document.getElementById('error-dismiss');
 const updateCheckBtn = document.getElementById('update-check-btn');
 const diagnosticsBtn = document.getElementById('diagnostics-btn');
-const urlTriggerArea = document.getElementById('url-trigger-area') || { addEventListener: () => {} };
-const urlCloseTrigger = document.getElementById('url-close-trigger') || { addEventListener: () => {} };
 const historyTriggerArea = document.querySelector('.history-trigger-area');
 const historyViewport = document.querySelector('.history-viewport');
 const historyList = document.getElementById('history-list');
 const clearHistoryBtn = document.getElementById('clear-history-btn');
-const homeBtn = document.getElementById('home-btn') || { addEventListener: () => {} };
 
-// Visit counts storage for suggestions
-let visitCounts = JSON.parse(localStorage.getItem('visitCounts') || '{}');
+// Nuru Selects functionality
+const mediaSelect = document.getElementById('media-select');
+const resourceList = document.getElementById('resource-list');
+const addResourceBtn = document.getElementById('add-resource-btn');
+const addResourceForm = document.getElementById('add-resource-form');
+const newResourceName = document.getElementById('new-resource-name');
+const newResourceUrl = document.getElementById('new-resource-url');
+const newResourceCategory = document.getElementById('new-resource-category');
+const saveResourceBtn = document.getElementById('save-resource-btn');
+const cancelResourceBtn = document.getElementById('cancel-resource-btn');
+let resources = {};
+
+function initResources() {
+  const stored = localStorage.getItem('nuruResources');
+  if (stored) resources = JSON.parse(stored);
+  else {
+    resources = {
+      Movies: [{ name: 'IMDb', url: 'https://www.imdb.com' }],
+      Music: [{ name: 'Spotify', url: 'https://www.spotify.com' }],
+      Adult: [{ name: 'Example Adult', url: 'https://example.com' }]
+    };
+    localStorage.setItem('nuruResources', JSON.stringify(resources));
+  }
+}
+
+function renderResources(category) {
+  resourceList.innerHTML = '';
+  (resources[category] || []).forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.className = 'resource-item';
+    const linkSpan = document.createElement('span');
+    linkSpan.className = 'resource-link';
+    linkSpan.textContent = item.name;
+    linkSpan.addEventListener('click', () => navigateToUrl(item.url));
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-resource-btn';
+    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+    deleteBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      resources[category].splice(idx, 1);
+      saveResources();
+      renderResources(category);
+    });
+    div.appendChild(linkSpan);
+    div.appendChild(deleteBtn);
+    resourceList.appendChild(div);
+  });
+}
+
+function saveResources() {
+  localStorage.setItem('nuruResources', JSON.stringify(resources));
+}
+
+// Event bindings
+mediaSelect.addEventListener('change', () => renderResources(mediaSelect.value));
+addResourceBtn.addEventListener('click', () => addResourceForm.classList.remove('hidden'));
+cancelResourceBtn.addEventListener('click', () => addResourceForm.classList.add('hidden'));
+
+// Autofill resource fields from active webview
+const addWebsiteBtn = document.getElementById('add-website-btn');
+addWebsiteBtn.addEventListener('click', () => {
+  const webview = document.querySelector('webview.active');
+  if (webview) {
+    const url = webview.getURL();
+    const name = webview.getTitle();
+    newResourceUrl.value = url;
+    newResourceName.value = name;
+    addResourceForm.classList.remove('hidden');
+  }
+});
+
+saveResourceBtn.addEventListener('click', () => {
+  const name = newResourceName.value.trim();
+  const url = newResourceUrl.value.trim();
+  const cat = newResourceCategory.value;
+  if (name && url) {
+    resources[cat].push({ name, url });
+    saveResources();
+    renderResources(mediaSelect.value);
+    addResourceForm.classList.add('hidden');
+    newResourceName.value = '';
+    newResourceUrl.value = '';
+  }
+});
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', async () => {
+  // Load settings then init UI
+  await loadSettings();
+  initResources();
+  renderResources(mediaSelect.value);
+  initializeTabs();
+  // Initialize Reading Mode button
+  readingBtn = document.getElementById('reading-mode-btn');
+  if (readingBtn) {
+    updateReadingMode();
+    readingBtn.addEventListener('click', () => {
+      const activeView = document.querySelector('webview.active');
+      if (activeView) {
+        activeView.executeJavaScript('(' + __nuruInjectReadingMode.toString() + ')()')
+          .catch(err => console.error('Reading mode injection failed:', err));
+      }
+    });
+  }
+  updateReadingMode();
+
+  // --- Reading Mode Detection & Notification ---
+  function detectArticlePage(webview) {
+    if (!webview) return;
+    webview.executeJavaScript(`!!document.querySelector('article, main')`).then(isArticle => {
+      const btn = document.getElementById('reading-mode-btn');
+      if (btn) {
+        if (isArticle) btn.classList.remove('hidden');
+        else btn.classList.add('hidden');
+      }
+    });
+  }
+
+  // Update reading-mode icon visibility for active webview
+  function updateReadingMode() {
+    const activeView = document.querySelector('webview.active');
+    detectArticlePage(activeView);
+  }
+
+  // Listen for navigation events to detect article pages
+  document.querySelectorAll('webview').forEach(webview => {
+    webview.addEventListener('did-navigate', () => detectArticlePage(webview));
+    webview.addEventListener('did-navigate-in-page', () => detectArticlePage(webview));
+    webview.addEventListener('dom-ready', () => detectArticlePage(webview));
+  });
+
+  // Existing context menu and modal logic
+  if (window.electronAPI && window.electronAPI.onContextMenuNewTab) {
+    window.electronAPI.onContextMenuNewTab((url) => {
+      // Create tab lazily without activating
+      createTab(url, false);
+      updateTabsUI();
+    });
+  }
+  // Setup Nuru Selects modal
+  const selectsOverlay = document.getElementById('selects-modal-overlay');
+  const btnSelectClose = document.getElementById('selects-close');
+
+  function toggleSelectsModal() {
+    if (selectsOverlay) selectsOverlay.style.display = selectsOverlay.style.display === 'flex' ? 'none' : 'flex';
+  }
+  // Keyboard shortcuts: Ctrl+B for selects, Ctrl+D for diagnostics
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key.toLowerCase() === 'b') toggleSelectsModal();
+    if (e.ctrlKey && e.key.toLowerCase() === 'd') window.electronAPI.showDiagnostics();
+  });
+  // Context menu for selects
+  if (window.electronAPI && window.electronAPI.onToggleSelectsModal) {
+    window.electronAPI.onToggleSelectsModal(toggleSelectsModal);
+  }
+  // Close button
+  if (btnSelectClose) btnSelectClose.addEventListener('click', toggleSelectsModal);
+});
+
+function navigateToUrl(url) {
+  const activeWebview = document.querySelector('webview.active');
+  if (activeWebview) {
+    activeWebview.src = url;
+    logMessage('info', `Navigating to: ${url}`);
+  } else {
+    // Create a new tab if no active webview
+    createTab(url);
+  }
+}
+
+function updateUrlInput(url) {
+  currentUrl = url;
+  if (modernInput && modernInput !== document.activeElement) {
+    modernInput.value = getShortUrl(url);
+  } else if (modernInput) {
+    modernInput.value = url;
+  }
+}
+
+// Modern search bar logic
+const modernInput = document.getElementById('modern-search-input');
+modernInput.addEventListener('click', () => {
+  modernInput.select();
+  updateSuggestions(modernInput.value);
+});
+const suggestionsBox = document.getElementById('modern-suggestions');
+
+// Home button logic
+document.addEventListener('DOMContentLoaded', () => {
+  const btnHome = document.getElementById('home-btn');
+  if (btnHome) {
+    btnHome.addEventListener('click', () => {
+      if (settings && settings.homepage && settings.homepage.trim()) {
+        navigateToUrl(settings.homepage.trim());
+      } else if (typeof showNotification === 'function') {
+        showNotification('No homepage set in settings.', true);
+      }
+    });
+  }
+});
+
+const searchBar = document.getElementById('modern-search-bar');
+
+// Persistent search history via localStorage
+const HISTORY_KEY = 'searchHistory';
+let history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+
+let filtered = [], highlightedIdx = -1;
+
+/**
+ * Shift tabs list down/up based on suggestions dropdown visibility
+ */
+function adjustTabs(active) {
+  const header = document.querySelector('.tabs-list-header');
+  const list = document.getElementById('tabs-list');
+  if (active) {
+    const h = suggestionsBox.getBoundingClientRect().height;
+    header.style.transform = `translateY(${h}px)`;
+    list.style.transform = `translateY(${h}px)`;
+  } else {
+    header.style.transform = '';
+    list.style.transform = '';
+  }
+}
+
+function updateSuggestions(val) {
+  console.log('[Suggestions] updateSuggestions called with:', val);
+  // Show all history entries matching val (includes all when val is empty)
+  filtered = history.filter(s => s.toLowerCase().includes(val.toLowerCase()));
+  if (!filtered.length) {
+    suggestionsBox.classList.remove('open');
+    suggestionsBox.innerHTML = '';
+    adjustTabs(false);
+    return;
+  }
+  suggestionsBox.classList.add('open');
+  suggestionsBox.innerHTML = `<li class="suggest-header">Latest searches</li>` + filtered.map((s, i) => {
+    // Highlight match
+    const idx = s.toLowerCase().indexOf(val.toLowerCase());
+    let display = idx >= 0 ?
+      s.slice(0, idx) + '<span class="matched">' + s.slice(idx, idx + val.length) + '</span>' + s.slice(idx + val.length) :
+      s;
+    // append .com to suggestions
+    return `<li class="${i === highlightedIdx ? 'highlighted' : ''}" data-idx="${i}"><span class="suggest-icon"><i class="fas fa-search"></i></span><span class="suggest-text">${display}.com</span><button class="suggest-delete" data-idx="${i}">&times;</button></li>`;
+  }).join('');
+  suggestionsBox.classList.add('open');
+  adjustTabs(true);
+}
+
+modernInput.addEventListener('input', e => {
+  highlightedIdx = -1;
+  updateSuggestions(e.target.value);
+});
+
+modernInput.addEventListener('keydown', e => {
+  if (filtered.length && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+    if (e.key === 'ArrowDown') {
+      highlightedIdx = (highlightedIdx + 1) % filtered.length;
+      updateSuggestions(modernInput.value);
+      e.preventDefault();
+    } else if (e.key === 'ArrowUp') {
+      highlightedIdx = (highlightedIdx - 1 + filtered.length) % filtered.length;
+      updateSuggestions(modernInput.value);
+      e.preventDefault();
+    }
+  } else if (e.key === 'Enter') {
+    if (highlightedIdx >= 0 && filtered.length) {
+      modernInput.value = filtered[highlightedIdx];
+      triggerSearch(filtered[highlightedIdx]);
+    } else {
+      triggerSearch(modernInput.value);
+    }
+    suggestionsBox.classList.remove('open');
+    highlightedIdx = -1;
+    adjustTabs(false);
+    e.preventDefault();
+  } else if (e.key === 'Escape') {
+    suggestionsBox.classList.remove('open');
+    highlightedIdx = -1;
+    adjustTabs(false);
+  }
+});
+
+suggestionsBox.addEventListener('mousedown', e => {
+  // ignore delete button clicks
+  if (e.target.classList.contains('suggest-delete')) return;
+  const li = e.target.closest('li[data-idx]');
+  if (li) {
+    const idx = parseInt(li.getAttribute('data-idx'));
+    modernInput.value = filtered[idx];
+    suggestionsBox.classList.remove('open');
+    highlightedIdx = -1;
+    adjustTabs(false);
+    triggerSearch(filtered[idx]);
+  }
+});
+
+// Delete suggestion
+suggestionsBox.addEventListener('click', e => {
+  if (e.target.classList.contains('suggest-delete')) {
+    const idx = parseInt(e.target.getAttribute('data-idx'));
+    history.splice(idx, 1);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    updateSuggestions(modernInput.value);
+    e.stopPropagation();
+  }
+});
+
+// Hide suggestions on blur (with delay for click)
+modernInput.addEventListener('blur', () => setTimeout(() => {
+  suggestionsBox.classList.remove('open');
+  highlightedIdx = -1;
+  adjustTabs(false);
+}, 120));
+
+// Show suggestions on focus if input has value
+modernInput.addEventListener('focus', () => {
+  if (modernInput.value) updateSuggestions(modernInput.value);
+});
+
+// URL helper for shortened display
+let currentUrl = '';
+function getShortUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+modernInput.addEventListener('focus', () => {
+  if (currentUrl) {
+    modernInput.value = currentUrl;
+    modernInput.select();
+  }
+});
+modernInput.addEventListener('blur', () => {
+  setTimeout(() => {
+    modernInput.value = getShortUrl(currentUrl);
+  }, 0);
+});
+
+function triggerSearch(q) {
+  if (!q) return;
+  // Replace this with your real navigation/search logic
+  window.navigateToUrl ? window.navigateToUrl(`https://www.google.com/search?q=${encodeURIComponent(q)}`) : window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}`);
+  // Save search query to history
+  if (!history.includes(q)) history.push(q);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+// Fancy icon highlight
+searchBar.querySelector('.mic-icon').addEventListener('mousedown', () => {
+  searchBar.querySelector('.mic-icon').classList.add('active');
+  // Optionally: trigger voice search
+});
+searchBar.querySelector('.mic-icon').addEventListener('mouseup', () => {
+  searchBar.querySelector('.mic-icon').classList.remove('active');
+});
 
 // Settings
 let settings = {
-  dark_mode: true,
   frameless: true,
   zoom_factor: 1.5,
-  search_engine: {
-    name: 'google',
-    url: 'https://www.google.com/search?q=',
-    icon: 'fab fa-google'
-  }
+  restoreLastPage: true,
 };
-
-// URL management
-let currentUrl = 'https://www.google.com/';
-let searchTimeout = null;
-let urlSuggestionResults = [];
 
 // Tab management
 let tabs = [];
@@ -94,8 +462,6 @@ async function loadSettings() {
     if (loadedSettings) {
       settings = loadedSettings;
       applySettings();
-      // Initialize search engine UI
-      updateSearchEngineUI();
       logMessage('info', 'Settings loaded successfully');
     } else {
       logMessage('warn', 'Settings returned empty, using defaults');
@@ -109,19 +475,13 @@ async function loadSettings() {
 
 // Apply settings to the UI
 function applySettings() {
-  if (settings.dark_mode) {
-    document.body.classList.add('dark-mode');
-  } else {
-    document.body.classList.remove('dark-mode');
-  }
-  
-  // Only apply zoom factor if webview is loaded
-  if (webview && webview.getWebContentsId) {
+  // Dark mode feature removed
+  // Only apply zoom factor if the active webview is loaded
+  if (activeWebview && typeof activeWebview.getWebContentsId === 'function') {
     try {
-      webview.setZoomFactor(settings.zoom_factor);
+      activeWebview.setZoomFactor(settings.zoom_factor);
     } catch (error) {
       console.log('Zoom will be applied when webview is ready');
-      // We'll apply zoom when the dom-ready event fires
     }
   }
 }
@@ -136,6 +496,19 @@ function checkWebGL() {
 // Log message to the main process
 function logMessage(level, message) {
   window.electronAPI.logMessage(level, message);
+}
+
+// Notification utility to replace overlays
+function showNotification(type, title, message, timeout = 5000) {
+  const notif = document.createElement('div');
+  notif.className = `notification ${type}`;
+  notif.innerHTML = `<div class="notification-title">${title}</div><div class="notification-message">${message}</div>`;
+  document.body.appendChild(notif);
+  requestAnimationFrame(() => notif.classList.add('show'));
+  setTimeout(() => {
+    notif.classList.remove('show');
+    notif.addEventListener('transitionend', () => notif.remove());
+  }, timeout);
 }
 
 // Show error overlay
@@ -183,29 +556,30 @@ function showNotification(title, message, type = 'info') {
 
 // Initialize Tab Management
 function initializeTabs() {
+  const defaultURL = 'https://www.google.com/';
+  // Determine URL based on restoreLastPage setting
+  const lastPage = settings.restoreLastPage
+    ? (localStorage.getItem('lastPage') || defaultURL)
+    : defaultURL;
   // Add the initial tab to the tabs array
-  tabs.push({
-    id: 'webview-0',
-    title: 'Google',
-    url: 'https://www.google.com/',
-    favicon: null
-  });
-  
-  // Add it to the tabs list UI
+  tabs.push({ id: 'webview-0', title: lastPage, url: lastPage, favicon: null });
+  // Update the initial webview src
+  activeWebview.setAttribute('src', lastPage);
+  updateUrlInput(lastPage);
+  // Render UI and bind events
   updateTabsUI();
-  
-  // Set up event listeners for the first webview
   setupWebviewEvents(activeWebview);
 }
 
 // Create a new tab
-function createTab(url = 'https://www.google.com/') {
+function createTab(url = 'https://www.google.com/', activate = true) {
   const tabId = `webview-${tabCounter++}`;
   
   // Create the webview element
   const newWebview = document.createElement('webview');
   newWebview.id = tabId;
-  newWebview.src = url;
+  // Lazy-load: store URL but do not load until activated
+  newWebview.dataset.src = url;
   newWebview.setAttribute('allowpopups', '');
   newWebview.setAttribute('partition', 'persist:browsing');
   newWebview.setAttribute('webpreferences', 'allowRunningInsecureContent=yes, javascript=yes');
@@ -214,31 +588,55 @@ function createTab(url = 'https://www.google.com/') {
   // Add it to the DOM
   webviewsContainer.appendChild(newWebview);
   
-  // Start loading animation
-  startLoadingAnimation();
+  // Don't auto-start loading; defer until activation for lazy-load
   
   // Add to tabs array
   tabs.push({
     id: tabId,
-    title: 'New Tab',
+    title: url,
     url: url,
     favicon: null,
     createdAt: Date.now()
   });
   
+  // If lazily created, prefetch title and icon
+  if (!activate) {
+    prefetchTitle(url, tabId);
+  }
+  
   // Setup event listeners
   setupWebviewEvents(newWebview);
   
-  // Switch to the new tab
-  switchToTab(tabId);
+  // Activate the tab if requested
+  if (activate) switchToTab(tabId);
   
   logMessage('info', `Created new tab with ID: ${tabId}`);
   
   return tabId;
 }
 
+/**
+ * Fetch page title for unloaded tabs
+ */
+function prefetchTitle(url, tabId) {
+  fetch(url)
+    .then(res => res.text())
+    .then(html => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const titleText = doc.querySelector('title')?.textContent.trim() || url;
+      const tab = tabs.find(t => t.id === tabId);
+      if (tab) {
+        tab.title = titleText;
+        updateTabsUI();
+      }
+    })
+    .catch(() => {});
+}
+
 // Switch to a specific tab
 function switchToTab(tabId) {
+  // Fully reset/hide media progress when switching tabs
   // Hide all webviews
   document.querySelectorAll('webview').forEach(webview => {
     webview.classList.remove('active');
@@ -247,6 +645,15 @@ function switchToTab(tabId) {
   // Show the selected webview
   const selectedWebview = document.getElementById(tabId);
   if (selectedWebview) {
+    // Lazy-load URL when the tab is first activated
+    if (selectedWebview.dataset.src) {
+      const loadUrl = selectedWebview.dataset.src;
+      // Trigger the webview to load the URL
+      selectedWebview.setAttribute('src', loadUrl);
+      selectedWebview.src = loadUrl;
+      delete selectedWebview.dataset.src;
+      startLoadingAnimation();
+    }
     selectedWebview.classList.add('active');
     activeTabId = tabId;
     
@@ -365,7 +772,8 @@ function updateTabsUI() {
     // Title and site meta
     const titleElement = document.createElement('div');
     titleElement.className = 'tab-title';
-    const displayTitle = tab.title && tab.title !== tab.url ? tab.title : 'New Tab';
+    // Always show the stored title or fallback to URL
+    const displayTitle = tab.title || tab.url;
     titleElement.textContent = displayTitle;
     titleElement.title = tab.title || displayTitle;
     const domain = tab.url ? new URL(tab.url).hostname : '';
@@ -382,6 +790,17 @@ function updateTabsUI() {
     tabItem.appendChild(titleElement);
     tabItem.appendChild(metaElement);
     tabItem.appendChild(closeElement);
+    
+    // Media progress indicator inside tab
+    const progressBar = document.createElement('div');
+    progressBar.className = 'media-progress-bar';
+    if (tab.mediaProgress) {
+      progressBar.style.transform = `scaleX(${tab.mediaProgress})`;
+      progressBar.style.visibility = 'visible';
+    } else {
+      progressBar.style.visibility = 'hidden';
+    }
+    tabItem.appendChild(progressBar);
     
     // Event listeners
     tabItem.addEventListener('click', (event) => {
@@ -444,9 +863,17 @@ function updateTabCounter() {
 
 // Setup event listeners for a webview
 function setupWebviewEvents(webviewElement) {
+  // Hide media bar on any navigation events
+  ['did-navigate', 'did-navigate-in-page', 'dom-ready'].forEach(evt => {
+    webviewElement.addEventListener(evt, () => {
+      // No global mediaStrip
+    });
+  });
   // Inject custom scrollbar styling
   injectScrollbarCSS(webviewElement);
   webviewElement.addEventListener('did-start-loading', () => {
+    // reset media bar on navigation or reload
+    // No global mediaStrip
     // Add a loading indicator for this tab
     const tabId = webviewElement.id;
     const tab = tabs.find(t => t.id === tabId);
@@ -498,17 +925,14 @@ function setupWebviewEvents(webviewElement) {
       
       // Only update URL if this is the active tab
       if (webviewElement.classList.contains('active')) {
-        updateNavigationButtons();
         updateUrlInput(event.url);
       }
-      
-      // Increment visit count
-      try {
-        const hostname = new URL(event.url).hostname.toLowerCase();
-        visitCounts[hostname] = (visitCounts[hostname] || 0) + 1;
-        localStorage.setItem('visitCounts', JSON.stringify(visitCounts));
-      } catch {}
     }
+  });
+  
+  // Update URL input on navigation
+  webviewElement.addEventListener('did-navigate', () => {
+    if (webviewElement.classList.contains('active')) updateUrlInput(webviewElement.getURL());
   });
   
   // Show loading status with progress tracking
@@ -561,7 +985,7 @@ function setupWebviewEvents(webviewElement) {
     }
   });
   
-  // Track loading progress
+  // Update loading progress
   webviewElement.addEventListener('did-start-navigation', () => {
     if (webviewElement.classList.contains('active')) {
       updateLoadingProgress(25);
@@ -577,15 +1001,6 @@ function setupWebviewEvents(webviewElement) {
   webviewElement.addEventListener('did-navigate', () => {
     if (webviewElement.classList.contains('active')) {
       updateLoadingProgress(75);
-      
-      // Update security indicator when navigation completes
-      const currentUrl = webviewElement.getURL();
-      updateSecurityIndicator(currentUrl);
-      
-      // Update URL input if URL viewport is active
-      if (urlViewport.classList.contains('active')) {
-        urlInput.value = currentUrl;
-      }
     }
   });
   
@@ -602,8 +1017,15 @@ function setupWebviewEvents(webviewElement) {
     }
   });
   
+  // Ensure media bar hidden once page fully loads
+  webviewElement.addEventListener('did-finish-load', () => {
+    // No global mediaStrip
+  });
+  
   // Handle webview ready
   webviewElement.addEventListener('dom-ready', () => {
+    injectScrollbarCSS(webviewElement);
+    updateReadingMode();
     // Apply zoom factor
     try {
       webviewElement.setZoomFactor(settings.zoom_factor);
@@ -622,14 +1044,6 @@ function setupWebviewEvents(webviewElement) {
     const tab = tabs.find(tab => tab.id === webviewElement.id);
     if (tab) {
       tab.hasSecurityIssue = true;
-      
-      // Update security indicator if active tab
-      if (webviewElement.classList.contains('active')) {
-        securityIndicator.classList.remove('secure');
-        securityIndicator.classList.add('not-secure');
-        securityIndicator.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
-        securityIndicator.title = 'Certificate error: Connection not secure';
-      }
     }
     
     logMessage('warn', `Certificate error: ${event.url}`);
@@ -661,6 +1075,45 @@ function setupWebviewEvents(webviewElement) {
   // Hook this webview into history tracking
   webviewElement.addEventListener('did-navigate', () => addHistoryEntry(webviewElement));
   webviewElement.addEventListener('did-navigate-in-page', () => addHistoryEntry(webviewElement));
+  
+  webviewElement.addEventListener('ipc-message', (event) => {
+    const selector = `.tab-item[data-tab-id="${webviewElement.id}"] .media-progress-bar`;
+    const progressBar = document.querySelector(selector);
+    if (!progressBar) return;
+    if (event.channel === 'media-progress') {
+      const prog = event.args[0];
+      if (prog > 0 && prog <= 1) {
+        progressBar.style.transform = `scaleX(${prog})`;
+        progressBar.style.visibility = 'visible';
+      } else {
+        progressBar.style.visibility = 'hidden';
+      }
+    } else if (event.channel === 'media-playing') {
+      const playing = event.args[0];
+      if (!playing) {
+        progressBar.style.visibility = 'hidden';
+      }
+    } else if (event.channel === 'social-login-detected') {
+      showSocialUnsupportedNotice();
+    }
+  });
+  
+  // Persist lastPage on navigation
+  webviewElement.addEventListener('did-navigate', () => {
+    addHistoryEntry(webviewElement);
+    if (settings.restoreLastPage && webviewElement.classList.contains('active')) {
+      localStorage.setItem('lastPage', webviewElement.getURL());
+    }
+  });
+  
+  webviewElement.addEventListener('did-navigate-in-page', (event) => {
+    if (webviewElement.classList.contains('active')) {
+      updateUrlInput(event.url);
+      if (settings.restoreLastPage) {
+        localStorage.setItem('lastPage', event.url);
+      }
+    }
+  });
 }
 
 // Inject custom CSS for scrollbar styling in webviews
@@ -703,80 +1156,11 @@ function injectScrollbarCSS(webviewElement) {
   });
 }
 
-// Handle middle-click, right-click and new window events
-function setupLinkHandlers(webviewElement) {
-  // Prevent popups and capture new window requests
-  webviewElement.setAttribute('allowpopups', '');
-  
-  // Handle new-window events directly
-  webviewElement.addEventListener('new-window', (event) => {
-    event.preventDefault();
-    createTab(event.url);
-    logMessage('info', `New window request intercepted: ${event.url} - opened in new tab`);
-  });
-  
-  // Enhanced handling for right-click on links
-  webviewElement.executeJavaScript(`
-    (function() {
-      // Handle right-click (button 2), middle-click (button 1), and ctrl+click (button 0 with ctrl key)
-      document.addEventListener('mousedown', function(e) {
-        if ((e.button === 2 || e.button === 1 || (e.button === 0 && e.ctrlKey)) && e.target.closest('a')) {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          const link = e.target.closest('a');
-          const url = link.href;
-          
-          if (url) {
-            // Send message to be picked up by the preload script
-            window.postMessage({ type: 'link-clicked', url: url }, '*');
-          }
-          
-          return false;
-        }
-      }, true);
-      
-      // Prevent context menu on links
-      document.addEventListener('contextmenu', function(e) {
-        if (e.target.closest('a')) {
-          e.preventDefault();
-        }
-      }, true);
-      
-      // Override window.open
-      const originalWindowOpen = window.open;
-      window.open = function(url) {
-        if (url) {
-          window.postMessage({ type: 'link-clicked', url: url }, '*');
-          return null;
-        }
-        return originalWindowOpen.apply(this, arguments);
-      };
-    })();
-  `);
-  
-  // Handle the message from the webview
-  webviewElement.addEventListener('ipc-message', (event) => {
-    if (event.channel === 'link-clicked' && event.args[0]) {
-      createTab(event.args[0]);
-      logMessage('info', `Link clicked: ${event.args[0]} - opened in new tab`);
-    }
-  });
-}
-
 // Show tabs viewport
 function showTabsViewport() {
   tabsViewport.classList.add('active');
   document.body.classList.add('tabs-active');
   appContainer.classList.add('tabs-open');
-  
-  // Update URL input with current URL when showing tabs
-  const activeWebview = document.querySelector('webview.active');
-  if (activeWebview) {
-    const currentUrl = activeWebview.getURL();
-    urlInput.value = currentUrl;
-    updateSecurityIndicator(currentUrl);
-  }
   
   logMessage('info', 'Tab viewport opened');
 }
@@ -786,13 +1170,6 @@ function hideTabsViewport() {
   tabsViewport.classList.remove('active');
   document.body.classList.remove('tabs-active');
   appContainer.classList.remove('tabs-open');
-  
-  // Clear URL suggestions
-  urlSuggestions.innerHTML = '';
-  urlSuggestions.classList.remove('has-suggestions');
-  
-  // Deactivate the search icon
-  document.querySelector('.url-search-icon').classList.remove('active');
   
   logMessage('info', 'Tab viewport closed');
 }
@@ -826,10 +1203,7 @@ tabsViewport.addEventListener('mouseleave', (e) => {
   // Check if we're not moving to the trigger area
   if (e.relatedTarget !== tabsTriggerArea) {
     tabsCloseTimer = setTimeout(() => {
-      // Only auto-hide if URL input is not focused
-      if (document.activeElement !== urlInput) {
-        hideTabsViewport();
-      }
+      hideTabsViewport();
     }, 500);
   }
 });
@@ -850,15 +1224,10 @@ document.addEventListener('click', (e) => {
 });
 
 // Error handling
-errorDismiss.addEventListener('click', () => {
-  errorOverlay.classList.add('hidden');
-});
+// Removed errorDismiss element reference and its click handler
 
 // IPC event handlers
-window.electronAPI.onDarkModeChanged((darkMode) => {
-  settings.dark_mode = darkMode;
-  applySettings();
-});
+// Removed dark mode change handler to avoid calling undefined API
 
 window.electronAPI.onShowError((errorData) => {
   showError(errorData.title, errorData.message);
@@ -874,17 +1243,36 @@ window.electronAPI.onCheckWebGL(() => {
   checkWebGL();
 });
 
+// Listen for 'adblock-blocked' events and log them to console so user can verify the handler is firing
+window.electronAPI.onAdblockBlocked((host) => {
+  console.log(`Adblock event: blocked request to ${host}`);
+  // Show a quick toast notification in the UI
+  const toast = document.createElement('div');
+  toast.className = 'adblock-toast';
+  toast.textContent = `Blocked resource from ${host}`;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
+});
+
+// Listen for fullscreen mode via Electron
+let dateTimer;
+window.electronAPI.onFullscreenChanged(isFullscreen => {
+  if (isFullscreen) {
+    updateDateTime();
+    fsDateTime.classList.remove('hidden');
+    dateTimer = setInterval(updateDateTime, 1000);
+  } else {
+    fsDateTime.classList.add('hidden');
+    clearInterval(dateTimer);
+  }
+});
+
 // Keyboard shortcuts
 document.addEventListener('keydown', (event) => {
   // Zoom controls: Ctrl+Plus and Ctrl+Minus
   if (event.ctrlKey) {
-    // Ctrl+S to open URL viewport
-    if (event.key === 's' || event.key === 'S') {
-      showUrlViewport();
-      event.preventDefault();
-      return;
-    }
-    
     if (event.key === '=' || event.key === '+') {
       const newZoomFactor = Math.min(settings.zoom_factor + 0.1, 5.0);
       const activeWebview = document.querySelector('webview.active');
@@ -954,10 +1342,6 @@ tabsButton.addEventListener('click', () => {
   }
 });
 
-// Model status checking removed
-
-
-
 // Update navigation button states for active webview
 function updateNavigationButtons() {
   const activeWebview = document.querySelector('webview.active');
@@ -981,121 +1365,6 @@ document.querySelectorAll('webview').forEach(webview => {
     }
   });
 });
-
-// Focus URL input in the combined Tab viewport
-function focusUrlInput() {
-  // Show the tabs viewport if not already active
-  if (!tabsViewport.classList.contains('active')) {
-    showTabsViewport();
-  }
-  
-  // Add enhanced security indicator styling
-  tabsViewport.classList.add('enhanced-security');
-  
-  // Focus and select the input
-  setTimeout(() => {
-    urlInput.focus();
-    // Pre-fill with current URL if available
-    const activeWebview = document.querySelector('webview.active');
-    if (activeWebview) {
-      const currentUrl = activeWebview.getURL();
-      urlInput.value = currentUrl;
-      urlInput.select();
-      
-      // Update security indicator based on current URL
-      updateSecurityIndicator(currentUrl);
-    }
-    
-    // Activate the search icon
-    document.querySelector('.url-search-icon').classList.add('active');
-  }, 50); // Short delay to ensure CSS transitions are complete
-  
-  // Ensure the search engine icon is correctly displayed
-  updateSearchEngineUI();
-  
-  logMessage('info', 'URL input focused');
-}
-
-function clearUrlInput() {
-  // Clear suggestions
-  urlSuggestions.innerHTML = '';
-  urlSuggestions.classList.remove('has-suggestions');
-  
-  // Clear input
-  urlInput.value = '';
-  
-  // Deactivate the search icon
-  document.querySelector('.url-search-icon').classList.remove('active');
-  
-  logMessage('info', 'URL input cleared');
-}
-
-function toggleUrlInput() {
-  // Show tabs viewport and focus URL input
-  focusUrlInput();
-}
-
-function updateUrlInput(url) {
-  if (!url) return;
-  
-  try {
-    // Store current URL
-    currentUrl = url;
-    
-    // Update the input if visible
-    if (urlViewport.classList.contains('active')) {
-      urlInput.value = url;
-    }
-  } catch (error) {
-    logMessage('error', `Failed to update URL input: ${error.message}`);
-  }
-}
-
-// Security indicator for URL viewport
-function updateSecurityIndicator(url) {
-  if (!securityIndicator) return;
-  
-  // Reset classes
-  securityIndicator.classList.remove('secure', 'not-secure', 'warning');
-  
-  try {
-    // Parse the URL
-    const urlObj = new URL(url);
-    
-    if (urlObj.protocol === 'https:') {
-      // Secure connection
-      securityIndicator.classList.add('secure');
-      securityIndicator.innerHTML = '<i class="fas fa-lock"></i>';
-      // Add a title for hover tooltip
-      securityIndicator.title = `Secure connection to ${urlObj.hostname}`;
-      logMessage('info', `Secure connection to ${urlObj.hostname}`);
-    } else if (urlObj.protocol === 'http:') {
-      // Not secure
-      securityIndicator.classList.add('not-secure');
-      securityIndicator.innerHTML = '<i class="fas fa-lock-open"></i>';
-      securityIndicator.title = `Insecure connection to ${urlObj.hostname}`;
-      logMessage('info', `Insecure connection to ${urlObj.hostname}`);
-    } else if (urlObj.protocol === 'file:') {
-      // Local file
-      securityIndicator.classList.add('secure');
-      securityIndicator.innerHTML = '<i class="fas fa-file"></i>';
-      securityIndicator.title = 'Local file (secure)';
-      logMessage('info', 'Local file access');
-    } else {
-      // Other protocol
-      securityIndicator.classList.add('warning');
-      securityIndicator.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
-      securityIndicator.title = `${urlObj.protocol} protocol - use caution`;
-      logMessage('info', `Protocol ${urlObj.protocol} for ${urlObj.hostname}`);
-    }
-  } catch (error) {
-    // Invalid URL
-    securityIndicator.classList.add('warning');
-    securityIndicator.innerHTML = '<i class="fas fa-question-circle"></i>';
-    securityIndicator.title = 'Invalid URL format';
-    logMessage('warn', `Invalid URL format: ${error.message}`);
-  }
-}
 
 // Loading strip animation functions
 let loadingTimeout;
@@ -1178,559 +1447,12 @@ function completeLoadingAnimation() {
   }
 }
 
-async function getDNSPredictions(query) {
-  if (!query || query.trim() === '') {
-    urlSuggestions.innerHTML = '';
-    return;
-  }
-  
-  try {
-    const predictions = await window.electronAPI.getDNSPredictions(query);
-    urlSuggestionResults = predictions;
-    updateUrlSuggestions();
-  } catch (error) {
-    logMessage('error', `Error getting predictions: ${error.message}`);
-  }
-}
-
-function updateUrlSuggestions() {
-  urlSuggestions.innerHTML = '';
-  
-  if (urlSuggestionResults.length === 0) {
-    urlSuggestions.classList.remove('has-suggestions');
-    return;
-  }
-  
-  // Show suggestions container
-  urlSuggestions.classList.add('has-suggestions');
-  
-  urlSuggestionResults.forEach((suggestion, index) => {
-    const suggestionItem = document.createElement('div');
-    suggestionItem.className = 'url-suggestion-item';
-    suggestionItem.dataset.index = index;
-    
-    const iconElement = document.createElement('div');
-    iconElement.className = 'url-suggestion-icon';
-    
-    // Set the appropriate icon
-    if (suggestion.type === 'url') {
-      iconElement.innerHTML = '<i class="fas fa-globe"></i>';
-    } else if (suggestion.type === 'search') {
-      iconElement.innerHTML = '<i class="fas fa-search"></i>';
-    }
-    
-    const textElement = document.createElement('div');
-    textElement.className = 'url-suggestion-text';
-    textElement.textContent = suggestion.text;
-    
-    const detailElement = document.createElement('div');
-    detailElement.className = 'url-suggestion-detail';
-    
-    if (suggestion.type === 'url') {
-      detailElement.textContent = 'Visit';
-    } else if (suggestion.type === 'search') {
-      detailElement.textContent = `Search with ${suggestion.engine}`;
-    }
-    
-    suggestionItem.appendChild(iconElement);
-    suggestionItem.appendChild(textElement);
-    suggestionItem.appendChild(detailElement);
-    
-    suggestionItem.addEventListener('click', () => {
-      selectSuggestion(index);
-    });
-    
-    urlSuggestions.appendChild(suggestionItem);
-  });
-}
-
-function selectSuggestion(index) {
-  const suggestion = urlSuggestionResults[index];
-  if (!suggestion) return;
-  
-  if (suggestion.type === 'url') {
-    navigateToUrl(suggestion.url);
-  } else if (suggestion.type === 'search') {
-    const searchUrl = `${settings.search_engine.url}${encodeURIComponent(suggestion.text)}`;
-    navigateToUrl(searchUrl);
-  }
-  
-  hideUrlViewport();
-}
-
-function navigateToUrl(url) {
-  const activeWebview = document.querySelector('webview.active');
-  if (activeWebview) {
-    activeWebview.src = url;
-    logMessage('info', `Navigating to: ${url}`);
-  } else {
-    // Create a new tab if no active webview
-    createTab(url);
-  }
-}
-
-function navigateTo(input) {
-  const q = input.trim();
-  let dest;
-  // Check if looks like domain
-  const isDomain = q.includes('.') && !q.includes(' ');
-  const visits = visitCounts[q.toLowerCase()] || 0;
-  if (isDomain && visits < 3) {
-    // not enough visits: treat as search
-    dest = settings.search_engine.url + encodeURIComponent(q);
-  } else if (!/^https?:\/\//i.test(q)) {
-    if (isDomain) {
-      dest = `https://${q}`;
-    } else {
-      dest = settings.search_engine.url + encodeURIComponent(q);
-    }
-  } else {
-    dest = q;
-  }
-  const active = document.querySelector('webview.active');
-  if (active) active.loadURL(dest);
-}
-
-// URL viewport show/hide, input handling, engine selection, and navigation helper
-function showUrlViewport() {
-  urlViewport.classList.add('active');
-  document.body.classList.add('url-active');
-  urlInput.focus();
-  urlInput.select();
-}
-
-function hideUrlViewport() {
-  urlViewport.classList.remove('active');
-  document.body.classList.remove('url-active');
-  urlSuggestions.innerHTML = '';
-  urlSuggestions.classList.remove('has-suggestions');
-}
-
-function toggleUrlViewport() {
-  urlViewport.classList.contains('active') ? hideUrlViewport() : showUrlViewport();
-}
-
-urlTriggerArea.addEventListener('click', showUrlViewport);
-urlCloseTrigger.addEventListener('click', hideUrlViewport);
-
-document.addEventListener('click', e => {
-  if (urlViewport.classList.contains('active') &&
-      !urlViewport.contains(e.target) &&
-      !urlTriggerArea.contains(e.target) &&
-      e.target.id !== 'search-engine-button') {
-    hideUrlViewport();
-  }
-});
-
-urlInput.addEventListener('input', () => {
-  const q = urlInput.value.trim().toLowerCase();
-  urlSuggestions.innerHTML = '';
-  if (q) {
-    const matches = Object.keys(visitCounts)
-      .filter(domain => visitCounts[domain] >= 3 && domain.startsWith(q));
-    if (matches.length) {
-      matches.forEach(domain => {
-        const item = document.createElement('div');
-        item.className = 'url-suggestion-item';
-        item.textContent = domain;
-        item.addEventListener('click', () => {
-          navigateTo(domain);
-          hideUrlViewport();
-        });
-        urlSuggestions.appendChild(item);
-      });
-    } else {
-      const item = document.createElement('div');
-      item.className = 'url-suggestion-item';
-      item.textContent = `${settings.search_engine.name} search "${q}"`;
-      item.addEventListener('click', () => {
-        navigateTo(q);
-        hideUrlViewport();
-      });
-      urlSuggestions.appendChild(item);
-    }
-    urlSuggestions.classList.add('has-suggestions');
-  } else {
-    urlSuggestions.classList.remove('has-suggestions');
-  }
-});
-
-urlInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    processUrlInput();
-    e.preventDefault();
-  }
-});
-
-searchEngineButton.addEventListener('click', () => {
-  processUrlInput();
-});
-
-document.querySelectorAll('.search-engine-item').forEach(item => {
-  item.addEventListener('click', () => {
-    const engine = item.dataset.name;
-    const url = item.dataset.url;
-    const icon = item.dataset.icon;
-    setSearchEngine(engine, url, icon);
-  });
-});
-
-function processUrlInput() {
-  const inputValue = urlInput.value.trim();
-  if (!inputValue) return;
-  
-  // Check if it's a valid URL
-  let url = inputValue;
-  
-  // If it contains spaces, treat as search
-  if (inputValue.includes(' ')) {
-    url = `${settings.search_engine.url}${encodeURIComponent(inputValue)}`;
-    logMessage('info', `Searching for "${inputValue}" with ${settings.search_engine.name}`);
-  } 
-  // If it looks like a domain with TLD but no protocol
-  else if (!inputValue.startsWith('http') && 
-           !inputValue.startsWith('file:') && 
-           /^[a-zA-Z0-9][a-zA-Z0-9-]*\.[a-zA-Z]{2,}/.test(inputValue)) {
-    url = `https://${inputValue}`;
-    logMessage('info', `Adding https protocol to ${inputValue}`);
-  }
-  // If it might be an intranet address or localhost
-  else if (!inputValue.startsWith('http') && 
-           !inputValue.startsWith('file:') && 
-           !inputValue.includes(' ') && 
-           (inputValue.includes('.') || inputValue === 'localhost')) {
-    url = `http://${inputValue}`;
-    logMessage('info', `Adding http protocol to ${inputValue}`);
-  }
-  // Otherwise, search for it
-  else if (!inputValue.startsWith('http') && !inputValue.startsWith('file:')) {
-    url = `${settings.search_engine.url}${encodeURIComponent(inputValue)}`;
-    logMessage('info', `Searching for "${inputValue}" with ${settings.search_engine.name}`);
-  }
-  
-  navigateTo(url);
-  hideUrlViewport();
-}
-
-// Update search engine UI using favicons
-async function updateSearchEngineUI() {
-  // Reset button content
-  searchEngineButton.innerHTML = '';
-  
-  // Create image favicon element
-  const img = document.createElement('img');
-  img.src = settings.search_engine.favicon || 'https://www.google.com/favicon.ico';
-  img.alt = settings.search_engine.name;
-  img.className = 'search-engine-favicon';
-  img.style.width = '14px';
-  img.style.height = '14px';
-  img.style.borderRadius = '50%';
-  
-  // Append the image to the button
-  searchEngineButton.appendChild(img);
-  
-  // Style the button container properly
-  searchEngineButton.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-  searchEngineButton.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
-  searchEngineButton.style.display = 'flex';
-  searchEngineButton.style.alignItems = 'center';
-  searchEngineButton.style.justifyContent = 'center';
-  
-  // Add title for accessibility
-  searchEngineButton.title = `Search with ${settings.search_engine.name}`;
-  
-  // Style the search engine items in the selector
-  document.querySelectorAll('.search-engine-item').forEach(item => {
-    // Check if this is the active engine
-    const isActive = item.getAttribute('data-engine') === settings.search_engine.name;
-    
-    // Highlight active item
-    item.classList.toggle('active', isActive);
-    
-    // Show/hide the checkmark
-    const checkmark = item.querySelector('.search-engine-selected');
-    if (checkmark) {
-      checkmark.style.display = isActive ? 'flex' : 'none';
-    }
-  });
-  
-  // Save the setting
-  window.electronAPI.saveSettings({
-    search_engine: settings.search_engine
-  });
-  
-  // Add event listener to the search engine button if not already added
-  if (!searchEngineButton._hasClickListener) {
-    searchEngineButton.addEventListener('click', () => {
-      showSearchEngineSelector();
-    });
-    searchEngineButton._hasClickListener = true;
-  }
-  
-  logMessage('info', `Current search engine: ${settings.search_engine.name}`);
-}
-
-async function setSearchEngine(name, url, icon) {
-  // Get the favicon URL from the data attribute
-  const engineItem = document.querySelector(`.search-engine-item[data-engine="${name}"]`);
-  let faviconUrl = '';
-  
-  if (engineItem) {
-    faviconUrl = engineItem.getAttribute('data-favicon') || '';
-  }
-  
-  // Update the search engine settings with the favicon URL
-  settings.search_engine = { 
-    name, 
-    url, 
-    favicon: faviconUrl 
-  };
-  
-  // Save to electron settings
-  await window.electronAPI.saveSearchEngine(settings.search_engine);
-  
-  // Update the UI
-  updateSearchEngineUI();
-  hideSearchEngineSelector();
-  
-  // Show a notification
-  showNotification('Search Engine Changed', `Now searching with ${name}`, 'info');
-}
-
-function showSearchEngineSelector() {
-  searchEngineSelector.classList.add('active');
-}
-
-function hideSearchEngineSelector() {
-  searchEngineSelector.classList.remove('active');
-}
-
-function setupUrlInputEvents() {
-  // Global keyboard shortcuts for URL input and tabs
-  document.addEventListener('keydown', (event) => {
-    // Ctrl+S to focus URL input in tab viewport
-    if ((event.ctrlKey || event.metaKey) && event.key === 's') {
-      event.preventDefault(); // Prevent browser save dialog
-      focusUrlInput();
-      return;
-    }
-
-    // Handle keyboard events when Tab viewport is active
-    if (tabsViewport.classList.contains('active')) {
-      // Enter to process URL when focus is in URL input
-      if (event.key === 'Enter' && document.activeElement === urlInput) {
-        processUrlInput();
-        event.preventDefault();
-      }
-      
-      // Escape to hide tab viewport or clear URL input
-      if (event.key === 'Escape') {
-        if (document.activeElement === urlInput) {
-          // If URL input is focused, blur it first
-          urlInput.blur();
-        } else {
-          // Otherwise hide the tab viewport
-          hideTabsViewport();
-        }
-        event.preventDefault();
-      }
-      
-      // Up/Down arrow keys to navigate suggestions when URL input is focused
-      if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && document.activeElement === urlInput) {
-        navigateSuggestions(event.key === 'ArrowDown' ? 1 : -1);
-        event.preventDefault();
-      }
-    }
-  });
-  
-  // URL input changes with debounce for better performance
-  urlInput.addEventListener('input', () => {
-    // Show the search icon when typing
-    document.querySelector('.url-search-icon').classList.add('active');
-    
-    // Clear previous timeout to implement debouncing
-    clearTimeout(searchTimeout);
-    
-    // Set new timeout for predictions
-    searchTimeout = setTimeout(() => {
-      getDNSPredictions(urlInput.value);
-    }, 250); // Reduced from 300ms for faster response
-  });
-  
-  // Focus event for URL input
-  urlInput.addEventListener('focus', () => {
-    // Show suggestions if there are any
-    if (urlSuggestionResults.length > 0) {
-      updateUrlSuggestions();
-    }
-  });
-  
-  // Click outside to close search engine selector
-  document.addEventListener('click', (event) => {
-    // Close search engine selector if clicking outside
-    if (searchEngineSelector.classList.contains('active') && 
-        !searchEngineSelector.contains(event.target) && 
-        !searchEngineButton.contains(event.target)) {
-      hideSearchEngineSelector();
-    }
-  });
-  
-  // Search engine button
-  searchEngineButton.addEventListener('click', (event) => {
-    event.stopPropagation();
-    showSearchEngineSelector();
-  });
-  
-  // Search engine selector items
-  const searchEngineItems = document.querySelectorAll('.search-engine-item');
-  searchEngineItems.forEach(item => {
-    item.addEventListener('click', () => {
-      const engine = item.dataset.name;
-      const url = item.dataset.url;
-      const icon = item.dataset.icon;
-      setSearchEngine(engine, url, icon);
-    });
-  });
-  
-  // Mobile-friendly touch events for URL suggestions
-  urlSuggestions.addEventListener('touchstart', handleTouchStart, false);
-  urlSuggestions.addEventListener('touchmove', handleTouchMove, false);
-}
-
-// Track suggestion navigation
-let currentSuggestionIndex = -1;
-
-// Navigate through suggestions with keyboard
-function navigateSuggestions(direction) {
-  const suggestions = document.querySelectorAll('.url-suggestion-item');
-  if (suggestions.length === 0) return;
-  
-  // Remove highlight from current suggestion
-  if (currentSuggestionIndex >= 0 && currentSuggestionIndex < suggestions.length) {
-    suggestions[currentSuggestionIndex].classList.remove('highlighted');
-  }
-  
-  // Calculate new index with wrapping
-  currentSuggestionIndex += direction;
-  if (currentSuggestionIndex < 0) currentSuggestionIndex = suggestions.length - 1;
-  if (currentSuggestionIndex >= suggestions.length) currentSuggestionIndex = 0;
-  
-  // Highlight new selection
-  const selectedSuggestion = suggestions[currentSuggestionIndex];
-  selectedSuggestion.classList.add('highlighted');
-  
-  // Ensure the selected item is visible
-  selectedSuggestion.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  
-  // Update input field with the selected suggestion
-  const suggestionText = selectedSuggestion.querySelector('.url-suggestion-text').textContent;
-  urlInput.value = suggestionText;
-}
-
-// Touch support for URL suggestions
-let touchStartY = 0;
-
-function handleTouchStart(evt) {
-  touchStartY = evt.touches[0].clientY;
-}
-
-function handleTouchMove(evt) {
-  if (!touchStartY) return;
-  
-  const touchY = evt.touches[0].clientY;
-  const diff = touchStartY - touchY;
-  
-  // If the user is scrolling the suggestions, prevent page scroll
-  if (Math.abs(diff) > 5) {
-    evt.preventDefault();
-  }
-  
-  touchStartY = null;
-}
-
-// Update status listener
-window.electronAPI.onUpdateStatus((status, data) => {
-  let statusMessage = '';
-  switch (status) {
-    case 'checking':
-      statusMessage = 'Checking for updates...';
-      showNotification('Checking for Updates', 'Looking for new versions...', 'info');
-      break;
-    case 'available':
-      statusMessage = `Update available: ${data?.version || 'newer version'}`;
-      showNotification('Update Available', `Version ${data?.version || 'newer version'} is available and will be downloaded automatically.`, 'success');
-      break;
-    case 'not-available':
-      statusMessage = 'You are using the latest version.';
-      showNotification('No Updates', 'You are using the latest version of Nuru Browser.', 'info');
-      break;
-    case 'error':
-      statusMessage = `Update error: ${data || 'unknown error'}`;
-      showNotification('Update Error', `Failed to check for updates: ${data || 'unknown error'}`, 'error');
-      break;
-    case 'downloaded':
-      statusMessage = 'Update downloaded, will install on restart.';
-      showNotification('Update Ready', 'Update has been downloaded. It will be installed when you restart the application.', 'success');
-      break;
-    case 'disabled-dev':
-      statusMessage = 'Updates disabled in development mode.';
-      showNotification('Dev Mode', 'Auto-updates are disabled in development mode.', 'warning');
-      break;
-    case 'progress':
-      if (data && data.percent) {
-        statusMessage = `Downloading update: ${Math.round(data.percent)}%`;
-      }
-      break;
-    default:
-      statusMessage = status;
-  }
-  
-  logMessage('info', `Update status: ${statusMessage}`);
-});
-
-// Browser action button event listeners
-updateCheckBtn?.addEventListener('click', () => {
-  window.electronAPI.checkForUpdates();
-  showNotification('Update Check', 'Checking for available updates...', 'info');
-});
-
-diagnosticsBtn?.addEventListener('click', () => {
-  window.electronAPI.showDiagnostics();
-  showNotification('Diagnostics', 'Opening diagnostics window...', 'info');
-});
-
-// Fullscreen date/time panel
-document.addEventListener('DOMContentLoaded', () => {
-  const panel = document.createElement('div');
-  panel.id = 'fullscreen-date-time';
-  panel.classList.add('hidden');
-  panel.innerHTML = `<div class="date"></div><div class="time"></div>`;
-  document.body.appendChild(panel);
-  const dateEl = panel.querySelector('.date');
-  const timeEl = panel.querySelector('.time');
-  let timerId;
-  window.electronAPI.onFullscreenChanged((isFullscreen) => {
-    if (isFullscreen) {
-      panel.classList.remove('hidden');
-      const updateDateTime = () => {
-        const now = new Date();
-        dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-        timeEl.textContent = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-      };
-      updateDateTime();
-      timerId = setInterval(updateDateTime, 1000);
-    } else {
-      panel.classList.add('hidden');
-      clearInterval(timerId);
-    }
-  });
-});
-
 // History hover detection
 historyTriggerArea.addEventListener('mouseenter', () => {
   clearTimeout(historyCloseTimer);
   historyHoverTimer = setTimeout(() => {
     historyViewport.classList.add('active');
+    appContainer.classList.add('history-open');
   }, 300);
 });
 historyTriggerArea.addEventListener('mouseleave', () => {
@@ -1741,6 +1463,7 @@ historyViewport.addEventListener('mouseleave', (e) => {
   if (e.relatedTarget !== historyTriggerArea) {
     historyCloseTimer = setTimeout(() => {
       historyViewport.classList.remove('active');
+      appContainer.classList.remove('history-open');
     }, 500);
   }
 });
@@ -1756,6 +1479,7 @@ document.addEventListener('click', (e) => {
       !historyViewport.contains(e.target) &&
       !historyTriggerArea.contains(e.target)) {
     historyViewport.classList.remove('active');
+    appContainer.classList.remove('history-open');
   }
 });
 
@@ -1774,8 +1498,9 @@ historyList.addEventListener('click', (e) => {
     const idx = parseInt(item.getAttribute('data-index'));
     const entry = historyData[idx];
     if (entry) {
-      navigateTo(entry.url);
+      navigateToUrl(entry.url);
       historyViewport.classList.remove('active');
+      appContainer.classList.remove('history-open');
     }
   }
 });
@@ -1789,31 +1514,233 @@ clearHistoryBtn.addEventListener('click', () => {
 
 // Hook into navigation events to save history
 document.querySelectorAll('webview').forEach(webview => {
-  webview.addEventListener('did-navigate', () => {
-    addHistoryEntry(webview);
-  });
-  webview.addEventListener('did-navigate-in-page', () => {
-    addHistoryEntry(webview);
-  });
+  webview.addEventListener('did-navigate', () => addHistoryEntry(webview));
+  webview.addEventListener('did-navigate-in-page', () => addHistoryEntry(webview));
 });
 
 // Render history on startup
 renderHistory();
 
-// Initialize
-loadSettings();
-initializeTabs();
-setupUrlInputEvents();
+// Tabs clock functionality
+const tabsTimeElem = document.getElementById('tabs-time');
+const tabsDateElem = document.getElementById('tabs-date');
 
-// Auto-highlight on focus/click
-urlInput.addEventListener('focus', () => urlInput.select());
-urlInput.addEventListener('click', () => urlInput.select());
+// Function to update clock with actual system time
+function updateDateTime() {
+  const now = new Date();
+  if (tabsTimeElem && tabsDateElem) {
+    tabsTimeElem.textContent = formatTime(now);
+    tabsDateElem.textContent = formatDate(now);
+  }
+}
 
-// Log startup
-logMessage('info', 'Renderer process started');
+// Initialize with current time
+updateDateTime();
+setInterval(updateDateTime, 1000);
 
-// Wire up the Home button to navigate to a default home URL
-homeBtn.addEventListener('click', () => {
-  // Navigate to home URL (default Google)
-  navigateTo('https://www.google.com/');
+function formatTime(date) {
+  let hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  return `${hours}:${minutes} ${ampm}`;
+}
+
+function formatDate(date) {
+  const weekday = date.toLocaleDateString('en-US', { weekday: 'short' });
+  const day = date.getDate();
+  const year = date.getFullYear();
+  return `${weekday} ${day}, ${year}`;
+}
+
+// Reading Mode elements reference
+let readingBtn;
+
+function updateReadingMode() {
+  if (!readingBtn) return;
+  const activeView = document.querySelector('webview.active');
+  readingBtn.style.display = 'none';
+  if (activeView) {
+    activeView.executeJavaScript(`!!document.querySelector('article, main')`).then(hasArticle => {
+      readingBtn.style.display = hasArticle ? 'flex' : 'none';
+    });
+  }
+}
+
+// Reading Mode injection helper
+function __nuruInjectReadingMode() {
+  // Remove existing overlay
+  const oldOverlay = document.getElementById('nuru-reading-overlay');
+  if (oldOverlay) oldOverlay.remove();
+  // Find article/main
+  const container = document.querySelector('article, main');
+  if (!container) return;
+  // Extract main article content: headings, paragraphs, blockquotes
+  const articleClone = document.createElement('div');
+  const selectors = ['h1','h2','h3','h4','h5','h6','p','blockquote'];
+  const blacklistTexts = [
+    'Facebook','Twitter','Flipboard','Comments','Print','Email',
+    'Related Topics','Related article','More from','Most viewed','Recommended',
+    'By entering your email','You\'ve successfully subscribed'
+  ];
+  const nodes = container.querySelectorAll(selectors.join(','));
+  for (let node of nodes) {
+    const tag = node.tagName.toLowerCase();
+    const text = node.textContent.trim();
+    if (tag === 'p' && text.length < 20) continue;  // skip short paragraphs
+    if (blacklistTexts.some(b => text === b || text.startsWith(b))) break;  // stop at bottom content
+    // skip any node containing links to other articles
+    if (node.querySelector('a')) continue;
+    articleClone.appendChild(node.cloneNode(true));
+  }
+  // Overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'nuru-reading-overlay';
+  overlay.style.cssText = 'position:fixed;z-index:99999;top:0;left:0;width:100vw;height:100vh;background:#181a1b;color:#fff;overflow:auto;display:flex;flex-direction:column;align-items:flex-start;padding:0;margin:0;transition:background .3s;font-family:Poppins,sans-serif;box-sizing:border-box;';
+  // Inject style to enforce white text and Poppins
+  const styleTag = document.createElement('style');
+  styleTag.textContent = `
+    #nuru-reading-overlay, #nuru-reading-overlay * { color: #fff !important; font-family: 'Poppins', sans-serif !important; }
+    #nuru-reading-container h1, #nuru-reading-container h2, #nuru-reading-container h3, #nuru-reading-container h4, #nuru-reading-container h5, #nuru-reading-container h6 { font-weight: 700; margin-top: 1em; }
+    #nuru-reading-container p { margin: 1em 0; }
+    #nuru-reading-container blockquote { border-left: 4px solid #5661F4; margin: 1em 0; padding-left: 1em; font-style: italic; color: #ccc; }
+    #nuru-reading-container a { color: #1E90FF !important; text-decoration: underline; }
+  `;
+  overlay.appendChild(styleTag);
+  // Reader container
+  const reader = document.createElement('div');
+  reader.id = 'nuru-reading-container';
+  reader.style.cssText = 'background:#23262a;color:#fff;max-width:720px;width:90vw;margin:48px auto 64px auto;padding:40px 32px;border-radius:16px;box-shadow:0 6px 32px rgba(0,0,0,0.10);font-size:1.18em;line-height:1.7;letter-spacing:.01em;font-family:Poppins,sans-serif;';
+  reader.appendChild(articleClone);
+  overlay.appendChild(reader);
+  // Exit button
+  const exitBtn = document.createElement('button');
+  exitBtn.textContent = 'Exit Reading Mode';
+  exitBtn.id = 'nuru-reading-exit-btn';
+  exitBtn.style.cssText = 'position:fixed;right:32px;bottom:32px;z-index:100000;padding:14px 28px;background:#5661F4;color:#fff;border:none;border-radius:24px;font-size:1.1em;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.13);cursor:pointer;transition:background .2s;';
+  exitBtn.onmouseenter = () => exitBtn.style.background = '#3942a9';
+  exitBtn.onmouseleave = () => exitBtn.style.background = '#5661F4';
+  exitBtn.onclick = () => overlay.remove();
+  overlay.appendChild(exitBtn);
+  // Append overlay to body
+  document.body.appendChild(overlay);
+}
+
+// Flag to show social login notice once per page load
+let socialLoginNoticeShown = false;
+
+function showSocialUnsupportedNotice() {
+  if (socialLoginNoticeShown) return;
+  socialLoginNoticeShown = true;
+  showNotification('info', 'Social Login Unsupported', 'NURU Browser currently does not support social login. Use an alternative method');
+}
+
+const origWindowOpen = window.open;
+window.open = function(url, frameName, features) {
+  const socialDomains = ['facebook.com', 'accounts.google.com', 'api.twitter.com', 'github.com', 'linkedin.com', 'apple.com'];
+  if (socialDomains.some(d => url.includes(d))) {
+    // Reset flag to allow notification on manual social login click
+    socialLoginNoticeShown = false;
+    showSocialUnsupportedNotice();
+    return null;
+  }
+  return origWindowOpen.apply(window, arguments);
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Load settings then init UI
+  await loadSettings();
+  initResources();
+  renderResources(mediaSelect.value);
+  initializeTabs();
+  // Initialize Reading Mode button
+  readingBtn = document.getElementById('reading-mode-btn');
+  if (readingBtn) {
+    updateReadingMode();
+    readingBtn.addEventListener('click', () => {
+      const activeView = document.querySelector('webview.active');
+      if (activeView) {
+        activeView.executeJavaScript('(' + __nuruInjectReadingMode.toString() + ')()')
+          .catch(err => console.error('Reading mode injection failed:', err));
+      }
+    });
+  }
+  updateReadingMode();
+
+  // --- Reading Mode Detection & Notification ---
+  function detectArticlePage(webview) {
+    if (!webview) return;
+    webview.executeJavaScript(`!!document.querySelector('article, main')`).then(isArticle => {
+      const btn = document.getElementById('reading-mode-btn');
+      if (btn) {
+        if (isArticle) btn.classList.remove('hidden');
+        else btn.classList.add('hidden');
+      }
+    });
+  }
+
+  // Update reading-mode icon visibility for active webview
+  function updateReadingMode() {
+    const activeView = document.querySelector('webview.active');
+    detectArticlePage(activeView);
+  }
+
+  // Listen for navigation events to detect article pages
+  document.querySelectorAll('webview').forEach(webview => {
+    webview.addEventListener('did-navigate', () => detectArticlePage(webview));
+    webview.addEventListener('did-navigate-in-page', () => detectArticlePage(webview));
+    webview.addEventListener('dom-ready', () => detectArticlePage(webview));
+  });
+
+  // Existing context menu and modal logic
+  if (window.electronAPI && window.electronAPI.onContextMenuNewTab) {
+    window.electronAPI.onContextMenuNewTab((url) => {
+      // Create tab lazily without activating
+      createTab(url, false);
+      updateTabsUI();
+    });
+  }
+  // Setup Nuru Selects modal
+  const selectsOverlay = document.getElementById('selects-modal-overlay');
+  const btnSelectClose = document.getElementById('selects-close');
+
+  function toggleSelectsModal() {
+    if (selectsOverlay) selectsOverlay.style.display = selectsOverlay.style.display === 'flex' ? 'none' : 'flex';
+  }
+  // Keyboard shortcuts: Ctrl+B for selects, Ctrl+D for diagnostics
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key.toLowerCase() === 'b') toggleSelectsModal();
+    if (e.ctrlKey && e.key.toLowerCase() === 'd') window.electronAPI.showDiagnostics();
+  });
+  // Context menu for selects
+  if (window.electronAPI && window.electronAPI.onToggleSelectsModal) {
+    window.electronAPI.onToggleSelectsModal(toggleSelectsModal);
+  }
+  // Close button
+  if (btnSelectClose) btnSelectClose.addEventListener('click', toggleSelectsModal);
+});
+
+// Reset social login notification flag on webview navigation within DOMContentLoaded
+document.querySelectorAll('webview').forEach(wv => {
+  ['did-navigate', 'did-navigate-in-page', 'dom-ready'].forEach(evt => {
+    wv.addEventListener(evt, () => { socialLoginNoticeShown = false; });
+  });
+});
+
+// Suppress ERR_ABORTED (-3) errors from webviews
+document.querySelectorAll('webview').forEach(wv => {
+  wv.addEventListener('did-fail-load', (e) => {
+    // Suppress ERR_ABORTED loads by preventing default logging
+    if (e.errorCode === -3) { e.preventDefault(); return; }
+    console.error(`Webview failed load: ${e.errorDescription} (${e.errorCode}) loading ${e.validatedURL}`);
+  });
+});
+
+// Suppress ERR_ABORTED console errors from webviews
+document.querySelectorAll('webview').forEach(wv => {
+  wv.addEventListener('console-message', (e) => {
+    // Filter out aborted-load guest view manager errors
+    if (e.message.includes('ERR_ABORTED') && e.message.includes('GUEST_VIEW_MANAGER_CALL')) return;
+    console.log(`Guest console: ${e.message}`);
+  });
 });

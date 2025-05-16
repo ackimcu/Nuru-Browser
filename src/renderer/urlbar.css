@@ -1,4 +1,176 @@
-/* URL viewport styling (Arc Browser style) */
+/* Modern Search Bar Styles */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
+
+.modern-search-bar {
+  position: relative;
+  width: 260px;  /* fixed width for centering */
+  max-width: none;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  background: #23242a;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 0.5px 2px rgba(0,0,0,0.10);
+  display: flex;
+  align-items: center;
+  padding: 0 3px 0;  /* reduced bottom space */
+  min-height: 38px;
+  transition: box-shadow 0.25s cubic-bezier(.4,2,.6,1), transform 0.18s cubic-bezier(.4,2,.6,1);
+  z-index: 2;
+}
+
+
+.modern-search-bar:focus-within {
+  box-shadow: 0 8px 28px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.12);
+  transform: translateX(-50%) translateY(-1px) scale(1.01);
+}
+
+.search-icon, .mic-icon {
+  color: #bdbdbd;
+  font-size: 1.1em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.2s;
+  height: 32px;
+  width: 32px;
+}
+
+.search-icon {
+  margin-right: 14px;
+}
+.mic-icon {
+  margin-left: 14px;
+}
+.search-icon.active, .mic-icon.active {
+  color: #1976d2;
+}
+.modern-search-input {
+  flex: 1;
+  font-family: 'Poppins', sans-serif;
+  font-size: 1em;
+  font-weight: 700;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #f1f1f1;
+  padding: 12px 0;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+  min-width: 0;
+}
+
+.modern-search-input::placeholder {
+  color: #888;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.modern-search-bar:focus-within .modern-search-input {
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+}
+
+/* Suggestions Dropdown */
+.modern-suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  top: 50%;  /* align under reduced bottom padding */
+  background: #23242a;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 7px 24px rgba(0,0,0,0.22);
+  margin: 0;
+  padding: 16px 0 0;  /* extra spacing at top */
+  list-style: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0) scale(1);
+  transition: opacity 0.18s, transform 0.23s cubic-bezier(.4,2,.6,1);
+  max-height: 240px;  /* show up to 5 suggestions, then scroll */
+  border-top: none;
+  z-index: 1;
+}
+
+
+.modern-suggestions.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.modern-suggestions li {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 10px 8px;
+  font-size: 0.98em;
+  color: #f1f1f1;
+  cursor: pointer;
+  border-bottom: 1px solid #23242a;
+  background-color: #23242a;  /* solid background for visibility */
+  transition: background 0.18s, color 0.18s;
+  position: relative;
+  user-select: none;
+}
+
+.modern-suggestions li .suggest-icon {
+  margin-right: 12px;
+  color: #888;
+  font-size: 1em;
+}
+
+.modern-suggestions li .suggest-text {
+  flex: 1;
+}
+
+.modern-suggestions li .suggest-delete {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 0.9em;
+  cursor: pointer;
+  margin-left: auto;
+  margin-right: 8px;
+  padding: 0;
+}
+
+.modern-suggestions li:hover .suggest-delete {
+  color: #f00;
+}
+
+.modern-suggestions li:last-child {
+  border-bottom: none;
+}
+
+.modern-suggestions li.highlighted, .modern-suggestions li:hover {
+  background: linear-gradient(90deg,#23242a 0,#23242a 100%);
+  color: #90caf9;
+}
+
+.modern-suggestions li .matched {
+  font-weight: 700;
+  color: #90caf9;
+}
+
+.modern-suggestions .suggest-header {
+  padding: 8px 12px;
+  font-size: 0.9em;
+  font-weight: 600;
+  color: #bbb;
+  cursor: default;
+  border-bottom: 1px solid #23242a;
+}
+
+@media (max-width: 700px) {
+  .modern-search-bar { max-width: 98vw; }
+}
+
 /* URL viewport nested inside tabs; hidden by default */
 .url-viewport {
   display: none;
@@ -334,4 +506,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Ensure wrapper stacks above page content */
+.modern-search-wrapper {
+  position: relative;
+  overflow: visible;
+  width: 260px; /* match search-bar width */
+  max-width: none;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 4px 0 0 0;
 }

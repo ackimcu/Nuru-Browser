@@ -16,11 +16,42 @@ A modern, optimized Electron-based web browser with a minimalistic interface, in
 - **Zoom Control**: Built-in zoom functionality (Ctrl+/Ctrl-)
 - **Persistent Settings**: Remembers window geometry, zoom level, and other preferences
 - **Ad Blocker**: Blocks ads on web pages for a cleaner browsing experience
-- **Sponsor Skipper**: Automatically skips sponsored segments in videos with customizable categories and notifications
 - **Search Engine Customization**: Configure default search engine name, URL, and icon
 - **Settings UI**: Access and modify settings via a built-in settings modal
 - **Development Mode**: Enable development mode for additional debugging features
-- **Custom Taskbar Icon**: Displays a 48×48 Nuru logo in the taskbar, configured via `src/main.js`
+- **Custom Taskbar Icon**: Displays a 48×48 CB Browser logo in the taskbar, configured via `src/main.js`
+- **Reading Mode**: Article reading mode with inline detection and distraction-free view
+- **Resource Manager**: Manage custom resources/categories via the Nuru Selects modal
+- **Search History & Suggestions**: Persistent search history and suggestion dropdown for the address bar
+- **External Link Handling**: Opens new windows and links in tabs with context menu support
+- **Enhanced Context Menu**: Rich clipboard context menu with copy, paste, and open link in new tab options
+- **Media Progress Tracking**: Tracks and displays in-page audio/video playback progress via injected media listeners
+
+## Usage
+CB Browser provides a streamlined browsing workflow:
+1. Type URLs or search queries in the address bar and press Enter to navigate.
+2. Use the tab bar to open (`Ctrl+T`), switch, and close tabs (`Ctrl+W`) with mouse or keyboard.
+3. Adjust zoom with `Ctrl+Plus` / `Ctrl+-`; press `Ctrl+0` to reset to default.
+4. Enable Reading Mode on article pages via the book icon in the toolbar for distraction-free reading.
+5. Open Diagnostics (`Ctrl+D`) or Settings (`Ctrl+S`) at any time for advanced controls.
+
+## Configuration
+Preferences are saved to `nuru_browser_settings.json` in your system's user data directory. Example default:
+
+```json
+{
+  "frameless": true,
+  "zoom_factor": 1.5,
+  "search_engine": {
+    "name": "google",
+    "url": "https://www.google.com/search?q=",
+    "icon": "fab fa-google"
+  },
+  "features": {
+    "adblock": true
+  }
+}
+```
 
 ## Development
 
@@ -61,19 +92,6 @@ To run Nuru Browser without using the terminal, you can use the provided desktop
    chmod +x ~/path/to/NuruBrowser.desktop
    ```
 3. Double-click the shortcut to launch Nuru Browser with the app logo.
-
-## Configuration
-
-Settings are stored in `nuru_browser_settings.json` in the app's user data directory. Default settings:
-
-- Dark mode: Enabled
-- Frameless mode: Enabled
-- Zoom factor: 1.5 (150%)
-- Search engine: Google (`https://www.google.com/search?q=`, icon: `fab fa-google`)
-- Development mode: Disabled
-- Ad blocker: Enabled
-- Sponsor skipper: Enabled
-- Dark mode settings: autoDetect: true, brightnessReduction: 85, contrastEnhancement: 10
 
 ## Keyboard Shortcuts
 

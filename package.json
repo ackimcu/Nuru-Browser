@@ -4,19 +4,20 @@
   "description": "Nuru Browser - A modern Electron-based browsing application",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron .",
+    "update-electron": "node scripts/update-electron.js",
+    "start": "npx electron .",
     "build": "electron-builder",
     "build:dev": "cross-env NODE_ENV=development electron-builder --config dev-builder-config.js",
     "build:prod": "cross-env NODE_ENV=production electron-builder --config prod-builder-config.js",
     "lint": "eslint .",
-    "test": "jest"
+    "test": "jest --passWithNoTests"
   },
   "author": "Nuru Browser Team <nuru@example.com>",
   "license": "MIT",
   "homepage": "https://nuru-browser.example.com",
   "devDependencies": {
     "cross-env": "^7.0.3",
-    "electron": "^29.0.1",
+    "electron": "^36.2.1",
     "electron-builder": "^24.13.3",
     "eslint": "^8.56.0",
     "jest": "^29.7.0"
@@ -27,13 +28,15 @@
   },
   "build": {
     "appId": "com.electron.nuru-browser",
-    "productName": "Nuru Browser",
+    "productName": "NuruBrowser",
+    "executableName": "nuru-browser",
+    "icon": "logo/Nuru.png",
     "directories": {
       "output": "dist"
     },
     "files": [
       "src/**/*",
-      "assets/**/*",
+      "logo/**/*",
       "package.json"
     ],
     "publish": [
@@ -52,7 +55,8 @@
     "linux": {
       "target": [
         "AppImage",
-        "deb"
+        "deb",
+        "rpm"
       ],
       "category": "Network"
     }

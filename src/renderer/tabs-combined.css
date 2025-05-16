@@ -1,4 +1,4 @@
-/* URL Search Section Styling - Arc Browser Inspired */
+/* Modern search bar CSS will be inserted here */
 .url-search-section {
   padding: 16px 20px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -21,6 +21,13 @@
   font-weight: 600;
   letter-spacing: 0.3px;
   text-transform: uppercase;
+  /* enable smooth slide when suggestions appear */
+  transition: transform 0.2s ease;
+}
+
+.tabs-list {
+  /* enable smooth slide when suggestions appear */
+  transition: transform 0.2s ease;
 }
 
 /* Browser actions in header */
@@ -104,11 +111,7 @@
   overflow: hidden;
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
-}
-
-.url-search-container:focus-within {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.25);
+  margin-left: 50px; /* Adjusted for Home button */
 }
 
 .url-security-indicator {

@@ -85,3 +85,21 @@
   border-radius: 0 1px 1px 0;
   opacity: 0.8;
 }
+
+/* Media progress strip - tracks audio/video progress */
+#media-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 0%;
+  background-color: #ffffff; /* changed to white */
+  z-index: 10000;
+  transition: width 0.1s linear, opacity 0.2s ease;
+  opacity: 0;
+  visibility: hidden;
+}
+#media-strip.active {
+  opacity: 1;
+  visibility: visible;
+}

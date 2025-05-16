@@ -22,31 +22,9 @@ contextBridge.exposeInMainWorld('settingsAPI', {
     return ipcRenderer.invoke('save-all-settings', settings);
   },
   
-  // Ad Blocker
-  toggleAdBlocker: (enabled) => {
-    return ipcRenderer.invoke('toggle-ad-blocker', enabled);
-  },
-  addAdBlockerFilter: (filter) => {
-    return ipcRenderer.invoke('add-ad-blocker-filter', filter);
-  },
-  removeAdBlockerFilter: (filterId) => {
-    return ipcRenderer.invoke('remove-ad-blocker-filter', filterId);
-  },
-  
-  // Sponsor Skipper
-  toggleSponsorSkipper: (enabled) => {
-    return ipcRenderer.invoke('toggle-sponsor-skipper', enabled);
-  },
-  updateSponsorSkipperSettings: (settings) => {
-    return ipcRenderer.invoke('update-sponsor-skipper-settings', settings);
-  },
-  
-  // Dark Mode
-  toggleDarkMode: (enabled) => {
-    return ipcRenderer.invoke('toggle-dark-mode', enabled);
-  },
-  updateDarkModeSettings: (settings) => {
-    return ipcRenderer.invoke('update-dark-mode-settings', settings);
+  // UI Controls
+  closeSettings: () => {
+    ipcRenderer.send('close-settings');
   },
   
   // Zoom Level
@@ -54,8 +32,10 @@ contextBridge.exposeInMainWorld('settingsAPI', {
     return ipcRenderer.invoke('update-zoom-level', zoomLevel);
   },
   
-  // UI Controls
-  closeSettings: () => {
-    ipcRenderer.send('close-settings');
-  }
+  // Clear cache
+  clearCache: () => ipcRenderer.invoke('clear-cache'),
+  // Delete all user data
+  deleteAllUserData: () => ipcRenderer.invoke('delete-all-user-data'),
+  // Restart the application
+  restartApp: () => ipcRenderer.invoke('restart-app'),
 });
