@@ -19,7 +19,7 @@ A modern, optimized Electron-based web browser with a minimalistic interface, in
 - **Search Engine Customization**: Configure default search engine name, URL, and icon
 - **Settings UI**: Access and modify settings via a built-in settings modal
 - **Development Mode**: Enable development mode for additional debugging features
-- **Custom Taskbar Icon**: Displays a 48×48 CB Browser logo in the taskbar, configured via `src/main.js`
+- **Custom Taskbar Icon**: Displays a 48×48 Nuru Browser logo in the taskbar, configured via `src/main.js`
 - **Reading Mode**: Article reading mode with inline detection and distraction-free view
 - **Resource Manager**: Manage custom resources/categories via the Nuru Selects modal
 - **Search History & Suggestions**: Persistent search history and suggestion dropdown for the address bar
@@ -28,7 +28,7 @@ A modern, optimized Electron-based web browser with a minimalistic interface, in
 - **Media Progress Tracking**: Tracks and displays in-page audio/video playback progress via injected media listeners
 
 ## Usage
-CB Browser provides a streamlined browsing workflow:
+Nuru Browser provides a streamlined browsing workflow:
 1. Type URLs or search queries in the address bar and press Enter to navigate.
 2. Use the tab bar to open (`Ctrl+T`), switch, and close tabs (`Ctrl+W`) with mouse or keyboard.
 3. Adjust zoom with `Ctrl+Plus` / `Ctrl+-`; press `Ctrl+0` to reset to default.
