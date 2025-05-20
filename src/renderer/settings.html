@@ -407,10 +407,10 @@
           zoomValue.textContent = `${data.browserSettings.zoom_factor}x`;
         }
         // Restore last page setting
-        if (data.restoreLastPage !== undefined) {
+        if (data.browserSettings.restoreLastPage !== undefined) {
           const restoreToggle = document.getElementById('restore-last-page-toggle');
-          restoreToggle.checked = data.restoreLastPage;
-          currentSettings.restoreLastPage = data.restoreLastPage;
+          restoreToggle.checked = data.browserSettings.restoreLastPage;
+          currentSettings.restoreLastPage = data.browserSettings.restoreLastPage;
         }
         // Initialize search provider selection
         if (data.browserSettings.search_engine) {
