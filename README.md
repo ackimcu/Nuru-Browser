@@ -21,6 +21,13 @@ A modern, optimized Electron-based web browser with a minimalistic interface, in
 - **Settings UI**: Access and modify settings via a built-in settings modal
 - **Development Mode**: Enable development mode for additional debugging features
 - **Custom Taskbar Icon**: Displays a 48×48 Nuru logo in the taskbar, configured via `src/main.js`
+- **Reading Mode**: Article reading mode providing distraction-free reading by extracting and styling content.
+- **Resource Manager**: Manage custom resources and categories via a selects modal in the UI.
+- **Search History & Suggestions**: Persistent search history storage and dynamic search suggestions dropdown in the address bar.
+- **External Link Handling**: Intercepts new-window and window.open events to open all links in tabs instead of new windows.
+- **Enhanced Context Menu**: Rich webview context menu with open link in new tab, reload, save as, copy, paste, diagnostics, bookmarks, and settings options.
+- **Media Progress Tracking**: Tracks and displays in-page audio/video playback progress via injected media listeners.
+- **Social Login Protection**: Detects and disables social login elements and pop-ups (Google, Facebook, Twitter, GitHub, LinkedIn, Apple) for privacy.
 
 ## Development
 
