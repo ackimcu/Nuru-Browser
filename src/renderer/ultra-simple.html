@@ -5,6 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nuru Browser - Diagnostics</title>
   <style>
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #2a2a2a; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb { background: #5661F4; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4455bb; }
+    
+    /* Modal wrapper background and clipping */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-wrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-color);
+      border-radius: 16px;
+      clip-path: inset(0 round 16px);
+      overflow: hidden;
+    }
     :root {
       --bg-color: #1a1a1a;
       --text-color: #f2f2f2;
@@ -24,11 +51,39 @@
     
     body {
       font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-      background-color: var(--bg-color);
       color: var(--text-color);
       font-size: 14px;
-      padding: 20px;
-      line-height: 1.6;
+      padding: 0; margin: 0; line-height: 1.6;
+    }
+    
+    .header {
+      height: 40px;
+      background-color: #222222;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      -webkit-app-region: drag;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 16px;
+    }
+    
+    .close-button {
+      -webkit-app-region: no-drag;
+      background: none;
+      border: none;
+      color: var(--text-color);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 5px;
+    }
+    
+    .close-button:hover {
+      color: var(--accent-color);
     }
     
     h1 {
@@ -168,6 +223,12 @@
       100% { transform: rotate(360deg); }
     }
     
+    .container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    
     /* Update dialog styles */
     #update-dialog {
       display: none;
@@ -286,97 +347,98 @@
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="modal-wrapper">
     <div class="header">
-      <h1>Nuru Browser Diagnostics</h1>
+      <h1>Diagnostics</h1>
+      <button class="close-button" id="close-button">✕</button>
     </div>
-    
-    <div class="section">
-      <h2>System Information</h2>
-      <table id="system-info">
-        <tr>
-          <td>App Version:</td>
-          <td id="app-version">Loading...</td>
-        </tr>
-        <tr>
-          <td>Electron Version:</td>
-          <td id="electron-version">Loading...</td>
-        </tr>
-        <tr>
-          <td>Chrome Version:</td>
-          <td id="chrome-version">Loading...</td>
-        </tr>
-        <tr>
-          <td>Node.js Version:</td>
-          <td id="node-version">Loading...</td>
-        </tr>
-        <tr>
-          <td>Platform:</td>
-          <td id="platform">Loading...</td>
-        </tr>
-        <tr>
-          <td>Architecture:</td>
-          <td id="architecture">Loading...</td>
-        </tr>
-        <tr>
-          <td>Update Status:</td>
-          <td id="update-status">Loading...</td>
-        </tr>
-      </table>
+    <div class="container">
+      <div class="section">
+        <h2>System Information</h2>
+        <table id="system-info">
+          <tr>
+            <td>App Version:</td>
+            <td id="app-version">Loading...</td>
+          </tr>
+          <tr>
+            <td>Electron Version:</td>
+            <td id="electron-version">Loading...</td>
+          </tr>
+          <tr>
+            <td>Chrome Version:</td>
+            <td id="chrome-version">Loading...</td>
+          </tr>
+          <tr>
+            <td>Node.js Version:</td>
+            <td id="node-version">Loading...</td>
+          </tr>
+          <tr>
+            <td>Platform:</td>
+            <td id="platform">Loading...</td>
+          </tr>
+          <tr>
+            <td>Architecture:</td>
+            <td id="architecture">Loading...</td>
+          </tr>
+          <tr>
+            <td>Update Status:</td>
+            <td id="update-status">Loading...</td>
+          </tr>
+        </table>
+        
+        <div class="action-buttons">
+          <button id="check-updates-btn" class="primary-button">Check for Updates</button>
+          <button id="refresh-system-btn">Refresh Info</button>
+        </div>
+      </div>
       
-      <div class="action-buttons">
-        <button id="check-updates-btn" class="primary-button">Check for Updates</button>
-        <button id="refresh-system-btn">Refresh Info</button>
-      </div>
-    </div>
-    
-    <div class="section">
-      <h2>WebGL Status</h2>
-      <div class="webgl-status">
-        <span class="indicator" id="webgl-indicator"></span>
-        <span id="webgl-status-text">Checking WebGL...</span>
-      </div>
-    </div>
-    
-    <div class="section">
-      <h2>Logs</h2>
-      <div class="logs" id="logs">Loading logs...</div>
-      <button id="refresh-logs">Refresh Logs</button>
-    </div>
-    
-    <!-- Update Dialog -->
-    <div id="update-dialog">
-      <div class="dialog-content">
-        <div class="dialog-title">Update Available</div>
-        <div class="dialog-message">
-          A new version of Nuru Browser is available. Would you like to update now?
-        </div>
-        
-        <div class="version-comparison">
-          <div class="version-box">
-            <div class="version-label">Current</div>
-            <div id="current-version" class="version-number">1.0.0</div>
-          </div>
-          <div class="arrow">→</div>
-          <div class="version-box">
-            <div class="version-label">New</div>
-            <div id="new-version" class="version-number">1.0.1</div>
-          </div>
-        </div>
-        
-        <div id="progress-container" class="progress-container">
-          <div class="progress-bar">
-            <div id="progress-bar-fill" class="progress-bar-fill"></div>
-          </div>
-          <div id="progress-text" class="progress-text">0%</div>
-        </div>
-        
-        <div class="dialog-buttons" id="update-dialog-buttons">
-          <button id="cancel-update" class="cancel-button">Later</button>
-          <button id="download-update" class="primary-button">Update Now</button>
+      <div class="section">
+        <h2>WebGL Status</h2>
+        <div class="webgl-status">
+          <span class="indicator" id="webgl-indicator"></span>
+          <span id="webgl-status-text">Checking WebGL...</span>
         </div>
       </div>
-    </div>
+      
+      <div class="section">
+        <h2>Logs</h2>
+        <div class="logs" id="logs">Loading logs...</div>
+        <button id="refresh-logs">Refresh Logs</button>
+      </div>
+      
+      <!-- Update Dialog -->
+      <div id="update-dialog">
+        <div class="dialog-content">
+          <div class="dialog-title">Update Available</div>
+          <div class="dialog-message">
+            A new version of Nuru Browser is available. Would you like to update now?
+          </div>
+          
+          <div class="version-comparison">
+            <div class="version-box">
+              <div class="version-label">Current</div>
+              <div id="current-version" class="version-number">1.0.0</div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="version-box">
+              <div class="version-label">New</div>
+              <div id="new-version" class="version-number">1.0.1</div>
+            </div>
+          </div>
+          
+          <div id="progress-container" class="progress-container">
+            <div class="progress-bar">
+              <div id="progress-bar-fill" class="progress-bar-fill"></div>
+            </div>
+            <div id="progress-text" class="progress-text">0%</div>
+          </div>
+          
+          <div class="dialog-buttons" id="update-dialog-buttons">
+            <button id="cancel-update" class="cancel-button">Later</button>
+            <button id="download-update" class="primary-button">Update Now</button>
+          </div>
+        </div>
+      </div>
   
   <div class="footer">
     <p> 2025 Nuru Browser | <span id="timestamp"></span></p>
@@ -686,6 +748,9 @@
           // Change button action to install
           downloadBtn.setAttribute('data-action', 'install');
         });
+        
+        // Close button handler
+        document.getElementById('close-button').addEventListener('click', () => window.close());
         
         console.log('Initialization complete');
       } catch (error) {

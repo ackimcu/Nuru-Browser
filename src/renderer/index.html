@@ -7,7 +7,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nuru Browser</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="features-panel.js" defer></script>
   <link rel="stylesheet" href="titlebar.css">
   <link rel="stylesheet" href="tabs.css">
   <link rel="stylesheet" href="tabs-combined.css">
@@ -16,6 +15,49 @@
   <link rel="stylesheet" href="urlbar.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
+  <style>
+    /* Smart Web Search Styles */
+    .search-viewport { padding: 20px; display: block; }
+    .search-viewport input#search-box {
+      width: calc(100% - 40px);
+      padding: 10px 15px;
+      border-radius: 30px;
+      border: none;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 1em;
+      outline: none;
+      backdrop-filter: blur(8px);
+    }
+    .search-viewport button#search-btn {
+      margin-left: -40px;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 1.2em;
+      cursor: pointer;
+    }
+    /* Nuru Selects Modal Styles */
+    .selects-modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8); display: none;
+      align-items: center; justify-content: center; z-index: 1001;
+    }
+    .selects-modal {
+      background: var(--bg-color); color: var(--text-color);
+      border-radius: 16px; width: 500px; max-width: 90%;
+      padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
+    }
+    .selects-modal .selects-header { font-size: 1.3em; margin-bottom: 15px; }
+    .selects-modal .select-container { margin-bottom: 15px; }
+    .selects-modal .resource-list { max-height: 300px; overflow-y: auto; margin-bottom: 15px; }
+    .select-buttons { text-align: right; }
+    .select-buttons button { margin-left: 10px; padding: 8px 12px;
+      border: none; border-radius: 8px; cursor: pointer; }
+    .btn-select-close { background: var(--bg-lighter); color: var(--text-light); }
+    .btn-select-confirm { background: var(--accent-color); color: #fff; }
+  </style>
 </head>
 <body>
   <div class="titlebar"></div>
@@ -24,38 +66,43 @@
   <div class="tabs-trigger-area"></div>
   <div class="tabs-viewport">
     <div class="tabs-header">
-      <h3>Nuru Browser</h3>
-      <div class="browser-actions">
-        <button class="browser-action-btn" id="update-check-btn" title="Check for Updates">
-          <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+      <div id="nav-buttons" style="margin-left:auto;">
+        <button id="back-button" class="nav-button" title="Back">
+          <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         </button>
-        <button class="browser-action-btn" id="diagnostics-btn" title="Open Diagnostics">
-          <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg>
+        <button id="forward-button" class="nav-button" title="Forward">
+          <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z"/></svg>
         </button>
-        <button class="browser-action-btn" id="home-btn" title="Home">
-          <i class="fas fa-home"></i>
+        <button id="close-button" class="nav-button" title="Close Application">
+          <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
         </button>
-        <button class="browser-action-btn" id="dev-mode-toggle" title="Toggle Development Mode">
-          <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
+        <button id="tabs-button" class="nav-button" title="Reload Page">
+          <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 12h7V5l-2.35 1.35z"/></svg>
         </button>
+        <div id="tabs-clock-container">
+          <span id="tabs-time"></span>
+          <span id="tabs-date"></span>
+        </div>
       </div>
     </div>
-    <!-- Unified Search Section -->
-    <div class="url-viewport" id="url-viewport">
-      <div class="url-header">
-        <h3>Search</h3>
-        <div class="url-security-indicator" id="url-security-indicator"></div>
-      </div>
-      <div class="url-search-container">
-        <i class="fas fa-search url-search-icon"></i>
-        <input type="text" class="url-search-input" id="url-search-input" placeholder="Search or enter website name">
-        <div class="url-search-engine" id="search-engine-button"><i class="fab fa-google"></i></div>
-      </div>
-      <div class="url-viewport-content" id="url-suggestions"></div>
-      <div class="search-engine-selector" id="search-engine-selector">
-        <div class="search-engine-item" data-name="google" data-url="https://www.google.com/search?q="><i class="fab fa-google search-engine-icon"></i> Google</div>
-        <div class="search-engine-item" data-name="bing" data-url="https://www.bing.com/search?q="><i class="fab fa-microsoft search-engine-icon"></i> Bing</div>
-        <div class="search-engine-item" data-name="duckduckgo" data-url="https://duckduckgo.com/?q="><i class="fab fa-duckduckgo search-engine-icon"></i> DuckDuckGo</div>
+    <!-- Modern search bar with suggestions wrapper -->
+    <div class="modern-search-wrapper" style="position: relative;">
+      <!-- Suggestions dropdown inside wrapper -->
+      <ul class="modern-suggestions" id="modern-suggestions"></ul>
+      <div class="modern-search-bar" id="modern-search-bar">
+        <button id="home-btn" class="nav-button" title="Home" style="margin-right:8px;">
+          <i class="fas fa-home"></i>
+        </button>
+        <!-- search icon removed -->
+        <input type="text" id="modern-search-input" class="modern-search-input" placeholder="Search or enter address..." autocomplete="off" />
+        <span id="social-login-unsupported-icon" class="info-icon" style="display:none; margin-left:8px; cursor:pointer;" title="Social Login Unsupported: NURU Browser currently does not support social login. Use an alternative method.">
+          <i class="fas fa-info-circle"></i>
+        </span>
+        <span class="mic-icon"><i class="fas fa-microphone"></i></span>
+        <!-- Reading Mode Button -->
+        <button id="reading-mode-btn" class="nav-button hidden" title="Reading Mode" style="margin-left:8px;">
+          <i class="fas fa-book-open"></i>
+        </button>
       </div>
     </div>
     <!-- Divider -->
@@ -92,41 +139,63 @@
     </div>
   </div>
   
+  <!-- Nuru Selects Modal -->
+  <div id="selects-modal-overlay" class="selects-modal-overlay">
+    <div class="selects-modal">
+      <div class="selects-header"><strong>Nuru Selects<sup class="tm">TM</sup></strong></div>
+      <div class="select-container">
+        <label for="media-select">Select Media</label>
+        <select id="media-select">
+          <option value="Movies">Movies</option>
+          <option value="Music">Music</option>
+          <option value="Adult">Adult</option>
+        </select>
+      </div>
+      <div id="resource-list" class="resource-list"></div>
+      <button id="add-resource-btn">Add Resource</button>
+      <div id="add-resource-form" class="hidden">
+        <button id="add-website-btn">Add Website</button>
+        <input type="text" id="new-resource-name" placeholder="Website Name">
+        <input type="text" id="new-resource-url" placeholder="Website URL" readonly>
+        <label for="new-resource-category">Category</label>
+        <select id="new-resource-category">
+          <option value="Movies">Movies</option>
+          <option value="Music">Music</option>
+          <option value="Adult">Adult</option>
+        </select>
+        <div>
+          <button id="save-resource-btn">Save</button>
+          <button id="cancel-resource-btn">Cancel</button>
+        </div>
+      </div>
+      <div class="select-buttons">
+        <button id="selects-close" class="btn-select-close">Close</button>
+      </div>
+    </div>
+  </div>
+  
   <div id="app">
     <div id="loading-strip"></div>
     <div class="titlebar-padding"></div>
     <div id="webview-container">
       <div id="webviews-container">
         <!-- All webviews will be dynamically added here -->
-        <webview id="webview-0" src="https://www.google.com/" class="active" allowpopups partition="persist:browsing" webpreferences="allowRunningInsecureContent=yes, javascript=yes" useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"></webview>
+        <webview id="webview-0" src="https://www.google.com/" class="active" partition="persist:browsing" webpreferences="javascript=yes" preload="../preload-webview.js"></webview>
       </div>
     </div>
     
     <div id="error-overlay" class="hidden">
       <div class="error-content">
-        <h3 id="error-title"></h3>
-        <p id="error-message"></p>
-        <div id="error-actions">
-          <span id="error-dismiss">Dismiss</span>
+        <div class="error-header">
+          <h3 id="error-title"></h3>
+          <button id="error-close-btn" class="error-close-btn" title="Close">&times;</button>
         </div>
+        <p id="error-message"></p>
       </div>
     </div>
-    
-    <div id="nav-buttons">
-      <button id="back-button" class="nav-button" title="Back">
-        <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-      </button>
-      <button id="forward-button" class="nav-button" title="Forward">
-        <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z"/></svg>
-      </button>
-      <button id="close-button" class="nav-button" title="Close Application">
-        <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
-      </button>
-      <button id="tabs-button" class="nav-button" title="Reload Page">
-        <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 12h7V5l-2.35 1.35z"/></svg>
-      </button>
-    </div>
   </div>
+  
+
   
   <script src="renderer.js"></script>
   <script src="dev-mode.js"></script>

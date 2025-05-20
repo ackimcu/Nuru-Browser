@@ -1,3 +1,5 @@
+console.log(`Electron version: ${process.versions.electron}, Chrome version: ${process.versions.chrome}`);
+
 const { contextBridge, ipcRenderer } = require('electron');
 
 // Expose protected methods that allow the renderer process to use
@@ -17,7 +19,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Window controls
   toggleFrameless: () => ipcRenderer.invoke('toggle-frameless'),
-  setDarkMode: (enabled) => ipcRenderer.invoke('set-dark-mode', enabled),
   toggleDevelopmentMode: async () => {
     return await ipcRenderer.invoke('toggle-development-mode');
   },
@@ -44,33 +45,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSearchEngine: () => ipcRenderer.invoke('get-search-engine'),
   getDNSPredictions: (url) => ipcRenderer.invoke('get-dns-predictions', url),
   
-  // Native Features - Ad Blocker
-  getAdBlockerConfig: () => ipcRenderer.invoke('ad-blocker:get-config'),
-  getAdBlockerStats: () => ipcRenderer.invoke('ad-blocker:get-stats'),
-  setAdBlockerEnabled: (enabled) => ipcRenderer.invoke('ad-blocker:set-enabled', enabled),
-  forceUpdateAdBlocker: () => ipcRenderer.invoke('ad-blocker:force-update'),
-  
-  // Native Features - Sponsor Skipper
-  getSponsorSkipperConfig: () => ipcRenderer.invoke('sponsor-skipper:get-config'),
-  getSponsorSkipperStats: () => ipcRenderer.invoke('sponsor-skipper:get-stats'),
-  setSponsorSkipperEnabled: (enabled) => ipcRenderer.invoke('sponsor-skipper:set-enabled', enabled),
-  updateSponsorSkipperSettings: (settings) => ipcRenderer.invoke('sponsor-skipper:update-settings', settings),
-  clearSponsorSkipperCache: () => ipcRenderer.invoke('sponsor-skipper:clear-cache'),
-  
-  // Native Features - Enhanced Dark Mode
-  getDarkModeConfig: () => ipcRenderer.invoke('dark-mode:get-config'),
-  getDarkModeStats: () => ipcRenderer.invoke('dark-mode:get-stats'),
-  setDarkModeEnabled: (enabled) => ipcRenderer.invoke('dark-mode:set-enabled', enabled),
-  updateDarkModeSettings: (settings) => ipcRenderer.invoke('dark-mode:update-settings', settings),
-  addDarkSite: (site) => ipcRenderer.invoke('dark-mode:add-dark-site', site),
-  addExcludedSite: (site) => ipcRenderer.invoke('dark-mode:add-excluded-site', site),
-  removeDarkSite: (site) => ipcRenderer.invoke('dark-mode:remove-dark-site', site),
-  removeExcludedSite: (site) => ipcRenderer.invoke('dark-mode:remove-excluded-site', site),
-  
   // IPC listeners
-  onDarkModeChanged: (callback) => {
-    ipcRenderer.on('dark-mode-changed', (_, darkMode) => callback(darkMode));
-  },
   onShowError: (callback) => {
     ipcRenderer.on('show-error', (_, errorData) => callback(errorData));
   },
@@ -95,15 +70,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onFeatureStatusChanged: (callback) => {
     ipcRenderer.on('feature-status-changed', (_, featureId, status) => callback(featureId, status));
   },
-  onAdBlockerStats: (callback) => {
-    ipcRenderer.on('ad-blocker-stats', (_, stats) => callback(stats));
-  },
-  onSponsorSegmentsUpdated: (callback) => {
-    ipcRenderer.on('sponsor-segments-updated', (_, data) => callback(data));
-  },
-  onDarkModeSettingsChanged: (callback) => {
-    ipcRenderer.on('dark-mode-settings-changed', (_, settings) => callback(settings));
-  },
   
   // Tab management
   relayLinkClicked: (url) => ipcRenderer.send('link-clicked', url),
@@ -112,5 +78,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onFullscreenChanged: (callback) => {
     ipcRenderer.on('fullscreen-changed', (_, isFullscreen) => callback(isFullscreen));
-  }
+  },
+  
+  // Notify renderer when an ad domain is blocked
+  onAdblockBlocked: (callback) => ipcRenderer.on('adblock-blocked', (_, host) => callback(host)),
+  
+  // Context menu: new tab command
+  onContextMenuNewTab: (callback) => ipcRenderer.on('context-menu-new-tab', (_, url) => callback(url)),
+  
+  // Toggle Nuru Selects modal
+  onToggleSelectsModal: (callback) => ipcRenderer.on('toggle-selects-modal', () => callback()),
+  
+  // Notify renderer when an ad domain is blocked
+  onFullscreenChanged: (callback) => {
+    ipcRenderer.on('fullscreen-changed', (_, isFullscreen) => callback(isFullscreen));
+  },
 });

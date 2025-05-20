@@ -1,10 +1,12 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, dialog, nativeImage } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, dialog, nativeImage, session, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const log = require('electron-log');
 const { autoUpdater } = require('electron-updater');
-const features = require('./features/index'); // Import native features
 const settingsModal = require('./settings-modal'); // Import settings modal
+const { spawn } = require('child_process');
+const https = require('https');
 
 // Determine if running in production environment
 const isProduction = process.env.NODE_ENV === 'production' || app.isPackaged;
@@ -17,9 +19,10 @@ log.transports.file.resolvePath = () => path.join(app.getPath('userData'), 'nuru
 // Settings configuration
 const SETTINGS_PATH = path.join(app.getPath('userData'), 'nuru_browser_settings.json');
 const DEFAULT_SETTINGS = {
-  dark_mode: true,
   frameless: true,
   zoom_factor: 1.5,
+  // Whether to restore last page on startup
+  restoreLastPage: true,
   geometry: {
     width: 1280,
     height: 800,
@@ -32,35 +35,144 @@ const DEFAULT_SETTINGS = {
     url: 'https://www.google.com/search?q=',
     icon: 'fab fa-google'
   },
-  development_mode: false, // Added development mode setting
+  development_mode: false, 
   features: {
-    adBlocker: {
-      enabled: true
-    },
-    sponsorSkipper: {
-      enabled: true,
-      categories: {
-        sponsor: { skip: true, notification: true },
-        selfpromo: { skip: true, notification: true },
-        interaction: { skip: true, notification: true },
-        intro: { skip: true, notification: true },
-        outro: { skip: true, notification: true },
-        preview: { skip: true, notification: true },
-        music_offtopic: { skip: false, notification: true }
-      }
-    },
-    darkMode: {
-      enabled: true,
-      autoDetect: true,
-      brightnessReduction: 85,
-      contrastEnhancement: 10
-    }
+    adblock: true
   }
 };
 
 let mainWindow;
 let diagnosticsWindow;
+let settingsWindow = null; // Settings window reference
 let settings = DEFAULT_SETTINGS;
+
+// Add ad blocklist loading utilities
+const BLOCKLIST_DIR = path.join(__dirname, '..', 'Ad Blocklist');
+let adBlocklist = new Set();
+
+function loadBlocklist() {
+  const domains = [];
+  log.info(`Adblock: loading blocklists from ${BLOCKLIST_DIR}`);
+  try {
+    if (fs.existsSync(BLOCKLIST_DIR)) {
+      const files = fs.readdirSync(BLOCKLIST_DIR).filter(f => f.endsWith('.txt'));
+      log.info(`Adblock: found ${files.length} .txt files in blocklist folder`);
+      files.forEach(file => {
+        const data = fs.readFileSync(path.join(BLOCKLIST_DIR, file), 'utf8');
+        data.split(/\r?\n/).forEach(line => {
+          const d = line.trim();
+          if (d && !d.startsWith('#')) domains.push(d);
+        });
+      });
+    }
+  } catch (err) {
+    log.error('Error loading ad blocklist:', err);
+  }
+  const set = new Set(domains);
+  log.info(`Adblock: loaded ${set.size} domains from blocklists`);
+  return set;
+}
+
+// Efficient suffix-based hostname blocker
+function isBlockedDomain(host) {
+  if (adBlocklist.has(host)) return true;
+  let idx = host.indexOf('.');
+  while (idx !== -1) {
+    const parent = host.substring(idx + 1);
+    if (adBlocklist.has(parent)) return true;
+    idx = host.indexOf('.', idx + 1);
+  }
+  return false;
+}
+
+// Register global adblock handler
+function registerGlobalAdblock() {
+  // Intercept on defaultSession and the browsing webview partition
+  const sessions = [session.defaultSession, session.fromPartition('persist:browsing')];
+  sessions.forEach(sess => {
+    sess.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, (details, callback) => {
+      try {
+        const host = new URL(details.url).hostname;
+        if (settings.features.adblock && isBlockedDomain(host)) {
+          log.info(`Adblock: blocking request to ${host}`);
+          if (mainWindow && mainWindow.webContents) {
+            mainWindow.webContents.send('adblock-blocked', host);
+          }
+          return callback({ cancel: true });
+        }
+      } catch (e) {
+        log.error('Adblock URL parse error:', e);
+      }
+      callback({});
+    });
+  });
+  log.info('Adblock: global adblock handlers registered on all sessions');
+}
+
+const chromeVersion = '136.0.7103.113';
+
+async function fetchLatestChromeVersion() {
+  return new Promise((resolve, reject) => {
+    https.get('https://omahaproxy.appspot.com/all?os=linux&channel=stable&format=json', res => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const arr = JSON.parse(data);
+          const entry = arr.find(e => e.os === 'linux' && e.channel === 'stable');
+          if (entry && entry.version) resolve(entry.version);
+          else reject(new Error('Chrome version not found'));
+        } catch (err) {
+          reject(err);
+        }
+      });
+    }).on('error', reject);
+  });
+}
+
+app.whenReady().then(async () => {
+  try {
+    chromeVersion = await fetchLatestChromeVersion();
+    log.info(`Fetched latest Chrome version: ${chromeVersion}`);
+  } catch (err) {
+    log.error('Failed to fetch latest Chrome version:', err);
+  }
+});
+
+app.on('web-contents-created', (event, contents) => {
+  // Override user-agent for both BrowserWindow and webview contents
+  if (['webview', 'window'].includes(contents.getType())) {
+    try {
+      const fullUA = session.defaultSession.getUserAgent();
+      // Remove the Electron/<version> token
+      let ua = fullUA.replace(/\s?Electron\/[\d\.]+/, '');
+      // Override Chrome version to match desired version
+      ua = ua.replace(/Chrome\/[\d\.]+/, `Chrome/${chromeVersion}`);
+      contents.setUserAgent(ua);
+      log.info(`UserAgent overridden to pure Chrome: ${ua}`);
+    } catch (err) {
+      log.error('Error setting user agent:', err);
+    }
+    // Context menu for webview
+    contents.on('context-menu', (e, params) => {
+      const { linkURL, pageURL, selectionText } = params;
+      const menuTemplate = [
+        { label: '🔗 Open Link in New Tab', click: () => mainWindow.webContents.send('context-menu-new-tab', linkURL || pageURL) },
+        { label: '🔄 Reload', click: () => contents.reload() },
+        { label: '💾 Save As', click: () => contents.savePage(pageURL, { saveAs: true }) },
+        { type: 'separator' },
+        { role: 'copy', label: '📋 Copy', enabled: !!selectionText },
+        { role: 'paste', label: '📋 Paste' },
+        { type: 'separator' },
+        { label: '🛠 Open Diagnostics', click: () => createDiagnosticsWindow() },
+        { label: '🔖 Open Bookmarks', click: () => mainWindow.webContents.send('toggle-selects-modal') },
+        { label: '⚙️ Open Settings', click: () => createSettingsWindow() }
+      ];
+      const menu = Menu.buildFromTemplate(menuTemplate);
+      menu.popup({ window: mainWindow });
+    });
+  }
+});
 
 function loadSettings() {
   try {
@@ -68,6 +180,8 @@ function loadSettings() {
       const data = fs.readFileSync(SETTINGS_PATH, 'utf8');
       const loadedSettings = JSON.parse(data);
       settings = { ...DEFAULT_SETTINGS, ...loadedSettings };
+      // Ensure features settings are deep-merged to preserve default adblock flag
+      settings.features = { ...DEFAULT_SETTINGS.features, ...settings.features };
       log.info('Settings loaded successfully');
     } else {
       log.info('No settings file found, using defaults');
@@ -103,29 +217,6 @@ function saveSettings() {
 }
 
 async function createMainWindow() {
-  // Initialize native features before creating the window
-  try {
-    const featuresConfig = await features.initialize();
-    log.info('Native features initialized successfully');
-    
-    // Update settings with feature configurations if needed
-    if (!settings.features) {
-      settings.features = {
-        adBlocker: { enabled: featuresConfig.adBlocker.enabled },
-        sponsorSkipper: { enabled: featuresConfig.sponsorSkipper.enabled, categories: featuresConfig.sponsorSkipper.userSettings },
-        darkMode: { 
-          enabled: featuresConfig.darkMode.enabled, 
-          autoDetect: featuresConfig.darkMode.autoDetect,
-          brightnessReduction: featuresConfig.darkMode.brightnessReduction,
-          contrastEnhancement: featuresConfig.darkMode.contrastEnhancement
-        }
-      };
-      saveSettings();
-    }
-  } catch (error) {
-    log.error('Failed to initialize native features:', error);
-  }
-  
   const { width, height, x, y } = settings.geometry;
   
   mainWindow = new BrowserWindow({
@@ -145,11 +236,11 @@ async function createMainWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
-      webSecurity: false, // Allow loading content from different origins
+      webSecurity: true, 
+      allowRunningInsecureContent: false, 
       plugins: true,
       experimentalFeatures: false,
-      webviewTag: true, // Explicitly enable webview tag
-      allowRunningInsecureContent: true // Allow mixed content
+      webviewTag: true, 
     }
   });
 
@@ -203,6 +294,22 @@ async function createMainWindow() {
   mainWindow.on('leave-full-screen', () => {
     mainWindow.webContents.send('fullscreen-changed', false);
   });
+
+  // Ad block: intercept requests for ad domains
+  const { session } = mainWindow.webContents;
+  session.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, (details, callback) => {
+    if (settings.features && settings.features.adblock) {
+      try {
+        const host = new URL(details.url).hostname;
+        if (isBlockedDomain(host)) {
+          return callback({ cancel: true });
+        }
+      } catch (e) {
+        // ignore parse errors
+      }
+    }
+    callback({});
+  });
 }
 
 function createDiagnosticsWindow() {
@@ -226,17 +333,21 @@ function createDiagnosticsWindow() {
     }
     
     diagnosticsWindow = new BrowserWindow({
-      width: 800,
-      height: 700,
+      width: 900,
+      height: 800,
       minWidth: 600,
       minHeight: 500,
-      backgroundColor: '#1a1a1a',
+      transparent: true,
+      backgroundColor: '#00000000',
+      frame: false,
+      titleBarStyle: 'hidden',
+      roundedCorners: true,
       title: 'Nuru Browser - Diagnostics',
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
         preload: preloadPath,
-        sandbox: false, // Disable sandbox to allow access to Node.js modules
+        sandbox: false, 
         spellcheck: false,
         devTools: true
       }
@@ -315,7 +426,6 @@ ipcMain.handle('get-system-info', () => {
   }
 });
 
-// Update download/install handlers
 ipcMain.handle('download-update', async () => {
   log.info('Update download requested by user');
   try {
@@ -607,35 +717,6 @@ ipcMain.handle('save-all-settings', (event, newSettings) => {
       }
     }
     
-    // Update features settings if available
-    if (newSettings.features && features) {
-      // Update ad blocker settings
-      if (newSettings.features.adBlocker && features.adBlocker) {
-        features.adBlocker.setEnabled(newSettings.features.adBlocker.enabled);
-        settings.features.adBlocker = newSettings.features.adBlocker;
-      }
-      
-      // Update sponsor skipper settings
-      if (newSettings.features.sponsorSkipper && features.sponsorSkipper) {
-        features.sponsorSkipper.setEnabled(newSettings.features.sponsorSkipper.enabled);
-        if (newSettings.features.sponsorSkipper.categories) {
-          features.sponsorSkipper.updateSettings(newSettings.features.sponsorSkipper.categories);
-        }
-        settings.features.sponsorSkipper = newSettings.features.sponsorSkipper;
-      }
-      
-      // Update dark mode settings
-      if (newSettings.features.darkMode && features.darkMode) {
-        features.darkMode.setEnabled(newSettings.features.darkMode.enabled);
-        features.darkMode.updateSettings({
-          autoDetect: newSettings.features.darkMode.autoDetect,
-          brightnessReduction: newSettings.features.darkMode.brightnessReduction,
-          contrastEnhancement: newSettings.features.darkMode.contrastEnhancement
-        });
-        settings.features.darkMode = newSettings.features.darkMode;
-      }
-    }
-    
     // Save all settings to disk
     saveSettings();
     
@@ -772,7 +853,6 @@ ipcMain.handle('get-app-info-v2', () => {
       userDataPath: app.getPath('userData'),
       isPackaged: app.isPackaged,
       locale: app.getLocale(),
-      darkMode: settings.dark_mode,
       frameless: settings.frameless,
       zoomFactor: settings.zoom_factor,
       timestamp: new Date().toISOString()
@@ -853,23 +933,6 @@ ipcMain.handle('toggle-frameless', () => {
   return settings.frameless;
 });
 
-ipcMain.handle('set-dark-mode', async (event, darkMode) => {
-  settings.dark_mode = darkMode;
-  saveSettings();
-  
-  // Update enhanced dark mode feature if it's initialized
-  if (features && features.darkMode) {
-    features.darkMode.setEnabled(darkMode);
-  }
-  
-  // Notify renderer
-  if (mainWindow) {
-    mainWindow.webContents.send('dark-mode-changed', darkMode);
-  }
-  
-  return darkMode;
-});
-
 ipcMain.on('webgl-status', (event, status) => {
   log.info(`WebGL status: ${status ? 'Available' : 'Unavailable'}`);
   
@@ -913,6 +976,34 @@ ipcMain.on('log-message', (event, { level, message }) => {
   } else {
     log.debug(message);
   }
+});
+
+// IPC handlers for cache and user data deletion
+ipcMain.handle('clear-cache', async () => {
+  try {
+    await session.defaultSession.clearCache();
+    await session.defaultSession.clearStorageData();
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('delete-all-user-data', async () => {
+  const userData = app.getPath('userData');
+  const configDir = path.join(os.homedir(), '.config');
+  try {
+    await fs.promises.rm(userData, { recursive: true, force: true });
+    await fs.promises.rm(configDir, { recursive: true, force: true });
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('restart-app', async () => {
+  app.relaunch();
+  app.exit(0);
 });
 
 // Set up global exception handler
@@ -993,11 +1084,56 @@ function setupAutoUpdater() {
   });
 }
 
+async function updateElectronFramework() {
+  return new Promise((resolve) => {
+    const updateWin = new BrowserWindow({
+      width: 1200, height: 800, frame: false, transparent: true, resizable: false,
+      backgroundColor: '#00000000',
+      alwaysOnTop: true, modal: true, show: false,
+      webPreferences: { nodeIntegration: true, contextIsolation: false }
+    });
+    updateWin.loadFile(path.join(__dirname, 'renderer', 'update-modal.html'));
+    updateWin.once('ready-to-show', () => {
+      updateWin.show();
+      updateWin.webContents.send('update-status', 'Checking latest Electron version...');
+    });
+    const root = path.join(__dirname, '..');
+    let latest = '';
+    const ver = spawn('npm', ['view', 'electron', 'version'], { cwd: root, shell: true, stdio: ['ignore','pipe','pipe'] });
+    ver.stdout.on('data', data => {
+      latest += data.toString();
+      console.log(`npm view electron version: ${data.toString().trim()}`);
+    });
+    ver.stderr.on('data', data => console.error(`npm view error: ${data.toString()}`));
+    ver.on('close', () => {
+      latest = latest.trim();
+      // Only install if there's a newer version
+      const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf-8'));
+      const current = pkg.devDependencies.electron.replace(/[^0-9.]/g, '');
+      if (latest === current) {
+        updateWin.webContents.send('update-status', `Electron already up-to-date (${current})`);
+        setTimeout(() => { updateWin.close(); resolve(); }, 800);
+        return;
+      }
+      updateWin.webContents.send('update-status', `Installing Electron ${latest}...`);
+      const inst = spawn('npm', ['install', '--save-dev', `electron@${latest}`], { cwd: root, shell: true, stdio: 'inherit' });
+      inst.on('close', () => {
+        updateWin.webContents.send('update-done');
+        setTimeout(() => { updateWin.close(); resolve(); }, 800);
+      });
+    });
+  });
+}
+
 app.whenReady().then(async () => {
-  // Load settings
+  // Run framework updater before window creation
+  await updateElectronFramework();
+  // Load ad blocklist from files
+  adBlocklist = loadBlocklist();
+  log.info('Adblock: registering global adblock handler');
+  registerGlobalAdblock();
+  // Now load settings and create windows
   loadSettings();
-  
-  // Create main window (now async to handle feature initialization)
   await createMainWindow();
   
   // Setup auto-updater if not in development
@@ -1012,46 +1148,14 @@ app.whenReady().then(async () => {
   
   // Register Ctrl+S for Settings
   globalShortcut.register('CommandOrControl+S', () => {
-    settingsModal.showSettingsModal(mainWindow, settings, features);
+    createSettingsWindow();
   });
   
   // Add IPC handler for showing settings modal
   ipcMain.on('show-settings', () => {
     log.info('Showing settings modal');
-    settingsModal.showSettingsModal(mainWindow, settings, features);
+    createSettingsWindow();
   });
-
-  // Set up native features from settings
-  if (features && settings.features) {
-    try {
-      // Apply ad blocker settings
-      if (settings.features.adBlocker) {
-        features.adBlocker.setEnabled(settings.features.adBlocker.enabled);
-      }
-      
-      // Apply sponsor skipper settings
-      if (settings.features.sponsorSkipper) {
-        features.sponsorSkipper.setEnabled(settings.features.sponsorSkipper.enabled);
-        if (settings.features.sponsorSkipper.categories) {
-          features.sponsorSkipper.updateSettings(settings.features.sponsorSkipper.categories);
-        }
-      }
-      
-      // Apply dark mode settings
-      if (settings.features.darkMode) {
-        features.darkMode.setEnabled(settings.features.darkMode.enabled);
-        features.darkMode.updateSettings({
-          autoDetect: settings.features.darkMode.autoDetect,
-          brightnessReduction: settings.features.darkMode.brightnessReduction,
-          contrastEnhancement: settings.features.darkMode.contrastEnhancement
-        });
-      }
-      
-      log.info('Native features configured from settings');
-    } catch (error) {
-      log.error('Error applying feature settings:', error);
-    }
-  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -1100,14 +1204,33 @@ app.on('window-all-closed', () => {
 app.on('will-quit', () => {
   // Unregister shortcuts
   globalShortcut.unregisterAll();
-  
-  // Save feature statistics if available
-  if (features) {
-    try {
-      const stats = features.getStatistics();
-      log.info('Feature statistics at exit:', JSON.stringify(stats, null, 2));
-    } catch (error) {
-      log.error('Error saving feature statistics:', error);
+});
+
+// Create and show Settings window
+function createSettingsWindow() {
+  if (settingsWindow) { settingsWindow.focus(); return; }
+  settingsWindow = new BrowserWindow({
+    width: 900, height: 800, resizable: false, frame: false, titleBarStyle: 'hidden', roundedCorners: true, transparent: true, backgroundColor: '#00000000',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload-settings.js')
     }
-  }
+  });
+  settingsWindow.loadFile(path.join(__dirname, 'renderer', 'settings.html'));
+  // Send current settings to settings window once it's ready
+  settingsWindow.webContents.on('did-finish-load', () => {
+    settingsWindow.webContents.send('settings-data', settings);
+  });
+  settingsWindow.on('closed', () => { settingsWindow = null; });
+}
+
+// IPC: open settings via renderer or menu
+ipcMain.on('show-settings', () => createSettingsWindow());
+
+// Handle saving all settings from settings window
+ipcMain.handle('save-all-settings', (event, newSettings) => {
+  settings = { ...settings, ...newSettings };
+  saveSettings();
+  return settings;
 });

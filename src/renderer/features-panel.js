@@ -2,8 +2,6 @@
  * Nuru Browser Features Panel
  * 
  * Provides a user interface for managing native features:
- * - Ad Blocker
- * - Sponsor Skipper
  * - Enhanced Dark Mode
  */
 
@@ -14,11 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Feature settings and state
 let featureSettings = {
-  adBlocker: { enabled: true },
-  sponsorSkipper: { 
-    enabled: true,
-    categories: {}
-  },
   darkMode: {
     enabled: true,
     autoDetect: true,
@@ -28,8 +21,6 @@ let featureSettings = {
 };
 
 let featureStats = {
-  adBlocker: { blockedRequests: 0, totalRequests: 0 },
-  sponsorSkipper: { skippedSegments: 0, totalSegments: 0 },
   darkMode: { appliedSites: 0, totalSites: 0 }
 };
 
@@ -78,75 +69,6 @@ function createFeaturesPanelHTML() {
       </div>
       
       <div class="features-panel-content">
-        <!-- Ad Blocker Section -->
-        <div class="feature-section">
-          <div class="feature-header">
-            <h3>Ad Blocker</h3>
-            <label class="switch">
-              <input type="checkbox" id="ad-blocker-toggle">
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="feature-stats">
-            <p>Blocked requests: <span id="ad-blocker-blocked">0</span></p>
-            <p>Total requests: <span id="ad-blocker-total">0</span></p>
-          </div>
-          <div class="feature-actions">
-            <button id="ad-blocker-update" class="feature-button">Update Blocklists</button>
-          </div>
-        </div>
-        
-        <!-- Sponsor Skipper Section -->
-        <div class="feature-section">
-          <div class="feature-header">
-            <h3>Sponsor Skipper</h3>
-            <label class="switch">
-              <input type="checkbox" id="sponsor-skipper-toggle">
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="feature-stats">
-            <p>Skipped segments: <span id="sponsor-skipper-skipped">0</span></p>
-            <p>Total segments detected: <span id="sponsor-skipper-total">0</span></p>
-          </div>
-          <div class="feature-categories">
-            <h4>Skip categories:</h4>
-            <div class="category-toggles">
-              <label class="category-label">
-                <input type="checkbox" data-category="sponsor" class="sponsor-category">
-                Sponsor
-              </label>
-              <label class="category-label">
-                <input type="checkbox" data-category="selfpromo" class="sponsor-category">
-                Self Promotion
-              </label>
-              <label class="category-label">
-                <input type="checkbox" data-category="interaction" class="sponsor-category">
-                Interaction Reminder
-              </label>
-              <label class="category-label">
-                <input type="checkbox" data-category="intro" class="sponsor-category">
-                Intro
-              </label>
-              <label class="category-label">
-                <input type="checkbox" data-category="outro" class="sponsor-category">
-                Outro
-              </label>
-              <label class="category-label">
-                <input type="checkbox" data-category="preview" class="sponsor-category">
-                Preview
-              </label>
-              <label class="category-label">
-                <input type="checkbox" data-category="music_offtopic" class="sponsor-category">
-                Music Offtopic
-              </label>
-            </div>
-          </div>
-          <div class="feature-actions">
-            <button id="sponsor-skipper-clear-cache" class="feature-button">Clear Cache</button>
-          </div>
-        </div>
-        
         <!-- Enhanced Dark Mode Section -->
         <div class="feature-section">
           <div class="feature-header">
@@ -157,8 +79,8 @@ function createFeaturesPanelHTML() {
             </label>
           </div>
           <div class="feature-stats">
-            <p>Sites with dark mode applied: <span id="dark-mode-applied">0</span></p>
-            <p>Sites visited: <span id="dark-mode-total">0</span></p>
+            <p>Applied sites: <span id="dark-mode-applied">0</span></p>
+            <p>Total sites: <span id="dark-mode-total">0</span></p>
           </div>
           <div class="feature-settings">
             <label class="setting-label">
@@ -217,55 +139,6 @@ function setupEventListeners() {
     closeButton.addEventListener('click', closeFeaturesPanel);
   }
   
-  // Ad Blocker controls
-  const adBlockerToggle = document.getElementById('ad-blocker-toggle');
-  if (adBlockerToggle) {
-    adBlockerToggle.addEventListener('change', async () => {
-      await window.electronAPI.setAdBlockerEnabled(adBlockerToggle.checked);
-      featureSettings.adBlocker.enabled = adBlockerToggle.checked;
-    });
-  }
-  
-  const adBlockerUpdateButton = document.getElementById('ad-blocker-update');
-  if (adBlockerUpdateButton) {
-    adBlockerUpdateButton.addEventListener('click', async () => {
-      adBlockerUpdateButton.disabled = true;
-      adBlockerUpdateButton.textContent = 'Updating...';
-      await window.electronAPI.forceUpdateAdBlocker();
-      setTimeout(() => {
-        adBlockerUpdateButton.disabled = false;
-        adBlockerUpdateButton.textContent = 'Update Blocklists';
-      }, 2000);
-    });
-  }
-  
-  // Sponsor Skipper controls
-  const sponsorSkipperToggle = document.getElementById('sponsor-skipper-toggle');
-  if (sponsorSkipperToggle) {
-    sponsorSkipperToggle.addEventListener('change', async () => {
-      await window.electronAPI.setSponsorSkipperEnabled(sponsorSkipperToggle.checked);
-      featureSettings.sponsorSkipper.enabled = sponsorSkipperToggle.checked;
-    });
-  }
-  
-  const categoryToggles = document.querySelectorAll('.sponsor-category');
-  categoryToggles.forEach(toggle => {
-    toggle.addEventListener('change', updateSponsorCategories);
-  });
-  
-  const clearCacheButton = document.getElementById('sponsor-skipper-clear-cache');
-  if (clearCacheButton) {
-    clearCacheButton.addEventListener('click', async () => {
-      clearCacheButton.disabled = true;
-      clearCacheButton.textContent = 'Clearing...';
-      await window.electronAPI.clearSponsorSkipperCache();
-      setTimeout(() => {
-        clearCacheButton.disabled = false;
-        clearCacheButton.textContent = 'Clear Cache';
-      }, 1000);
-    });
-  }
-  
   // Dark Mode controls
   const darkModeToggle = document.getElementById('dark-mode-toggle');
   if (darkModeToggle) {
@@ -304,26 +177,10 @@ function setupEventListeners() {
 function setupFeatureEventListeners() {
   // Feature status changes
   window.electronAPI.onFeatureStatusChanged((featureId, status) => {
-    if (featureId === 'adBlocker') {
-      featureSettings.adBlocker = status;
-    } else if (featureId === 'sponsorSkipper') {
-      featureSettings.sponsorSkipper = status;
-    } else if (featureId === 'darkMode') {
+    if (featureId === 'darkMode') {
       featureSettings.darkMode = status;
     }
     updateFeatureUI();
-  });
-  
-  // Ad blocker stats updates
-  window.electronAPI.onAdBlockerStats(stats => {
-    featureStats.adBlocker = stats;
-    updateFeatureStats();
-  });
-  
-  // Sponsor segments updates
-  window.electronAPI.onSponsorSegmentsUpdated(data => {
-    featureStats.sponsorSkipper = data;
-    updateFeatureStats();
   });
   
   // Dark mode settings changes
@@ -336,23 +193,6 @@ function setupFeatureEventListeners() {
     updateFeatureUI();
     updateFeatureStats();
   });
-}
-
-/**
- * Update sponsor skipper categories
- */
-async function updateSponsorCategories() {
-  const categories = {};
-  document.querySelectorAll('.sponsor-category').forEach(toggle => {
-    const category = toggle.dataset.category;
-    categories[category] = { 
-      skip: toggle.checked, 
-      notification: true 
-    };
-  });
-  
-  featureSettings.sponsorSkipper.categories = categories;
-  await window.electronAPI.updateSponsorSkipperSettings(categories);
 }
 
 /**
@@ -382,18 +222,6 @@ async function updateDarkModeSettings() {
  */
 async function loadFeatureSettings() {
   try {
-    // Load Ad Blocker settings
-    const adBlockerConfig = await window.electronAPI.getAdBlockerConfig();
-    featureSettings.adBlocker = adBlockerConfig;
-    const adBlockerStats = await window.electronAPI.getAdBlockerStats();
-    featureStats.adBlocker = adBlockerStats;
-    
-    // Load Sponsor Skipper settings
-    const sponsorSkipperConfig = await window.electronAPI.getSponsorSkipperConfig();
-    featureSettings.sponsorSkipper = sponsorSkipperConfig;
-    const sponsorSkipperStats = await window.electronAPI.getSponsorSkipperStats();
-    featureStats.sponsorSkipper = sponsorSkipperStats;
-    
     // Load Dark Mode settings
     const darkModeConfig = await window.electronAPI.getDarkModeConfig();
     featureSettings.darkMode = darkModeConfig;
@@ -408,27 +236,6 @@ async function loadFeatureSettings() {
  * Update feature UI based on current settings
  */
 function updateFeatureUI() {
-  // Update Ad Blocker UI
-  const adBlockerToggle = document.getElementById('ad-blocker-toggle');
-  if (adBlockerToggle) {
-    adBlockerToggle.checked = featureSettings.adBlocker.enabled;
-  }
-  
-  // Update Sponsor Skipper UI
-  const sponsorSkipperToggle = document.getElementById('sponsor-skipper-toggle');
-  if (sponsorSkipperToggle) {
-    sponsorSkipperToggle.checked = featureSettings.sponsorSkipper.enabled;
-  }
-  
-  // Update category toggles
-  const categories = featureSettings.sponsorSkipper.categories || {};
-  document.querySelectorAll('.sponsor-category').forEach(toggle => {
-    const category = toggle.dataset.category;
-    if (categories[category]) {
-      toggle.checked = categories[category].skip;
-    }
-  });
-  
   // Update Dark Mode UI
   const darkModeToggle = document.getElementById('dark-mode-toggle');
   if (darkModeToggle) {
@@ -462,28 +269,12 @@ function updateFeatureUI() {
  * Update feature statistics display
  */
 function updateFeatureStats() {
-  // Update Ad Blocker stats
-  const blockedElement = document.getElementById('ad-blocker-blocked');
-  const totalRequestsElement = document.getElementById('ad-blocker-total');
-  if (blockedElement && totalRequestsElement && featureStats.adBlocker) {
-    blockedElement.textContent = featureStats.adBlocker.blockedRequests || 0;
-    totalRequestsElement.textContent = featureStats.adBlocker.totalRequests || 0;
-  }
-  
-  // Update Sponsor Skipper stats
-  const skippedElement = document.getElementById('sponsor-skipper-skipped');
-  const totalSegmentsElement = document.getElementById('sponsor-skipper-total');
-  if (skippedElement && totalSegmentsElement && featureStats.sponsorSkipper) {
-    skippedElement.textContent = featureStats.sponsorSkipper.skippedSegments || 0;
-    totalSegmentsElement.textContent = featureStats.sponsorSkipper.totalSegments || 0;
-  }
-  
-  // Update Dark Mode stats
-  const appliedElement = document.getElementById('dark-mode-applied');
-  const totalSitesElement = document.getElementById('dark-mode-total');
-  if (appliedElement && totalSitesElement && featureStats.darkMode) {
-    appliedElement.textContent = featureStats.darkMode.appliedSites || 0;
-    totalSitesElement.textContent = featureStats.darkMode.totalSites || 0;
+  // Dark Mode stats only
+  const applied = document.getElementById('dark-mode-applied');
+  const total = document.getElementById('dark-mode-total');
+  if (applied && total) {
+    applied.textContent = featureStats.darkMode.appliedSites;
+    total.textContent = featureStats.darkMode.totalSites;
   }
 }
 

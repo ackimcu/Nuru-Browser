@@ -4,16 +4,27 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 10px; /* Much smaller height */
+  height: 24px; /* Restored height for clock display */
   -webkit-app-region: drag;
   display: flex;
   align-items: center;
   z-index: 9000;
-  opacity: 0.01; /* Nearly invisible */
+  opacity: 1; /* Visible titlebar */
 }
 
 .titlebar-padding {
   height: 10px;
   width: 100%;
   flex-shrink: 0;
+}
+
+/* Titlebar clock styling */
+#titlebar-clock {
+  position: absolute;
+  right: var(--spacing-sm);
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  color: var(--text-color);
 }

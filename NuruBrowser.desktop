@@ -2,8 +2,8 @@
 [Desktop Entry]
 Name=Nuru Browser
 Comment=A modern, optimized Electron-based web browser
-Exec=bash -c "cd '/home/ag/Documents/Custom Apps/Nuru Broswer/Nuru Broswer' && npm start"
-Icon=/home/ag/Documents/Custom Apps/Nuru Broswer/Nuru Broswer/logo/Nuru.png
+Exec=bash -c "cd '/home/ag/Documents/Custom Apps/Nuru Broswer/Nuru Broswer 1.0' && npm start"
+Icon=/home/ag/Documents/Custom Apps/Nuru Broswer/Nuru Broswer 1.0/logo/Nuru.png
 Terminal=false
 Type=Application
 Categories=Network;WebBrowser;
