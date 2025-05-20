@@ -744,6 +744,13 @@ ipcMain.handle('save-all-settings', (event, newSettings) => {
   }
 });
 
+// Handle closing settings window
+ipcMain.on('close-settings', () => {
+  if (settingsWindow) {
+    settingsWindow.close();
+  }
+});
+
 // DNS prediction and search engine handling
 ipcMain.handle('get-dns-predictions', async (event, url) => {
   try {

@@ -33,4 +33,8 @@ All notable changes to this project will be documented in this file.
 - fix: settings modal close button now closes window
 - fix: all settings UI elements maintain their state on modal reopen
 
+## [1.0.2] - 2025-05-20
+
+- fix: settings modal close button now closes window properly
+
 <!-- Add future changes below --> 
