@@ -708,16 +708,21 @@ ipcMain.handle('save-all-settings', (event, newSettings) => {
   try {
     log.info('Saving all settings');
     
+    // Update restore last page setting if provided
+    if (newSettings.restoreLastPage !== undefined) {
+      settings.restoreLastPage = newSettings.restoreLastPage;
+    }
+
     // Update search engine setting if provided
     if (newSettings.search_engine) {
       settings.search_engine = newSettings.search_engine;
     }
-    
+
     // Update homepage setting if provided
     if (newSettings.homepage !== undefined) {
       settings.homepage = newSettings.homepage;
     }
-    
+
     // Update settings object with new values
     if (newSettings.browser) {
       // Update browser settings

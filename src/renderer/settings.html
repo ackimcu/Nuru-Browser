@@ -503,6 +503,8 @@
           
           if (result.success) {
             showNotification('Settings saved successfully!');
+            // Close settings window after save
+            window.settingsAPI.closeSettings();
           } else {
             showNotification(`Error: ${result.error || 'Could not save settings'}`, true);
           }
