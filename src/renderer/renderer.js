@@ -391,8 +391,14 @@ modernInput.addEventListener('blur', () => {
 
 function triggerSearch(q) {
   if (!q) return;
-  // Replace this with your real navigation/search logic
-  window.navigateToUrl ? window.navigateToUrl(`https://www.google.com/search?q=${encodeURIComponent(q)}`) : window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}`);
+  // Navigate using configured search engine
+  const engine = settings.search_engine || { url: 'https://www.google.com/search?q=' };
+  const searchUrl = `${engine.url}${encodeURIComponent(q)}`;
+  if (window.navigateToUrl) {
+    window.navigateToUrl(searchUrl);
+  } else {
+    window.open(searchUrl);
+  }
   // Save search query to history
   if (!history.includes(q)) history.push(q);
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
@@ -409,9 +415,11 @@ searchBar.querySelector('.mic-icon').addEventListener('mouseup', () => {
 
 // Settings
 let settings = {
+  homepage: 'https://www.google.com/',
   frameless: true,
-  zoom_factor: 1.5,
+  zoom_factor: 1.0,
   restoreLastPage: true,
+  search_engine: { name: 'google', url: 'https://www.google.com/search?q=' },
 };
 
 // Tab management

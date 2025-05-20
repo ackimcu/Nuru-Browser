@@ -35,6 +35,8 @@ const DEFAULT_SETTINGS = {
     url: 'https://www.google.com/search?q=',
     icon: 'fab fa-google'
   },
+  // Default homepage for the Home button
+  homepage: 'https://www.google.com/',
   development_mode: false, 
   features: {
     adblock: true
@@ -705,6 +707,16 @@ ipcMain.handle('update-zoom', (event, zoomFactor) => {
 ipcMain.handle('save-all-settings', (event, newSettings) => {
   try {
     log.info('Saving all settings');
+    
+    // Update search engine setting if provided
+    if (newSettings.search_engine) {
+      settings.search_engine = newSettings.search_engine;
+    }
+    
+    // Update homepage setting if provided
+    if (newSettings.homepage !== undefined) {
+      settings.homepage = newSettings.homepage;
+    }
     
     // Update settings object with new values
     if (newSettings.browser) {

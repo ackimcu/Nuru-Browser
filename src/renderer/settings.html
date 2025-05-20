@@ -313,6 +313,34 @@
             <span class="toggle-text-on">On</span>
           </div>
         </div>
+        <!-- Default Search Provider -->
+        <div class="setting-row">
+          <span class="setting-label">Search Provider</span>
+          <div class="select-container">
+            <select id="search-engine-select">
+              <option value="google">Google</option>
+              <option value="bing">Bing</option>
+              <option value="duckduckgo">DuckDuckGo</option>
+              <option value="yahoo">Yahoo</option>
+              <option value="custom">Custom</option>
+            </select>
+            <input type="text" id="search-engine-custom-input" placeholder="https://example.com/search?q=" style="display:none; margin-left:10px; flex:1;" />
+          </div>
+        </div>
+        <!-- Homepage Setting -->
+        <div class="setting-row">
+          <span class="setting-label">Homepage</span>
+          <div class="select-container">
+            <select id="homepage-select">
+              <option value="https://www.google.com/">Google</option>
+              <option value="https://www.bing.com/">Bing</option>
+              <option value="https://duckduckgo.com/">DuckDuckGo</option>
+              <option value="https://search.yahoo.com/">Yahoo</option>
+              <option value="custom">Custom</option>
+            </select>
+            <input type="text" id="homepage-custom-input" placeholder="https://example.com" style="display:none; margin-left:10px; flex:1;" />
+          </div>
+        </div>
       </div>
       
       <div class="settings-section">
@@ -384,6 +412,44 @@
           restoreToggle.checked = data.restoreLastPage;
           currentSettings.restoreLastPage = data.restoreLastPage;
         }
+        // Initialize search provider selection
+        if (data.browserSettings.search_engine) {
+          const seSelect = document.getElementById('search-engine-select');
+          const seCustomInput = document.getElementById('search-engine-custom-input');
+          const engine = data.browserSettings.search_engine;
+          const preset = {
+            google: 'https://www.google.com/search?q=',
+            bing: 'https://www.bing.com/search?q=',
+            duckduckgo: 'https://duckduckgo.com/?q=',
+            yahoo: 'https://search.yahoo.com/search?p='
+          };
+          const match = Object.entries(preset).find(([, url]) => url === engine.url);
+          if (match) {
+            seSelect.value = match[0];
+            seCustomInput.style.display = 'none';
+          } else {
+            seSelect.value = 'custom';
+            seCustomInput.style.display = 'block';
+            seCustomInput.value = engine.url;
+          }
+          currentSettings.search_engine = engine;
+        }
+        // Homepage setting
+        if (data.browserSettings.homepage !== undefined) {
+          const homepageSelect = document.getElementById('homepage-select');
+          const homepageCustomInput = document.getElementById('homepage-custom-input');
+          const hp = data.browserSettings.homepage;
+          const standardOptions = ['https://www.google.com/','https://www.bing.com/','https://duckduckgo.com/','https://search.yahoo.com/'];
+          if (standardOptions.includes(hp)) {
+            homepageSelect.value = hp;
+            homepageCustomInput.style.display = 'none';
+          } else {
+            homepageSelect.value = 'custom';
+            homepageCustomInput.style.display = 'block';
+            homepageCustomInput.value = hp;
+          }
+          currentSettings.homepage = hp;
+        }
       }
       
       // Show notification
@@ -413,8 +479,27 @@
           };
           // Prepare restoreLastPage setting
           const restore = document.getElementById('restore-last-page-toggle').checked;
+          // Prepare search provider setting
+          const seSelect = document.getElementById('search-engine-select');
+          const seCustomInput = document.getElementById('search-engine-custom-input');
+          let engineValue;
+          const preset = {
+            google: 'https://www.google.com/search?q=',
+            bing: 'https://www.bing.com/search?q=',
+            duckduckgo: 'https://duckduckgo.com/?q=',
+            yahoo: 'https://search.yahoo.com/search?p='
+          };
+          if (seSelect.value === 'custom') {
+            engineValue = { name: 'custom', url: seCustomInput.value.trim(), icon: '' };
+          } else {
+            engineValue = { name: seSelect.value, url: preset[seSelect.value], icon: `fab fa-${seSelect.value}` };
+          }
+          // Prepare homepage setting
+          const homepageSelect = document.getElementById('homepage-select');
+          const homepageCustomInput = document.getElementById('homepage-custom-input');
+          const homepageValue = homepageSelect.value === 'custom' ? homepageCustomInput.value.trim() : homepageSelect.value;
           
-          const result = await window.settingsAPI.saveAllSettings({ browser: browserSettings, restoreLastPage: restore });
+          const result = await window.settingsAPI.saveAllSettings({ browser: browserSettings, restoreLastPage: restore, search_engine: engineValue, homepage: homepageValue });
           
           if (result.success) {
             showNotification('Settings saved successfully!');
@@ -489,6 +574,23 @@
             await window.settingsAPI.restartApp();
           }
         );
+      });
+      // Homepage select change shows/hides custom input
+      const homepageSelect = document.getElementById('homepage-select');
+      const homepageCustomInput = document.getElementById('homepage-custom-input');
+      if (homepageSelect) {
+        homepageSelect.addEventListener('change', () => {
+          if (homepageSelect.value === 'custom') {
+            homepageCustomInput.style.display = 'block';
+          } else {
+            homepageCustomInput.style.display = 'none';
+          }
+        });
+      }
+      // Toggle custom search URL input
+      document.getElementById('search-engine-select').addEventListener('change', (e) => {
+        const input = document.getElementById('search-engine-custom-input');
+        input.style.display = e.target.value === 'custom' ? 'block' : 'none';
       });
     </script>
   </div>
