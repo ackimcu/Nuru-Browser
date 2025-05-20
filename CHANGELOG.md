@@ -28,4 +28,9 @@ All notable changes to this project will be documented in this file.
   - Media Progress Tracking (audio/video playback progress injection)
   - Social Login Protection (disable social login elements and pop-ups)
 
+## [1.0.1] - 2025-05-20
+
+- fix: settings modal close button now closes window
+- fix: all settings UI elements maintain their state on modal reopen
+
 <!-- Add future changes below --> 

@@ -380,222 +380,83 @@
     </div>
     
     <script>
-      // Get references to DOM elements
-      const closeButton = document.getElementById('close-button');
-      const saveButton = document.getElementById('save-button');
-      const notification = document.getElementById('notification');
-      
-      // Browser settings
-      const zoomSlider = document.getElementById('zoom-slider');
-      const zoomValue = document.getElementById('zoom-value');
-      
-      // Store settings
-      let currentSettings = {
-        browser: {
-          zoom_factor: 1.0
-        }
-      };
-      
-      // Initialize UI
-      function initializeUI(data) {
-        if (!data) return;
-        
-        // Browser settings
-        if (data.browserSettings) {
-          currentSettings.browser = data.browserSettings;
-          zoomSlider.value = data.browserSettings.zoom_factor;
-          zoomValue.textContent = `${data.browserSettings.zoom_factor}x`;
-        }
-        // Restore last page setting
-        if (data.browserSettings.restoreLastPage !== undefined) {
-          const restoreToggle = document.getElementById('restore-last-page-toggle');
-          restoreToggle.checked = data.browserSettings.restoreLastPage;
-          currentSettings.restoreLastPage = data.browserSettings.restoreLastPage;
-        }
-        // Initialize search provider selection
-        if (data.browserSettings.search_engine) {
-          const seSelect = document.getElementById('search-engine-select');
-          const seCustomInput = document.getElementById('search-engine-custom-input');
-          const engine = data.browserSettings.search_engine;
-          const preset = {
-            google: 'https://www.google.com/search?q=',
-            bing: 'https://www.bing.com/search?q=',
-            duckduckgo: 'https://duckduckgo.com/?q=',
-            yahoo: 'https://search.yahoo.com/search?p='
-          };
-          const match = Object.entries(preset).find(([, url]) => url === engine.url);
-          if (match) {
-            seSelect.value = match[0];
-            seCustomInput.style.display = 'none';
-          } else {
-            seSelect.value = 'custom';
-            seCustomInput.style.display = 'block';
-            seCustomInput.value = engine.url;
-          }
-          currentSettings.search_engine = engine;
-        }
-        // Homepage setting
-        if (data.browserSettings.homepage !== undefined) {
-          const homepageSelect = document.getElementById('homepage-select');
-          const homepageCustomInput = document.getElementById('homepage-custom-input');
-          const hp = data.browserSettings.homepage;
-          const standardOptions = ['https://www.google.com/','https://www.bing.com/','https://duckduckgo.com/','https://search.yahoo.com/'];
-          if (standardOptions.includes(hp)) {
-            homepageSelect.value = hp;
-            homepageCustomInput.style.display = 'none';
-          } else {
-            homepageSelect.value = 'custom';
-            homepageCustomInput.style.display = 'block';
-            homepageCustomInput.value = hp;
-          }
-          currentSettings.homepage = hp;
-        }
-      }
-      
-      // Show notification
-      function showNotification(message, isError = false) {
-        notification.textContent = message;
-        notification.className = 'notification' + (isError ? ' error' : '');
-        notification.classList.add('show');
-        
-        setTimeout(() => {
-          notification.classList.remove('show');
-        }, 3000);
-      }
-      
-      // Event Listeners
-      
-      // Close button
-      closeButton.addEventListener('click', () => {
-        window.close();
-      });
-      
-      // Save button
-      saveButton.addEventListener('click', async () => {
-        try {
-          // Prepare browser settings
-          const browserSettings = {
-            zoom_factor: parseFloat(zoomSlider.value)
-          };
-          // Prepare restoreLastPage setting
-          const restore = document.getElementById('restore-last-page-toggle').checked;
-          // Prepare search provider setting
-          const seSelect = document.getElementById('search-engine-select');
-          const seCustomInput = document.getElementById('search-engine-custom-input');
-          let engineValue;
-          const preset = {
-            google: 'https://www.google.com/search?q=',
-            bing: 'https://www.bing.com/search?q=',
-            duckduckgo: 'https://duckduckgo.com/?q=',
-            yahoo: 'https://search.yahoo.com/search?p='
-          };
-          if (seSelect.value === 'custom') {
-            engineValue = { name: 'custom', url: seCustomInput.value.trim(), icon: '' };
-          } else {
-            engineValue = { name: seSelect.value, url: preset[seSelect.value], icon: `fab fa-${seSelect.value}` };
-          }
-          // Prepare homepage setting
-          const homepageSelect = document.getElementById('homepage-select');
-          const homepageCustomInput = document.getElementById('homepage-custom-input');
-          const homepageValue = homepageSelect.value === 'custom' ? homepageCustomInput.value.trim() : homepageSelect.value;
-          
-          const result = await window.settingsAPI.saveAllSettings({ browser: browserSettings, restoreLastPage: restore, search_engine: engineValue, homepage: homepageValue });
-          
-          if (result.success) {
-            showNotification('Settings saved successfully!');
-            // Close settings window after save
-            window.settingsAPI.closeSettings();
-          } else {
-            showNotification(`Error: ${result.error || 'Could not save settings'}`, true);
-          }
-        } catch (error) {
-          console.error('Error saving settings:', error);
-          showNotification('Error saving settings. Please try again.', true);
-        }
-      });
-      
-      // Range sliders
-      zoomSlider.addEventListener('input', () => {
-        zoomValue.textContent = `${zoomSlider.value}x`;
-      });
-      
-      // Receive settings data from main process
-      window.settingsAPI.onSettingsDataReceived((data) => {
-        initializeUI(data);
-      });
-      
-      // Settings UI will be initialized via settings-data IPC event
-      
-      const modalOverlay = document.getElementById('modal-overlay');
-      const modalTitle = document.getElementById('modal-title');
-      const modalMessage = document.getElementById('modal-message');
-      const btnCancel = document.getElementById('modal-cancel');
-      const btnConfirm = document.getElementById('modal-confirm');
-      let modalAction = null;
-      function showModal(title, message, confirmText, action) {
-        modalTitle.innerText = title;
-        modalMessage.innerText = message;
-        btnConfirm.innerText = confirmText;
-        modalAction = action;
-        modalOverlay.style.display = 'flex';
-      }
-      function hideModal() { modalOverlay.style.display = 'none'; modalAction = null; }
-      btnCancel.addEventListener('click', hideModal);
-      btnConfirm.addEventListener('click', async () => {
-        const actionToRun = modalAction;
-        hideModal();
-        if (actionToRun) await actionToRun();
-      });
-      // Clear cache flow
-      document.getElementById('clear-cache-btn').addEventListener('click', () => {
-        showModal(
-          'Clear Cache',
-          'Delete all cached data and restart the app? <span style="color: #f44336;">This cannot be undone.</span>',
-          'Clear Cache',
-          async () => {
-            const res = await window.settingsAPI.clearCache();
-            if (!res.success) {
-              alert('Error clearing cache: ' + res.error);
-              return;
-            }
-            // restart
-            await window.settingsAPI.restartApp();
-          }
-        );
-      });
-      // Delete all user data flow
-      document.getElementById('delete-user-data-btn').addEventListener('click', () => {
-        showModal(
-          'Delete All Data',
-          'Delete all user data (including settings) and restart the app? <span style="color: #f44336;">This cannot be undone.</span>',
-          'Delete Data',
-          async () => {
-            const res = await window.settingsAPI.deleteAllUserData();
-            if (!res.success) {
-              alert('Error deleting data: ' + res.error);
-              return;
-            }
-            await window.settingsAPI.restartApp();
-          }
-        );
-      });
-      // Homepage select change shows/hides custom input
-      const homepageSelect = document.getElementById('homepage-select');
-      const homepageCustomInput = document.getElementById('homepage-custom-input');
-      if (homepageSelect) {
-        homepageSelect.addEventListener('change', () => {
-          if (homepageSelect.value === 'custom') {
-            homepageCustomInput.style.display = 'block';
-          } else {
-            homepageCustomInput.style.display = 'none';
-          }
-        });
-      }
-      // Toggle custom search URL input
-      document.getElementById('search-engine-select').addEventListener('change', (e) => {
-        const input = document.getElementById('search-engine-custom-input');
-        input.style.display = e.target.value === 'custom' ? 'block' : 'none';
-      });
+document.addEventListener('DOMContentLoaded', async () => {
+  const presets = {
+    google: 'https://www.google.com/search?q=',
+    bing: 'https://www.bing.com/search?q=',
+    duckduckgo: 'https://duckduckgo.com/?q=',
+    yahoo: 'https://search.yahoo.com/search?p='
+  };
+
+  // Fetch all settings
+  const settings = await window.settingsAPI.getSettings();
+
+  // Get controls
+  const zoomSlider = document.getElementById('zoom-slider');
+  const zoomValue = document.getElementById('zoom-value');
+  const restoreToggle = document.getElementById('restore-last-page-toggle');
+  const seSelect = document.getElementById('search-engine-select');
+  const seCustom = document.getElementById('search-engine-custom-input');
+  const hpSelect = document.getElementById('homepage-select');
+  const hpCustom = document.getElementById('homepage-custom-input');
+
+  // Initialize UI
+  zoomSlider.value = settings.zoom_factor;
+  zoomValue.textContent = `${settings.zoom_factor}x`;
+  restoreToggle.checked = settings.restoreLastPage;
+
+  // Search provider
+  const seEntry = settings.search_engine || {};
+  const seMatch = Object.entries(presets).find(([, url]) => url === seEntry.url);
+  if (seMatch) {
+    seSelect.value = seMatch[0];
+    seCustom.style.display = 'none';
+  } else {
+    seSelect.value = 'custom';
+    seCustom.style.display = 'block';
+    seCustom.value = seEntry.url || '';
+  }
+
+  // Homepage
+  const hpPresets = ['https://www.google.com/','https://www.bing.com/','https://duckduckgo.com/','https://search.yahoo.com/'];
+  if (hpPresets.includes(settings.homepage)) {
+    hpSelect.value = settings.homepage;
+    hpCustom.style.display = 'none';
+  } else {
+    hpSelect.value = 'custom';
+    hpCustom.style.display = 'block';
+    hpCustom.value = settings.homepage || '';
+  }
+
+  // Event handlers
+  zoomSlider.addEventListener('input', () => zoomValue.textContent = `${zoomSlider.value}x`);
+  seSelect.addEventListener('change', () => {
+    seCustom.style.display = seSelect.value === 'custom' ? 'block' : 'none';
+  });
+  hpSelect.addEventListener('change', () => {
+    hpCustom.style.display = hpSelect.value === 'custom' ? 'block' : 'none';
+  });
+
+  // Save button
+  const saveBtn = document.getElementById('save-button');
+  saveBtn.addEventListener('click', async () => {
+    const payload = {
+      browser: { zoom_factor: parseFloat(zoomSlider.value) },
+      restoreLastPage: restoreToggle.checked,
+      search_engine: seSelect.value === 'custom'
+        ? { name: 'custom', url: seCustom.value.trim(), icon: '' }
+        : { name: seSelect.value, url: presets[seSelect.value], icon: `fab fa-${seSelect.value}` },
+      homepage: hpSelect.value === 'custom' ? hpCustom.value.trim() : hpSelect.value
+    };
+    const result = await window.settingsAPI.saveAllSettings(payload);
+    if (result.success) window.settingsAPI.closeSettings();
+    else console.error('Failed to save settings:', result.error);
+  });
+
+  // Close button handler
+  const closeBtn = document.getElementById('close-button');
+  closeBtn.addEventListener('click', () => window.settingsAPI.closeSettings());
+});
     </script>
   </div>
 </body>
