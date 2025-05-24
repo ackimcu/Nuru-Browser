@@ -37,4 +37,14 @@ All notable changes to this project will be documented in this file.
 
 - fix: settings modal close button now closes window properly
 
+## [1.0.3] - 2025-05-24
+
+- feat: tabs viewport open by default; added "Viewports hidden by default" toggle under Layout settings
+- fix: conditional auto-hide behavior for tabs and history viewports based on new setting
+- fix: restored history viewport hide-on-mouseleave and click-outside logic for history panel
+- fix: removed `.titlebar-padding` and adjusted `#webview-container` border position and thickness
+- fix: reduced border thickness to 0.5px and corner radius to `var(--radius-md)` for main viewport container
+- fix: updated main viewport CSS to shrink (`width: calc(100% - 280px)`) when tabs pane is open to prevent overflow
+- fix: synchronized `tabs-viewport` and `history-viewport` top offsets and heights using `--spacing-sm`
+
 <!-- Add future changes below --> 
