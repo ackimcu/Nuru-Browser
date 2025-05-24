@@ -58,6 +58,19 @@
     .btn-select-close { background: var(--bg-lighter); color: var(--text-light); }
     .btn-select-confirm { background: var(--accent-color); color: #fff; }
   </style>
+  <!-- Pinned Apps Styles -->
+  <style>
+    .pinned-apps-section { padding: 10px; }
+    .pinned-apps-header { font-weight:600; font-size:0.9rem; color:var(--text-color); margin-bottom:5px; }
+    #pinned-apps-container { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+    .pinned-app { width: 24px; height: 24px; position: relative; cursor: pointer; }
+    .pinned-app img { width:100%; height:100%; border-radius:4px; }
+    .pinned-app .unpin-icon { position:absolute; top:0; right:0; background:rgba(0,0,0,0.5); border-radius:50%; padding:2px; display:none; color:#fff; font-size:0.75rem; }
+    .pinned-app:hover .unpin-icon { display:block; }
+    .tab-item { position:relative; }
+    .tab-item .tab-pin { position:absolute; top:4px; right:4px; cursor:pointer; opacity:0.7; color:var(--text-color); font-size:0.8rem; }
+    .tab-item:hover .tab-pin { opacity:1; }
+  </style>
 </head>
 <body>
   <div class="titlebar"></div>
@@ -100,6 +113,12 @@
           <i class="fas fa-book-open"></i>
         </button>
       </div>
+    </div>
+    
+    <!-- Pinned Apps Section -->
+    <div class="pinned-apps-section">
+      <div class="pinned-apps-header">Pinned Apps</div>
+      <div id="pinned-apps-container"></div>
     </div>
     
     <!-- Tabs List -->
