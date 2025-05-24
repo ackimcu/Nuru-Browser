@@ -32,6 +32,15 @@ const noopElem = { classList: { add: () => {}, remove: () => {}, contains: () =>
 
 const activeWebview = document.getElementById('webview-0');
 const tabsList = document.getElementById('tabs-list');
+// Set the tabs list width to 95% and center it
+tabsList.style.width = '95%';
+tabsList.style.margin = '0 auto';
+// Also style the tabs list header to match
+const tabsListHeader = document.querySelector('.tabs-list-header');
+if (tabsListHeader) {
+  tabsListHeader.style.width = '95%';
+  tabsListHeader.style.margin = '0 auto';
+}
 const tabsViewport = document.querySelector('.tabs-viewport');
 const tabsTriggerArea = document.querySelector('.tabs-trigger-area');
 const appContainer = document.getElementById('app');
@@ -138,6 +147,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   initResources();
   renderResources(mediaSelect.value);
   initializeTabs();
+  // Show tabs viewport by default, unless hidden-by-default is enabled
+  if (!settings.viewportsHiddenByDefault) {
+    showTabsViewport();
+  }
   // Initialize Reading Mode button
   readingBtn = document.getElementById('reading-mode-btn');
   if (readingBtn) {
@@ -404,15 +417,6 @@ function triggerSearch(q) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 }
 
-// Fancy icon highlight
-searchBar.querySelector('.mic-icon').addEventListener('mousedown', () => {
-  searchBar.querySelector('.mic-icon').classList.add('active');
-  // Optionally: trigger voice search
-});
-searchBar.querySelector('.mic-icon').addEventListener('mouseup', () => {
-  searchBar.querySelector('.mic-icon').classList.remove('active');
-});
-
 // Settings
 let settings = {
   homepage: 'https://www.google.com/',
@@ -491,6 +495,54 @@ function applySettings() {
     } catch (error) {
       console.log('Zoom will be applied when webview is ready');
     }
+  }
+
+  // Apply theme
+  const root = document.documentElement;
+  switch (settings.theme) {
+    case 'light':
+      root.style.setProperty('--bg-color', '#ffffff');
+      root.style.setProperty('--text-color', '#333333');
+      root.style.setProperty('--border-color', '#e0e0e0');
+      root.style.setProperty('--accent-color', '#5661F4');
+      root.style.setProperty('--glass-bg', 'rgba(255,255,255,0.85)');
+      root.style.setProperty('--glass-border', 'rgba(0,0,0,0.08)');
+      break;
+    case 'dark':
+      root.style.setProperty('--bg-color', '#1f1f1f');
+      root.style.setProperty('--text-color', '#f2f2f2');
+      root.style.setProperty('--border-color', '#3a3a3a');
+      root.style.setProperty('--accent-color', '#5661F4');
+      root.style.setProperty('--glass-bg', 'rgba(31,31,31,0.85)');
+      root.style.setProperty('--glass-border', 'rgba(255,255,255,0.08)');
+      break;
+    case 'blue':
+      root.style.setProperty('--bg-color', '#e0f7fa');
+      root.style.setProperty('--text-color', '#012f41');
+      root.style.setProperty('--border-color', '#4dd0e1');
+      root.style.setProperty('--accent-color', '#00bcd4');
+      root.style.setProperty('--glass-bg', 'rgba(224,247,250,0.85)');
+      root.style.setProperty('--glass-border', 'rgba(0,0,0,0.08)');
+      break;
+    case 'green':
+      root.style.setProperty('--bg-color', '#e8f5e9');
+      root.style.setProperty('--text-color', '#1b5e20');
+      root.style.setProperty('--border-color', '#a5d6a7');
+      root.style.setProperty('--accent-color', '#4caf50');
+      root.style.setProperty('--glass-bg', 'rgba(232,245,233,0.85)');
+      root.style.setProperty('--glass-border', 'rgba(0,0,0,0.08)');
+      break;
+    case 'purple':
+      root.style.setProperty('--bg-color', '#f3e5f5');
+      root.style.setProperty('--text-color', '#4a148c');
+      root.style.setProperty('--border-color', '#e1bee7');
+      root.style.setProperty('--accent-color', '#9c27b0');
+      root.style.setProperty('--glass-bg', 'rgba(243,229,245,0.85)');
+      root.style.setProperty('--glass-border', 'rgba(0,0,0,0.08)');
+      break;
+    default:
+      // No theme override
+      break;
   }
 }
 
@@ -838,7 +890,8 @@ function updateTabsUI() {
       // Don't switch if clicking the close button
       if (!closeElement.contains(event.target)) {
         switchToTab(tab.id);
-        hideTabsViewport(); // Auto-hide tabs after selection
+        // Auto-hide tabs after selection only if hidden-by-default is enabled
+        if (settings.viewportsHiddenByDefault) hideTabsViewport();
       }
     });
     
@@ -860,6 +913,10 @@ function updateTabsUI() {
     tabsList.appendChild(tabItem);
   });
   
+  // Remove any existing 'new tab' button before creating a new one
+  const existingNewTab = document.querySelector('.tabs-viewport .new-tab');
+  if (existingNewTab) existingNewTab.remove();
+
   // Add a 'new tab' button
   const newTabButton = document.createElement('div');
   newTabButton.className = 'tab-item new-tab';
@@ -874,13 +931,19 @@ function updateTabsUI() {
   
   newTabButton.appendChild(newTabIcon);
   newTabButton.appendChild(newTabText);
+  // Add inline style to lessen width and center the button
+  newTabButton.style.width = '95%';
+  // Center horizontally and add bottom margin to avoid overlapping footer separator
+  newTabButton.style.margin = '0 auto 5px';
   
   newTabButton.addEventListener('click', () => {
     createTab();
     // Don't auto-hide tabs when creating a new tab
   });
   
-  tabsList.appendChild(newTabButton);
+  // Insert the new tab button just above the version footer
+  const footer = document.querySelector('.tabs-viewport .version-footer');
+  footer.parentNode.insertBefore(newTabButton, footer);
   
   // Update tab count indicator if needed
   updateTabCounter();
@@ -1240,7 +1303,7 @@ tabsTriggerArea.addEventListener('mouseleave', () => {
 
 tabsViewport.addEventListener('mouseleave', (e) => {
   // Check if we're not moving to the trigger area
-  if (e.relatedTarget !== tabsTriggerArea) {
+  if (settings.viewportsHiddenByDefault && e.relatedTarget !== tabsTriggerArea) {
     tabsCloseTimer = setTimeout(() => {
       hideTabsViewport();
     }, 500);
@@ -1254,8 +1317,9 @@ tabsViewport.addEventListener('mouseenter', () => {
 
 // Click outside to close viewports immediately
 document.addEventListener('click', (e) => {
-  if (tabsViewport.classList.contains('active') && 
-      !tabsViewport.contains(e.target) && 
+  if (settings.viewportsHiddenByDefault &&
+      tabsViewport.classList.contains('active') &&
+      !tabsViewport.contains(e.target) &&
       !tabsTriggerArea.contains(e.target) &&
       e.target.id !== 'tabs-button') {
     hideTabsViewport();
@@ -1272,10 +1336,10 @@ window.electronAPI.onShowError((errorData) => {
   showError(errorData.title, errorData.message);
 });
 
-window.electronAPI.onSettingsUpdated((setting) => {
-  if (setting === 'frameless') {
-    showError('Restart Required', 'Please restart the application for the frameless mode change to take effect.');
-  }
+window.electronAPI.onSettingsUpdated((newSettings) => {
+  // Update stored settings and reapply UI changes (e.g., theme)
+  settings = newSettings;
+  applySettings();
 });
 
 window.electronAPI.onCheckWebGL(() => {
@@ -1492,6 +1556,8 @@ historyTriggerArea.addEventListener('mouseenter', () => {
   historyHoverTimer = setTimeout(() => {
     historyViewport.classList.add('active');
     appContainer.classList.add('history-open');
+    // Hide tabs viewport when history opens
+    hideTabsViewport();
   }, 300);
 });
 historyTriggerArea.addEventListener('mouseleave', () => {
@@ -1503,6 +1569,8 @@ historyViewport.addEventListener('mouseleave', (e) => {
     historyCloseTimer = setTimeout(() => {
       historyViewport.classList.remove('active');
       appContainer.classList.remove('history-open');
+      // Re-show tabs viewport unless hidden-by-default is enabled
+      if (!settings.viewportsHiddenByDefault) showTabsViewport();
     }, 500);
   }
 });
@@ -1519,6 +1587,8 @@ document.addEventListener('click', (e) => {
       !historyTriggerArea.contains(e.target)) {
     historyViewport.classList.remove('active');
     appContainer.classList.remove('history-open');
+    // Re-show tabs viewport unless hidden-by-default is enabled
+    if (!settings.viewportsHiddenByDefault) showTabsViewport();
   }
 });
 

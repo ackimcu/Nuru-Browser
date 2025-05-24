@@ -47,4 +47,14 @@ All notable changes to this project will be documented in this file.
 - fix: updated main viewport CSS to shrink (`width: calc(100% - 280px)`) when tabs pane is open to prevent overflow
 - fix: synchronized `tabs-viewport` and `history-viewport` top offsets and heights using `--spacing-sm`
 
+## [1.0.4] - 2025-05-24
+
+- feat: relocated reload button to footer
+- chore: repositioned clock to the right in header
+- style: nav buttons fully visible and shifted right
+- style: search bar adheres to theme and removed text shadows
+- chore: removed microphone icon and related event handlers
+- fix: suppressed errors arising from missing mic icon listeners
+- docs: updated changelog for these changes
+
 <!-- Add future changes below --> 

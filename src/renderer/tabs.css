@@ -1,18 +1,19 @@
 /* Arc-inspired Tab viewport styling */
 .tabs-viewport {
   position: fixed;
-  top: 20px;
+  top: var(--spacing-sm);
   left: 0;
   /* shorten bottom to match main viewport height: equal top and bottom offsets of 16px */
-  height: calc(100vh - 32px);
-  width: 270px; /* more compact for static tabs */
-  background-color: rgba(25, 25, 25, 0.85);
+  height: calc(100vh - (var(--spacing-sm) * 2));
+  width: 215px;
+  background-color: var(--glass-bg);
   z-index: 9900;
   box-shadow: 5px 0 20px rgba(0, 0, 0, 0.3);
   transform: translateX(-100%);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   overflow-y: hidden;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-x: hidden;
+  border-right: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
   backdrop-filter: blur(30px);
@@ -44,17 +45,16 @@
 }
 
 .tabs-header {
-  padding: 4px 22px;
+  padding: 4px 16px 4px 4px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background-color: rgba(25, 25, 25, 0.85);
+  background-color: var(--glass-bg);
   border-top-right-radius: 16px;
   position: static;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  margin-top: 60px; /* Slim header to bring title higher */
+  margin-top: 0; /* header aligned to top of viewport */
 }
 
 #nav-buttons {
@@ -64,6 +64,14 @@
 .tabs-header #nav-buttons {
   background: transparent;
   padding: 0;
+  position: relative;
+  display: flex;
+  gap: 4px;
+  bottom: auto;
+  left: auto;
+  box-shadow: none;
+  margin-left: 8px;
+  opacity: 1;
 }
 
 .tabs-header .nav-button {
@@ -76,16 +84,17 @@
   flex-direction: column;
   align-items: flex-end;
   justify-content: center;
-  margin-left: 18px;
+  margin-left: 4px;
   font-family: 'Poppins', sans-serif;
   font-size: 13px;
-  color: #fff;
+  color: var(--text-color);
   line-height: 1.1;
 }
 
 .tabs-header #tabs-clock-container {
   background: none;
   padding: 0;
+  margin-left: 0;
 }
 
 #tabs-time {
@@ -107,7 +116,7 @@
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-color);
   letter-spacing: 0.2px;
 }
 
@@ -256,14 +265,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-color);
   transition: all 0.2s ease;
   font-weight: 500;
   letter-spacing: 0.2px;
 }
 
 .tab-item.active .tab-title {
-  color: rgba(255, 255, 255, 1);
+  color: var(--text-color);
   font-weight: 600;
 }
 
@@ -333,11 +342,13 @@
 }
 
 #app.tabs-open {
-  transform: translateX(280px);
+  transform: translateX(215px);
+  width: calc(100% - 215px);
 }
 
 #app.url-open {
-  transform: translateX(280px);
+  transform: translateX(215px);
+  width: calc(100% - 215px);
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -425,18 +436,18 @@
 /* History viewport styling (mirrors tabs viewport but on right) */
 .history-viewport {
   position: fixed;
-  top: 16px;
+  top: var(--spacing-sm);
   right: 0;
   /* shorten bottom to match tabs-viewport height: topOffset 16 + bottomOffset 8 = 24 total */
-  height: calc(100vh - 24px);
+  height: calc(100vh - (var(--spacing-sm) * 2));
   width: 270px;
-  background-color: rgba(25, 25, 25, 0.85);
+  background-color: var(--glass-bg);
   z-index: 9900;
   box-shadow: -5px 0 20px rgba(0, 0, 0, 0.3);
   transform: translateX(100%);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   overflow-y: auto;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
   backdrop-filter: blur(30px);
@@ -497,7 +508,7 @@
 .history-title {
   font-size: 14px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-color);
   margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
@@ -506,15 +517,18 @@
 
 .history-meta {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-color);
+  opacity: 0.6;
 }
 
 .history-item-close {
+  color: var(--text-color);
   position: absolute;
   top: 12px;
   right: 12px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  opacity: 0.5;
+  transition: all 0.2s ease;
 }
 
 .history-item-close:hover {
@@ -550,7 +564,7 @@
 .tab-title {
   font-size: 14px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-color);
   margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -559,7 +573,8 @@
 
 .tab-meta {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-color);
+  opacity: 0.6;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -592,4 +607,9 @@
   transform-origin: left center;
   transform: scaleX(0);
   transition: transform 0.1s linear;
+}
+
+.tabs-header #nav-buttons:hover {
+  background: transparent;
+  box-shadow: none;
 }

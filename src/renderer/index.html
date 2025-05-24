@@ -66,7 +66,7 @@
   <div class="tabs-trigger-area"></div>
   <div class="tabs-viewport">
     <div class="tabs-header">
-      <div id="nav-buttons" style="margin-left:auto;">
+      <div id="nav-buttons">
         <button id="back-button" class="nav-button" title="Back">
           <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         </button>
@@ -76,13 +76,10 @@
         <button id="close-button" class="nav-button" title="Close Application">
           <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
         </button>
-        <button id="tabs-button" class="nav-button" title="Reload Page">
-          <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 12h7V5l-2.35 1.35z"/></svg>
-        </button>
-        <div id="tabs-clock-container">
-          <span id="tabs-time"></span>
-          <span id="tabs-date"></span>
-        </div>
+      </div>
+      <div id="tabs-clock-container">
+        <span id="tabs-time"></span>
+        <span id="tabs-date"></span>
       </div>
     </div>
     <!-- Modern search bar with suggestions wrapper -->
@@ -98,29 +95,30 @@
         <span id="social-login-unsupported-icon" class="info-icon" style="display:none; margin-left:8px; cursor:pointer;" title="Social Login Unsupported: NURU Browser currently does not support social login. Use an alternative method.">
           <i class="fas fa-info-circle"></i>
         </span>
-        <span class="mic-icon"><i class="fas fa-microphone"></i></span>
         <!-- Reading Mode Button -->
         <button id="reading-mode-btn" class="nav-button hidden" title="Reading Mode" style="margin-left:8px;">
           <i class="fas fa-book-open"></i>
         </button>
       </div>
     </div>
-    <!-- Divider -->
-    <div class="tabs-divider"></div>
     
     <!-- Tabs List -->
     <div class="tabs-list-header">Open Tabs</div>
     <div class="tabs-list" id="tabs-list">
       <!-- Tab items will be dynamically added here -->
     </div>
-    
     <div class="tabs-divider"></div>
     
     <!-- Version and Credits -->
     <div class="version-footer">
-      <div class="version-info">App Version: 1.0.0</div>
-      <div class="credits">Made with <span class="heart">♥</span> by <a href="https://github.com/ackimcu/Nuru-Browser" class="author-link" target="_blank">Ackim</a></div>
-      <div class="copyright">Nuru Browser 2025</div>
+      <div class="footer-buttons" style="display:flex;justify-content:center;gap:15px;">
+        <button id="settings-btn" class="nav-button" title="Settings"><i class="fas fa-cog"></i></button>
+        <button id="bookmarks-btn" class="nav-button" title="Bookmarks"><i class="fas fa-bookmark"></i></button>
+        <button id="history-btn" class="nav-button" title="History"><i class="fas fa-history"></i></button>
+        <button id="tabs-button" class="nav-button" title="Reload Page">
+          <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 12h7V5l-2.35 1.35z"/></svg>
+        </button>
+      </div>
     </div>
   </div>
   
@@ -176,7 +174,6 @@
   
   <div id="app">
     <div id="loading-strip"></div>
-    <div class="titlebar-padding"></div>
     <div id="webview-container">
       <div id="webviews-container">
         <!-- All webviews will be dynamically added here -->
