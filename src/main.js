@@ -37,7 +37,21 @@ const DEFAULT_SETTINGS = {
   },
   // Default homepage for the Home button
   homepage: 'https://www.google.com/',
-  development_mode: false, 
+  theme: 'dark',
+  development_mode: false,
+  // Default list of domains to exclude from theming
+  themeExcludedDomains: [
+    'google.com',
+    'googlevideo.com',
+    'ytimg.com',
+    'gstatic.com',
+    'googleusercontent.com',
+    'gmail.com',
+    'drive.google.com',
+    'docs.google.com',
+    'sheets.google.com',
+    'slides.google.com'
+  ],
   features: {
     adblock: true
   }
@@ -721,6 +735,16 @@ ipcMain.handle('save-all-settings', (event, newSettings) => {
     // Update homepage setting if provided
     if (newSettings.homepage !== undefined) {
       settings.homepage = newSettings.homepage;
+    }
+
+    // Update theme setting if provided
+    if (newSettings.theme !== undefined) {
+      settings.theme = newSettings.theme;
+    }
+
+    // Update dynamic theme exclusion domains if provided
+    if (newSettings.themeExcludedDomains !== undefined) {
+      settings.themeExcludedDomains = newSettings.themeExcludedDomains;
     }
 
     // Update settings object with new values

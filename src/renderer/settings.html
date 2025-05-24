@@ -4,7 +4,93 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Settings</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
+    /* Import Poppins font */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+    /* Base font settings */
+    html {
+      font-family: 'Poppins', sans-serif;
+      font-size: 18px;
+    }
+    /* Heading and label fonts */
+    .header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+    }
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .setting-label {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    /* Enhanced modal appearance */
+    .modal-wrapper {
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      border-radius: 12px;
+    }
+    /* Highlight interactive elements on hover */
+    .setting-row:hover {
+      background: rgba(86,97,244,0.05);
+      transition: background 0.3s;
+    }
+    /* Modern button styles */
+    .save-button {
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(86,97,244,0.3);
+      font-size: 1.125rem;
+    }
+    .save-button:hover {
+      box-shadow: 0 4px 12px rgba(86,97,244,0.5);
+      background-color: #4455bb;
+    }
+    /* Modern toggle thumb and track */
+    .toggle-switch {
+      width: 50px;
+      height: 26px;
+    }
+    .slider {
+      border-radius: 26px;
+      box-shadow: inset 0 0 4px rgba(0,0,0,0.2);
+    }
+    .slider:before {
+      width: 22px;
+      height: 22px;
+      left: 2px;
+      bottom: 2px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      transition: transform 0.3s;
+    }
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+    /* Tooltips */
+    [data-tooltip] {
+      position: relative;
+      cursor: pointer;
+    }
+    [data-tooltip]::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 1000;
+    }
+    [data-tooltip]:hover::after {
+      opacity: 1;
+    }
     /* Common modal styling (copied from diagnostics) */
     /* Scrollbar styling */
     ::-webkit-scrollbar {
@@ -52,7 +138,7 @@
     }
     .header {
       height: 40px;
-      background-color: #222222;
+      background-color: var(--border-color);
       border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
@@ -276,6 +362,96 @@
     }
     .btn-cancel { background: var(--bg-color); color: var(--text-color); }
     .btn-confirm { background: var(--accent-color); color: white; }
+
+    /* Modern select dropdown styling */
+    .select-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+    }
+    .select-container select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      width: 100%;
+      padding: 10px 36px 10px 12px;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .select-container select:hover {
+      border-color: var(--accent-color);
+    }
+    .select-container::after {
+      content: '▼';
+      position: absolute;
+      top: 50%;
+      right: 12px;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--accent-color);
+      font-size: 1rem;
+      transition: transform 0.3s;
+    }
+    .select-container.open::after {
+      transform: translateY(-50%) rotate(180deg);
+    }
+    .select-container select:focus {
+      outline: none;
+      border-color: var(--accent-color);
+      box-shadow: 0 0 0 2px rgba(86,97,244,0.3);
+    }
+
+    /* Modern action buttons */
+    .action-button {
+      padding: 10px 24px;
+      background: var(--accent-color);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 12px rgba(86,97,244,0.3);
+    }
+    .action-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(86,97,244,0.4);
+      background: #4455bb;
+    }
+    .action-button:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 8px rgba(86,97,244,0.2);
+    }
+
+    /* Modern textarea styling for Theme Exclusion Domains */
+    #theme-excluded-domains {
+      width: 100%;
+      padding: 12px;
+      background: var(--bg-color);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      resize: vertical;
+      min-height: 100px;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.2);
+    }
+    #theme-excluded-domains:focus {
+      outline: none;
+      border-color: var(--accent-color);
+      box-shadow: 0 0 0 2px rgba(86,97,244,0.3);
+    }
+    #theme-excluded-domains::placeholder {
+      color: var(--text-color);
+      opacity: 0.6;
+    }
   </style>
 </head>
 <body>
@@ -350,12 +526,62 @@
         
         <div class="setting-row">
           <span class="setting-label">Clear Cache</span>
-          <button id="clear-cache-btn">Clear Cache</button>
+          <button id="clear-cache-btn" class="action-button">Clear Cache</button>
         </div>
         
         <div class="setting-row">
           <span class="setting-label">Delete All User Data</span>
-          <button id="delete-user-data-btn">Delete All Data</button>
+          <button id="delete-user-data-btn" class="action-button">Delete All Data</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">Theme</h2>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Theme</span>
+          <div class="select-container">
+            <select id="theme-select">
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="blue">Blue</option>
+              <option value="green">Green</option>
+              <option value="purple">Purple</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Theme Exclusion Domains</span>
+          <textarea id="theme-excluded-domains" placeholder="Enter domains, one per line" style="width:100%; height:80px; margin-top:8px;"></textarea>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Apply theme to webpages (beta)</span>
+          <div class="toggle-container">
+            <span class="toggle-text-off">Off</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="apply-theme-webpages-toggle">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-text-on">On</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">Layout</h2>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Viewports hidden by default</span>
+          <div class="toggle-container">
+            <span class="toggle-text-off">Off</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="viewports-hidden-toggle">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-text-on">On</span>
+          </div>
         </div>
       </div>
     </div>
@@ -380,16 +606,51 @@
     </div>
     
     <script>
+// Apply user-selected theme to settings modal
+function applyTheme(theme) {
+  const root = document.documentElement;
+  switch (theme) {
+    case 'light':
+      root.style.setProperty('--bg-color', '#ffffff');
+      root.style.setProperty('--text-color', '#333333');
+      root.style.setProperty('--border-color', '#e0e0e0');
+      root.style.setProperty('--accent-color', '#5661F4');
+      break;
+    case 'dark':
+      root.style.setProperty('--bg-color', '#1a1a1a');
+      root.style.setProperty('--text-color', '#f2f2f2');
+      root.style.setProperty('--border-color', '#444444');
+      root.style.setProperty('--accent-color', '#5661F4');
+      break;
+    case 'blue':
+      root.style.setProperty('--bg-color', '#e0f7fa');
+      root.style.setProperty('--text-color', '#012f41');
+      root.style.setProperty('--border-color', '#4dd0e1');
+      root.style.setProperty('--accent-color', '#00bcd4');
+      break;
+    case 'green':
+      root.style.setProperty('--bg-color', '#e8f5e9');
+      root.style.setProperty('--text-color', '#1b5e20');
+      root.style.setProperty('--border-color', '#a5d6a7');
+      root.style.setProperty('--accent-color', '#4caf50');
+      break;
+    case 'purple':
+      root.style.setProperty('--bg-color', '#f3e5f5');
+      root.style.setProperty('--text-color', '#4a148c');
+      root.style.setProperty('--border-color', '#e1bee7');
+      root.style.setProperty('--accent-color', '#9c27b0');
+      break;
+  }
+}
 document.addEventListener('DOMContentLoaded', async () => {
+  const settings = await window.settingsAPI.getSettings();
+  applyTheme(settings.theme);
   const presets = {
     google: 'https://www.google.com/search?q=',
     bing: 'https://www.bing.com/search?q=',
     duckduckgo: 'https://duckduckgo.com/?q=',
     yahoo: 'https://search.yahoo.com/search?p='
   };
-
-  // Fetch all settings
-  const settings = await window.settingsAPI.getSettings();
 
   // Get controls
   const zoomSlider = document.getElementById('zoom-slider');
@@ -399,6 +660,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const seCustom = document.getElementById('search-engine-custom-input');
   const hpSelect = document.getElementById('homepage-select');
   const hpCustom = document.getElementById('homepage-custom-input');
+  const themeSelect = document.getElementById('theme-select');
 
   // Initialize UI
   zoomSlider.value = settings.zoom_factor;
@@ -428,6 +690,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     hpCustom.value = settings.homepage || '';
   }
 
+  // Theme
+  themeSelect.value = settings.theme || 'dark';
+  // Excluded domains list
+  const excludeTextarea = document.getElementById('theme-excluded-domains');
+  excludeTextarea.value = (settings.themeExcludedDomains || []).join('\n');
+
   // Event handlers
   zoomSlider.addEventListener('input', () => zoomValue.textContent = `${zoomSlider.value}x`);
   seSelect.addEventListener('change', () => {
@@ -436,6 +704,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   hpSelect.addEventListener('change', () => {
     hpCustom.style.display = hpSelect.value === 'custom' ? 'block' : 'none';
   });
+
+  // Layout toggle initialization
+  const viewportsToggle = document.getElementById('viewports-hidden-toggle');
+  viewportsToggle.checked = settings.viewportsHiddenByDefault || false;
+  const applyThemeWebpagesToggle = document.getElementById('apply-theme-webpages-toggle');
+  applyThemeWebpagesToggle.checked = settings.applyThemeToWebpages || false;
 
   // Save button
   const saveBtn = document.getElementById('save-button');
@@ -446,7 +720,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       search_engine: seSelect.value === 'custom'
         ? { name: 'custom', url: seCustom.value.trim(), icon: '' }
         : { name: seSelect.value, url: presets[seSelect.value], icon: `fab fa-${seSelect.value}` },
-      homepage: hpSelect.value === 'custom' ? hpCustom.value.trim() : hpSelect.value
+      homepage: hpSelect.value === 'custom' ? hpCustom.value.trim() : hpSelect.value,
+      theme: themeSelect.value,
+      themeExcludedDomains: excludeTextarea.value.split('\n').map(s => s.trim()).filter(Boolean),
+      viewportsHiddenByDefault: viewportsToggle.checked,
+      applyThemeToWebpages: applyThemeWebpagesToggle.checked
     };
     const result = await window.settingsAPI.saveAllSettings(payload);
     if (result.success) window.settingsAPI.closeSettings();
@@ -456,6 +734,75 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Close button handler
   const closeBtn = document.getElementById('close-button');
   closeBtn.addEventListener('click', () => window.settingsAPI.closeSettings());
+
+  // Data Management handlers
+  const clearCacheBtn = document.getElementById('clear-cache-btn');
+  const deleteUserDataBtn = document.getElementById('delete-user-data-btn');
+  const modalOverlay = document.getElementById('modal-overlay');
+  const modalTitle = document.getElementById('modal-title');
+  const modalMessage = document.getElementById('modal-message');
+  const modalCancel = document.getElementById('modal-cancel');
+  const modalConfirm = document.getElementById('modal-confirm');
+
+  function showNotification(message, isError = false) {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.classList.remove('error');
+    if (isError) notification.classList.add('error');
+    notification.classList.add('show');
+    setTimeout(() => notification.classList.remove('show'), 3000);
+  }
+
+  function openConfirmModal(title, message, onConfirm) {
+    modalTitle.textContent = title;
+    modalMessage.textContent = message;
+    modalOverlay.style.display = 'flex';
+    const confirmHandler = () => { cleanup(); onConfirm(); };
+    const cancelHandler = () => { cleanup(); };
+    function cleanup() {
+      modalOverlay.style.display = 'none';
+      modalConfirm.removeEventListener('click', confirmHandler);
+      modalCancel.removeEventListener('click', cancelHandler);
+    }
+    modalConfirm.addEventListener('click', confirmHandler);
+    modalCancel.addEventListener('click', cancelHandler);
+  }
+
+  clearCacheBtn.addEventListener('click', () => {
+    openConfirmModal('Clear Cache', 'Are you sure you want to clear the cache?', async () => {
+      const result = await window.settingsAPI.clearCache();
+      if (result.success) {
+        showNotification('Cache cleared successfully');
+      } else {
+        showNotification(`Error clearing cache: ${result.error}`, true);
+      }
+    });
+  });
+
+  deleteUserDataBtn.addEventListener('click', () => {
+    openConfirmModal('Delete All User Data', 'This will delete all user data. Are you sure?', async () => {
+      const result = await window.settingsAPI.deleteAllUserData();
+      if (result.success) {
+        window.settingsAPI.restartApp();
+      } else {
+        showNotification(`Error deleting user data: ${result.error}`, true);
+      }
+    });
+  });
+
+  // Add generic tooltips to setting labels
+  document.querySelectorAll('.setting-label').forEach(el => {
+    el.setAttribute('data-tooltip', `Configure ${el.textContent.trim()}`);
+  });
+
+  // Modern dropdown arrow rotation on focus
+  document.querySelectorAll('.select-container').forEach(container => {
+    const select = container.querySelector('select');
+    if (select) {
+      select.addEventListener('focus', () => container.classList.add('open'));
+      select.addEventListener('blur', () => container.classList.remove('open'));
+    }
+  });
 });
     </script>
   </div>

@@ -28,7 +28,7 @@ function showSettingsModal(mainWindow, settings) {
   
   // Set up IPC handlers only once
   if (!ipcHandlersRegistered) {
-    setupSettingsHandlers(settings);
+    setupSettingsHandlers(settings, mainWindow);
     ipcHandlersRegistered = true;
   }
 
@@ -76,12 +76,16 @@ function showSettingsModal(mainWindow, settings) {
 /**
  * Set up IPC handlers for settings changes
  * @param {Object} settings - Browser settings object
+ * @param {Object} mainWindow - The main browser window
  */
-function setupSettingsHandlers(settings) {
+function setupSettingsHandlers(settings, mainWindow) {
   // Remove existing handlers if they exist (to prevent duplicates)
   try {
     ipcMain.removeHandler('save-browser-settings');
     ipcMain.removeHandler('update-zoom-level');
+    ipcMain.removeHandler('clear-cache');
+    ipcMain.removeHandler('delete-all-user-data');
+    ipcMain.removeHandler('restart-app');
   } catch (err) {
     // Ignore errors if handlers don't exist
   }
@@ -121,6 +125,42 @@ function setupSettingsHandlers(settings) {
   ipcMain.on('close-settings', () => {
     if (settingsWindow) {
       settingsWindow.close();
+    }
+  });
+
+  // Clear cache
+  ipcMain.handle('clear-cache', async () => {
+    try {
+      await mainWindow.webContents.session.clearCache();
+      log.info('Cache cleared');
+      return { success: true };
+    } catch (err) {
+      log.error('Error clearing cache:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // Delete all user data
+  ipcMain.handle('delete-all-user-data', async () => {
+    try {
+      const userDataPath = app.getPath('userData');
+      fs.rmSync(userDataPath, { recursive: true, force: true });
+      log.info('All user data deleted');
+      return { success: true };
+    } catch (err) {
+      log.error('Error deleting user data:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // Restart the application
+  ipcMain.handle('restart-app', () => {
+    try {
+      app.relaunch();
+      app.exit(0);
+    } catch (err) {
+      log.error('Error restarting app:', err);
+      return { success: false, error: err.message };
     }
   });
 }

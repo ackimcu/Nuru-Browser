@@ -57,4 +57,9 @@ All notable changes to this project will be documented in this file.
 - fix: suppressed errors arising from missing mic icon listeners
 - docs: updated changelog for these changes
 
+## [1.0.5] - 2025-05-24
+
+- feat: add "Apply theme to webpages (beta)" toggle in Theme settings (off by default)
+- chore: temporarily disable social login blocking feature for further development
+
 <!-- Add future changes below --> 

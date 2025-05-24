@@ -8,6 +8,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Expose settings API to renderer process
 contextBridge.exposeInMainWorld('settingsAPI', {
   // Get settings data
+  getSettings: () => ipcRenderer.invoke('get-settings'),
   onSettingsDataReceived: (callback) => {
     ipcRenderer.on('settings-data', (_, data) => callback(data));
   },

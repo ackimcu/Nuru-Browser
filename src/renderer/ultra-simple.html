@@ -58,7 +58,7 @@
     
     .header {
       height: 40px;
-      background-color: #222222;
+      background-color: var(--bg-color);
       border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
@@ -101,7 +101,7 @@
     }
     
     .section {
-      background-color: #222222;
+      background-color: var(--bg-color);
       border-radius: 8px;
       padding: 20px;
       margin-bottom: 20px;
@@ -251,7 +251,7 @@
     }
     
     .dialog-content {
-      background-color: #2a2a2a;
+      background-color: var(--bg-color);
       border-radius: 10px;
       padding: 24px;
       max-width: 450px;
@@ -445,6 +445,44 @@
   </div>
   
   <script>
+    // Apply user-selected theme to diagnostics modal
+    (async () => {
+      const settings = await window.settingsAPI.getSettings();
+      const root = document.documentElement;
+      switch (settings.theme) {
+        case 'light':
+          root.style.setProperty('--bg-color', '#ffffff');
+          root.style.setProperty('--text-color', '#333333');
+          root.style.setProperty('--border-color', '#e0e0e0');
+          root.style.setProperty('--accent-color', '#5661F4');
+          break;
+        case 'dark':
+          root.style.setProperty('--bg-color', '#1a1a1a');
+          root.style.setProperty('--text-color', '#f2f2f2');
+          root.style.setProperty('--border-color', '#444444');
+          root.style.setProperty('--accent-color', '#5661F4');
+          break;
+        case 'blue':
+          root.style.setProperty('--bg-color', '#e0f7fa');
+          root.style.setProperty('--text-color', '#012f41');
+          root.style.setProperty('--border-color', '#4dd0e1');
+          root.style.setProperty('--accent-color', '#00bcd4');
+          break;
+        case 'green':
+          root.style.setProperty('--bg-color', '#e8f5e9');
+          root.style.setProperty('--text-color', '#1b5e20');
+          root.style.setProperty('--border-color', '#a5d6a7');
+          root.style.setProperty('--accent-color', '#4caf50');
+          break;
+        case 'purple':
+          root.style.setProperty('--bg-color', '#f3e5f5');
+          root.style.setProperty('--text-color', '#4a148c');
+          root.style.setProperty('--border-color', '#e1bee7');
+          root.style.setProperty('--accent-color', '#9c27b0');
+          break;
+      }
+    })();
+    
     // Update timestamp
     function updateTimestamp() {
       const now = new Date();

@@ -41,6 +41,11 @@ contextBridge.exposeInMainWorld('diagnosticsAPI', {
   getLogs: () => ipcRenderer.invoke('get-log-content')
 });
 
+// Expose settings API to diagnostics window for theme support
+contextBridge.exposeInMainWorld('settingsAPI', {
+  getSettings: () => ipcRenderer.invoke('get-settings')
+});
+
 // Listen for update events from the main process
 ipcRenderer.on('update-available', (event, updateInfo) => {
   console.log('Update available event received:', updateInfo);
