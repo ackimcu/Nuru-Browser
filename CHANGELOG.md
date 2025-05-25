@@ -62,4 +62,13 @@ All notable changes to this project will be documented in this file.
 - feat: add "Apply theme to webpages (beta)" toggle in Theme settings (off by default)
 - chore: temporarily disable social login blocking feature for further development
 
+## [1.0.6] - 2025-05-25
+
+- feat: suggestion dropdown now pushes pinned apps container down
+- fix: adjustTabs now selects `#pinned-apps-container` for correct offset
+- style: reordered tabs list items to show favicon > page title > pin button > close button
+- style: trimmed tab item height and padding for a slimmer appearance
+- style: restyled "New Tab" button with plus icon on the left and centered bold text
+- style: reduced corner roundness of tabs viewport and individual tabs
+
 <!-- Add future changes below --> 
