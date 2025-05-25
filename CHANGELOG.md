@@ -71,4 +71,13 @@ All notable changes to this project will be documented in this file.
 - style: restyled "New Tab" button with plus icon on the left and centered bold text
 - style: reduced corner roundness of tabs viewport and individual tabs
 
+## [1.0.7] - 2025-05-25
+
+- feat: add dynamic info container with cards for weather, download progress, and media
+- feat: implement InfoManager to manage card priorities and rendering logic
+- feat: register webview download events (download-start, download-progress, download-done) and expose via preload API
+- chore: reposition buttons into the search bar and add placeholder info container
+- style: center all info-container cards horizontally
+- docs: update CHANGELOG with new features
+
 <!-- Add future changes below --> 

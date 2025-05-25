@@ -2,27 +2,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
 
 .modern-search-bar {
-  position: relative;
-  width: 200px;  /* narrower for smaller viewport */
-  max-width: none;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  background: var(--bg-color);
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 0.5px 2px rgba(0,0,0,0.10);
+  /* styling moved to wrapper */
   display: flex;
   align-items: center;
-  padding: 0 3px 0;  /* reduced bottom space */
+  padding: 0 3px;
   min-height: 38px;
+  position: relative;
   transition: box-shadow 0.25s cubic-bezier(.4,2,.6,1), transform 0.18s cubic-bezier(.4,2,.6,1);
-  z-index: 2;
+  /* z-index handled by wrapper */
 }
 
-
 .modern-search-bar:focus-within {
-  box-shadow: 0 8px 28px rgba(0,0,0,0.22), 0 1.5px 6px rgba(0,0,0,0.12);
-  transform: translateX(-50%) translateY(-1px) scale(1.01);
+  transform: translateY(-1px) scale(1.01);
 }
 
 .search-icon, .mic-icon {
@@ -94,7 +85,6 @@
   border-top: none;
   z-index: 1;
 }
-
 
 .modern-suggestions.open {
   opacity: 1;
@@ -508,6 +498,7 @@
 
 /* Ensure wrapper stacks above page content */
 .modern-search-wrapper {
+  box-sizing: border-box;
   position: relative;
   overflow: visible;
   width: 200px; /* match search-bar width */
@@ -515,4 +506,118 @@
   left: 50%;
   transform: translateX(-50%);
   margin: 4px 0 0 0;
+  padding: 0 1px 0 1px; /* inset content from edges */
+  background: var(--bg-color);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 0.5px 2px rgba(0,0,0,0.10);
+  padding-bottom: 0px; /* reduced bottom space */
+}
+
+/* Buttons container styling */
+.buttons-container {
+  position: relative;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 8px 0;
+  gap: 8px;
+}
+
+/* Modernize pinned apps section: glassmorphic card and circular icons */
+#pinned-apps-container {
+  display: flex;
+  gap: 12px;
+  padding: 8px;
+  background: rgba(255,255,255,0.1) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  margin: 12px auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 200px !important;  /* match search container width */
+}
+#pinned-apps-container::-webkit-scrollbar {
+  height: 4px;
+}
+#pinned-apps-container::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.3);
+  border-radius: 2px;
+}
+#pinned-apps-container .pinned-app {
+  width: 36px !important;
+  height: 36px !important;
+  background: rgba(255,255,255,0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
+}
+#pinned-apps-container .pinned-app:hover {
+  background: rgba(255,255,255,0.3);
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+#pinned-apps-container .pinned-app img {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 4px;
+}
+
+/* Modern separator under search bar */
+.modern-search-bar::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 8px;
+  right: 8px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border-color), transparent);
+}
+
+/* Themed styling for buttons in the buttons container */
+.buttons-container .nav-button {
+  background-color: var(--button-bg);
+  color: var(--text-color);
+  transition: background-color 0.2s ease;
+}
+.buttons-container .nav-button:hover {
+  background-color: var(--button-hover);
+}
+.buttons-container .nav-button:active {
+  background-color: var(--button-hover);
+}
+.buttons-container .nav-button i,
+.buttons-container .nav-button svg {
+  color: var(--text-color);
+}
+
+/* Info container styling */
+.info-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 8px;
+  padding: 8px 0;
+}
+.info-container .weather-icon i {
+  font-size: 1.2em;
+  color: var(--text-color);
+}
+.info-container .weather-info {
+  display: flex;
+  flex-direction: column;
+}
+.info-container .weather-temp {
+  font-size: 1em;
+  color: var(--text-color);
+}
+.info-container .weather-location {
+  font-size: 0.8em;
+  color: var(--text-color);
+  opacity: 0.75;
 }

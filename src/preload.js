@@ -89,6 +89,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Toggle Nuru Selects modal
   onToggleSelectsModal: (callback) => ipcRenderer.on('toggle-selects-modal', () => callback()),
   
+  // Download events
+  onDownloadStart: (callback) => ipcRenderer.on('download-start', (_, data) => callback(data)),
+  onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (_, data) => callback(data)),
+  onDownloadDone: (callback) => ipcRenderer.on('download-done', (_, data) => callback(data)),
+  
   // Notify renderer when an ad domain is blocked
   onFullscreenChanged: (callback) => {
     ipcRenderer.on('fullscreen-changed', (_, isFullscreen) => callback(isFullscreen));

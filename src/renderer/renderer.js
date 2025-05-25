@@ -274,13 +274,16 @@ let filtered = [], highlightedIdx = -1;
 function adjustTabs(active) {
   const header = document.querySelector('.tabs-list-header');
   const list = document.getElementById('tabs-list');
+  const pinnedSection = document.getElementById('pinned-apps-container');
   if (active) {
     const h = suggestionsBox.getBoundingClientRect().height;
     header.style.transform = `translateY(${h}px)`;
     list.style.transform = `translateY(${h}px)`;
+    if (pinnedSection) pinnedSection.style.transform = `translateY(${h}px)`;
   } else {
     header.style.transform = '';
     list.style.transform = '';
+    if (pinnedSection) pinnedSection.style.transform = '';
   }
 }
 
@@ -855,14 +858,10 @@ function updateTabsUI() {
     // Title and site meta
     const titleElement = document.createElement('div');
     titleElement.className = 'tab-title';
-    // Always show the stored title or fallback to URL
+    // Always show the stored page title or fallback to URL
     const displayTitle = tab.title || tab.url;
     titleElement.textContent = displayTitle;
-    titleElement.title = tab.title || displayTitle;
-    const domain = tab.url ? new URL(tab.url).hostname : '';
-    const metaElement = document.createElement('div');
-    metaElement.className = 'tab-meta';
-    metaElement.textContent = domain;
+    titleElement.title = displayTitle;
     
     const closeElement = document.createElement('div');
     closeElement.className = 'tab-close';
@@ -871,7 +870,6 @@ function updateTabsUI() {
     
     tabItem.appendChild(faviconElement);
     tabItem.appendChild(titleElement);
-    tabItem.appendChild(metaElement);
     tabItem.appendChild(closeElement);
     
     // Media progress indicator inside tab
@@ -2292,4 +2290,169 @@ document.querySelectorAll('webview').forEach(wv => {
     if (e.message.includes('ERR_ABORTED') && e.message.includes('GUEST_VIEW_MANAGER_CALL')) return;
     console.log(`Guest console: ${e.message}`);
   });
+});
+
+// Pinned Apps Feature
+function getPinnedApps() { return JSON.parse(localStorage.getItem('pinnedApps') || '[]'); }
+function setPinnedApps(apps) { localStorage.setItem('pinnedApps', JSON.stringify(apps)); }
+function renderPinnedApps() {
+  const container = document.getElementById('pinned-apps-container');
+  if (!container) return;
+  container.innerHTML = '';
+  getPinnedApps().forEach(url => {
+    const hostname = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
+    const origin = (() => { try { return new URL(url).origin; } catch { return ''; } })();
+    let iconUrl = '';
+    if (origin) {
+      const tabEntry = tabs.find(t => {
+        try { return new URL(t.url).origin === origin; } catch { return false; }
+      });
+      iconUrl = (tabEntry && tabEntry.favicon) ? tabEntry.favicon : `${origin}/favicon.ico`;
+    }
+    const appDiv = document.createElement('div');
+    appDiv.className = 'pinned-app'; appDiv.title = hostname;
+    const img = document.createElement('img');
+    img.src = iconUrl;
+    // fallback to default icon on error
+    img.onerror = () => {
+      img.remove();
+      const fallback = document.createElement('i');
+      fallback.className = 'fas fa-globe';
+      fallback.style.fontSize = '1em';
+      appDiv.insertBefore(fallback, appDiv.firstChild);
+    };
+    appDiv.appendChild(img);
+    const unpinIcon = document.createElement('span');
+    unpinIcon.className = 'unpin-icon'; unpinIcon.innerHTML = '<i class="fas fa-times"></i>';
+    unpinIcon.addEventListener('click', e => {
+      e.stopPropagation();
+      const filtered = getPinnedApps().filter(u => u !== url);
+      setPinnedApps(filtered);
+      renderPinnedApps();
+      updateTabsUI();
+    });
+    appDiv.appendChild(unpinIcon);
+    appDiv.addEventListener('click', () => navigateToUrl(url));
+    container.appendChild(appDiv);
+  });
+}
+const originalUpdateTabsUI = updateTabsUI;
+updateTabsUI = function() {
+  originalUpdateTabsUI();
+  const pinned = getPinnedApps();
+  document.querySelectorAll('.tabs-list .tab-item').forEach(item => {
+    const tabId = item.dataset.tabId;
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab) return;
+    const url = tab.url;
+    if (!pinned.includes(url)) {
+      const pinBtn = document.createElement('div');
+      pinBtn.className = 'tab-pin';
+      pinBtn.innerHTML = '<i class="fas fa-thumbtack"></i>';
+      pinBtn.title = 'Pin website';
+      pinBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const newPinned = getPinnedApps(); newPinned.push(url);
+        setPinnedApps(newPinned);
+        renderPinnedApps();
+        updateTabsUI();
+      });
+      // insert pin button before close button for proper order
+      const closeBtn = item.querySelector('.tab-close');
+      if (closeBtn) item.insertBefore(pinBtn, closeBtn);
+      else item.appendChild(pinBtn);
+    }
+  });
+};
+renderPinnedApps();
+
+// Info Cards Manager
+class InfoManager {
+  constructor(container) {
+    this.container = container;
+    this.cards = {
+      weather: { priority: 1, data: {}, active: false, render: this.renderWeather },
+      download: { priority: 2, data: {}, active: false, render: this.renderDownload },
+      media: { priority: 3, data: {}, active: false, render: this.renderMedia }
+    };
+    this.current = null;
+  }
+
+  setCardActive(type, active, data) {
+    if (!this.cards[type]) return;
+    this.cards[type].active = active;
+    if (data) this.cards[type].data = data;
+    this.updateDisplay();
+  }
+
+  updateDisplay() {
+    const activeCards = Object.entries(this.cards)
+      .filter(([_, card]) => card.active)
+      .sort((a, b) => b[1].priority - a[1].priority);
+    const next = activeCards.length > 0 ? activeCards[0][0] : null;
+    if (next !== this.current) {
+      this.current = next;
+      if (next) this.cards[next].render.call(this, this.cards[next].data);
+      else this.container.innerHTML = '';
+    } else if (next) {
+      this.cards[next].render.call(this, this.cards[next].data);
+    }
+  }
+
+  renderWeather(data) {
+    this.container.innerHTML = `
+      <div class="weather-card">
+        <i class="${data.iconClass}"></i>
+        <div class="weather-details">
+          <span class="weather-temp">${data.temp}</span>
+          <span class="weather-location">${data.location}</span>
+        </div>
+      </div>`;
+  }
+
+  renderDownload(data) {
+    this.container.innerHTML = `
+      <div class="download-card">
+        <span class="download-filename">${data.filename}</span>
+        <progress value="${data.percent}" max="100"></progress>
+        <span class="download-percent">${data.percent}%</span>
+      </div>`;
+  }
+
+  renderMedia(data) {
+    this.container.innerHTML = `
+      <div class="media-card">
+        <!-- Media controls placeholder -->
+        <span>${data.title || 'Media Title'}</span>
+        <button>⏮️</button>
+        <button>⏯️</button>
+        <button>⏭️</button>
+      </div>`;
+  }
+}
+
+// Initialize InfoManager and subscribe to events
+document.addEventListener('DOMContentLoaded', () => {
+  const infoContainer = document.getElementById('info-container');
+  const infoManager = new InfoManager(infoContainer);
+
+  // Initial placeholder weather
+  infoManager.setCardActive('weather', true, {
+    temp: '72°F',
+    location: 'City, Country',
+    iconClass: 'fas fa-cloud-sun'
+  });
+
+  // Listen for download events from main process
+  if (window.electronAPI) {
+    window.electronAPI.onDownloadStart((data) => {
+      infoManager.setCardActive('download', true, data);
+    });
+    window.electronAPI.onDownloadProgress((data) => {
+      infoManager.setCardActive('download', true, data);
+    });
+    window.electronAPI.onDownloadDone(() => {
+      infoManager.setCardActive('download', false);
+    });
+  }
 });

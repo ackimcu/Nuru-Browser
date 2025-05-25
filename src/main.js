@@ -326,6 +326,26 @@ async function createMainWindow() {
     }
     callback({});
   });
+
+  // Register download handler for webview downloads
+  const downloadSession = require('electron').session.fromPartition('persist:browsing');
+  downloadSession.on('will-download', (event, item) => {
+    const filename = item.getFilename();
+    const totalBytes = item.getTotalBytes();
+    const downloadId = Date.now();
+    // Notify renderer that a download has started
+    mainWindow.webContents.send('download-start', { id: downloadId, filename, totalBytes });
+    // Listen for download progress
+    item.on('updated', () => {
+      const receivedBytes = item.getReceivedBytes();
+      const percent = totalBytes > 0 ? Math.round(receivedBytes / totalBytes * 100) : 0;
+      mainWindow.webContents.send('download-progress', { id: downloadId, receivedBytes, totalBytes, percent });
+    });
+    // When download is finished or interrupted
+    item.once('done', (e, state) => {
+      mainWindow.webContents.send('download-done', { id: downloadId, filename, state });
+    });
+  });
 }
 
 function createDiagnosticsWindow() {
