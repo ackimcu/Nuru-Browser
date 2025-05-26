@@ -93,9 +93,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onDownloadStart: (callback) => ipcRenderer.on('download-start', (_, data) => callback(data)),
   onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (_, data) => callback(data)),
   onDownloadDone: (callback) => ipcRenderer.on('download-done', (_, data) => callback(data)),
+  cancelDownload: (downloadId) => ipcRenderer.invoke('cancel-download', downloadId),
   
   // Notify renderer when an ad domain is blocked
   onFullscreenChanged: (callback) => {
     ipcRenderer.on('fullscreen-changed', (_, isFullscreen) => callback(isFullscreen));
   },
+  toggleDownloadHistoryCard: () => ipcRenderer.invoke('toggle-download-history-card'),
+  getDownloadHistory: () => ipcRenderer.invoke('get-download-history'),
+  clearDownloadHistory: () => ipcRenderer.invoke('clear-download-history'),
+  onShowDownloadHistoryCard: (callback) => ipcRenderer.on('show-download-history-card', (_, data) => callback(data)),
+  onHideDownloadHistoryCard: (callback) => ipcRenderer.on('hide-download-history-card', () => callback()),
+  onDownloadHistoryUpdated: (callback) => ipcRenderer.on('download-history-updated', (_, data) => callback(data)),
 });

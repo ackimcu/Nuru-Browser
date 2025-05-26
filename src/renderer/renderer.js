@@ -27,6 +27,10 @@ window.addEventListener('unhandledrejection', (e) => {
 
 // DOM Elements
 const webviewsContainer = document.getElementById('webviews-container');
+const backButton = document.getElementById('back-button');
+const forwardButton = document.getElementById('forward-button');
+const closeButton = document.getElementById('close-button');
+const tabsButton = document.getElementById('tabs-button');
 // Generic stub element to avoid missing element errors
 const noopElem = { classList: { add: () => {}, remove: () => {}, contains: () => false, toggle: () => {} }, addEventListener: () => {}, removeEventListener: () => {}, appendChild: () => {}, style: {}, _hasClickListener: false };
 
@@ -953,6 +957,94 @@ function updateTabCounter() {
   logMessage('info', `Active tabs: ${tabs.length}`);
 }
 
+// Update navigation buttons state
+function updateNavButtons() {
+  if (webviewElement.isLoading()) return;
+  
+  webviewElement.canGoBack().then(canGoBack => {
+    backButton.disabled = !canGoBack;
+    backButton.style.opacity = canGoBack ? '1' : '0.5';
+  });
+  
+  webviewElement.canGoForward().then(canGoForward => {
+    forwardButton.disabled = !canGoForward;
+    forwardButton.style.opacity = canGoForward ? '1' : '0.5';
+  });
+}
+
+// Navigation event handlers
+backButton.addEventListener('click', () => {
+  if (!backButton.disabled) {
+    webviewElement.goBack();
+  }
+});
+
+forwardButton.addEventListener('click', () => {
+  if (!forwardButton.disabled) {
+    webviewElement.goForward();
+  }
+});
+
+// Navigation button event listeners
+backButton.addEventListener('click', () => {
+  const activeWebview = document.querySelector('webview.active');
+  if (activeWebview && activeWebview.canGoBack()) {
+    activeWebview.goBack();
+    logMessage('info', 'Navigating back');
+  }
+});
+
+forwardButton.addEventListener('click', () => {
+  const activeWebview = document.querySelector('webview.active');
+  if (activeWebview && activeWebview.canGoForward()) {
+    activeWebview.goForward();
+    logMessage('info', 'Navigating forward');
+  }
+});
+
+closeButton.addEventListener('click', () => {
+  logMessage('info', 'Close button clicked');
+  window.electronAPI.closeApp();
+});
+
+tabsButton.addEventListener('click', () => {
+  const activeWebview = document.querySelector('webview.active');
+  if (activeWebview) {
+    activeWebview.reload();
+    logMessage('info', 'Reloading page');
+  }
+});
+
+// Update navigation button states for active webview
+function updateNavigationButtons() {
+  const activeWebview = document.querySelector('webview.active');
+  if (activeWebview) {
+    backButton.disabled = !activeWebview.canGoBack();
+    forwardButton.disabled = !activeWebview.canGoForward();
+  }
+}
+
+// Add listeners for updates to navigation button states
+document.querySelectorAll('webview').forEach(webview => {
+  webview.addEventListener('did-navigate', () => {
+    if (webview.classList.contains('active')) {
+      updateNavigationButtons();
+    }
+  });
+  
+  webview.addEventListener('did-navigate-in-page', () => {
+    if (webview.classList.contains('active')) {
+      updateNavigationButtons();
+    }
+  });
+  
+  webview.addEventListener('dom-ready', () => {
+    if (webview.classList.contains('active')) {
+      updateNavigationButtons();
+    }
+  });
+});
+
 // Setup event listeners for a webview
 function setupWebviewEvents(webviewElement) {
   // Hide media bar on any navigation events
@@ -980,12 +1072,15 @@ function setupWebviewEvents(webviewElement) {
   });
   
   webviewElement.addEventListener('did-stop-loading', () => {
-    // Remove loading indicator
-    const tabId = webviewElement.id;
-    const tab = tabs.find(t => t.id === tabId);
-    if (tab) {
-      tab.isLoading = false;
-      updateTabsUI();
+    // Clear the simulated progress interval
+    clearInterval(progressInterval);
+    
+    // Complete the loading animation
+    completeLoadingAnimation();
+    
+    // Update CSS for active webview
+    if (webviewElement.classList.contains('active')) {
+      // No CSS injection is performed
     }
   });
   
@@ -1169,8 +1264,21 @@ function setupWebviewEvents(webviewElement) {
   });
   
   // Hook this webview into history tracking
-  webviewElement.addEventListener('did-navigate', () => addHistoryEntry(webviewElement));
-  webviewElement.addEventListener('did-navigate-in-page', () => addHistoryEntry(webviewElement));
+  webviewElement.addEventListener('did-navigate', () => {
+    updateNavigationButtons();
+    addHistoryEntry(webviewElement);
+  });
+
+  webviewElement.addEventListener('did-navigate-in-page', () => {
+    updateNavigationButtons();
+    addHistoryEntry(webviewElement);
+  });
+  
+  // Update buttons when page finishes loading
+  webviewElement.addEventListener('did-stop-loading', updateNavigationButtons);
+  
+  // Initial update
+  updateNavigationButtons();
   
   webviewElement.addEventListener('ipc-message', (event) => {
     const selector = `.tab-item[data-tab-id="${webviewElement.id}"] .media-progress-bar`;
@@ -1334,137 +1442,118 @@ window.electronAPI.onShowError((errorData) => {
   showError(errorData.title, errorData.message);
 });
 
-window.electronAPI.onSettingsUpdated((newSettings) => {
-  // Update stored settings and reapply UI changes (e.g., theme)
-  settings = newSettings;
-  applySettings();
-});
+// Initialize the app
+async function initializeApp() {
+  try {
+    // Wait for settings to be loaded first
+    await loadSettings();
+    
+    const infoContainer = document.getElementById('info-container');
+    if (!infoContainer) {
+      console.error('Info container not found');
+      return;
+    }
+    
+    const infoManager = new InfoManager(infoContainer);
 
-window.electronAPI.onCheckWebGL(() => {
-  checkWebGL();
-});
-
-// Listen for 'adblock-blocked' events and log them to console so user can verify the handler is firing
-window.electronAPI.onAdblockBlocked((host) => {
-  console.log(`Adblock event: blocked request to ${host}`);
-  // Show a quick toast notification in the UI
-  const toast = document.createElement('div');
-  toast.className = 'adblock-toast';
-  toast.textContent = `Blocked resource from ${host}`;
-  document.body.appendChild(toast);
-  setTimeout(() => {
-    toast.remove();
-  }, 3000);
-});
-
-// Listen for fullscreen mode via Electron
-let dateTimer;
-window.electronAPI.onFullscreenChanged(isFullscreen => {
-  if (isFullscreen) {
-    updateDateTime();
-    fsDateTime.classList.remove('hidden');
-    dateTimer = setInterval(updateDateTime, 1000);
-  } else {
-    fsDateTime.classList.add('hidden');
-    clearInterval(dateTimer);
-  }
-});
-
-// Keyboard shortcuts
-document.addEventListener('keydown', (event) => {
-  // Zoom controls: Ctrl+Plus and Ctrl+Minus
-  if (event.ctrlKey) {
-    if (event.key === '=' || event.key === '+') {
-      const newZoomFactor = Math.min(settings.zoom_factor + 0.1, 5.0);
-      const activeWebview = document.querySelector('webview.active');
-      if (activeWebview) {
-        activeWebview.setZoomFactor(newZoomFactor);
-      }
-      window.electronAPI.updateZoom(newZoomFactor);
-      settings.zoom_factor = newZoomFactor;
-    } else if (event.key === '-') {
-      const newZoomFactor = Math.max(settings.zoom_factor - 0.1, 0.25);
-      const activeWebview = document.querySelector('webview.active');
-      if (activeWebview) {
-        activeWebview.setZoomFactor(newZoomFactor);
-      }
-      window.electronAPI.updateZoom(newZoomFactor);
-      settings.zoom_factor = newZoomFactor;
-    } else if (event.key === 't' || event.key === 'T') {
-      // Ctrl+T to show tabs or create new tab
-      if (tabsViewport.classList.contains('active')) {
-        createTab();
-      } else {
-        showTabsViewport();
-      }
-      event.preventDefault();
-    } else if (event.key === 'w' || event.key === 'W') {
-      // Ctrl+W to close current tab
-      if (tabs.length > 1) {
-        closeTab(activeTabId);
-        event.preventDefault();
-      }
+    // Fetch and display live weather data
+    async function updateWeather() {
+    // If we're called without arguments, use the saved location
+    if (!settings.cards?.weatherLocation) {
+      infoManager.setCardActive('weather', false);
+      return;
+    }
+    console.log('updateWeather called with weatherLocation:', settings.cards?.weatherLocation);
+    const loc = settings.cards?.weatherLocation;
+    if (!loc) {
+      infoManager.setCardActive('weather', true, { error: true });
+      return;
+    }
+    // Show loading spinner
+    infoManager.setCardActive('weather', true, { loading: true });
+    try {
+      // Geocode location
+      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(loc)}`);
+      console.log('Geocoding response status:', geoRes.status);
+      const items = await geoRes.json();
+      console.log('Geocode items:', items);
+      if (!items.length) throw new Error('Location not found');
+      const { lat, lon, display_name } = items[0];
+      // Fetch weather from Open-Meteo API
+      const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+      console.log('Weather API response status:', weatherRes.status);
+      const weatherData = await weatherRes.json();
+      console.log('Weather data:', weatherData);
+      if (!weatherData.current_weather) throw new Error('No weather data');
+      const cTemp = weatherData.current_weather.temperature;
+      const fTemp = (cTemp * 9/5 + 32).toFixed(1);
+      const tempStr = `${fTemp}°F`;
+      // Use a generic weather icon
+      const iconClass = 'fas fa-cloud-sun';
+      infoManager.setCardActive('weather', true, { temp: tempStr, location: display_name, iconClass });
+    } catch (err) {
+      console.error('Weather fetch error', err);
+      infoManager.setCardActive('weather', true, { error: true });
     }
   }
-});
 
-// Navigation button event listeners
-const backButton = document.getElementById('back-button');
-const forwardButton = document.getElementById('forward-button');
-const closeButton = document.getElementById('close-button');
-const tabsButton = document.getElementById('tabs-button');
 
-backButton.addEventListener('click', () => {
-  const activeWebview = document.querySelector('webview.active');
-  if (activeWebview && activeWebview.canGoBack()) {
-    activeWebview.goBack();
-    logMessage('info', 'Navigating back');
-  }
-});
+    // Listen for settings updates and refresh weather
+    if (window.electronAPI?.onSettingsUpdated) {
+      window.electronAPI.onSettingsUpdated((newSettings) => {
+        console.log('Settings updated:', newSettings);
+        settings = newSettings;
+        applySettings();
+        // Only update weather if location changed
+        if (newSettings.cards?.weatherLocation) {
+          updateWeather();
+        } else {
+          infoManager.setCardActive('weather', false);
+        }
+      });
+    }
+    
+    // Initial weather update if location is set
+    if (settings.cards?.weatherLocation) {
+      console.log('Initial weather update with saved location:', settings.cards.weatherLocation);
+      await updateWeather();
+    } else {
+      infoManager.setCardActive('weather', false);
+    }
 
-forwardButton.addEventListener('click', () => {
-  const activeWebview = document.querySelector('webview.active');
-  if (activeWebview && activeWebview.canGoForward()) {
-    activeWebview.goForward();
-    logMessage('info', 'Navigating forward');
-  }
-});
+    // Refresh weather data every 30 minutes
+    const weatherInterval = setInterval(() => {
+      if (settings.cards?.weatherLocation) {
+        console.log('Refreshing weather data...');
+        updateWeather();
+      }
+    }, 30 * 60 * 1000); // 30 minutes
 
-closeButton.addEventListener('click', () => {
-  logMessage('info', 'Close button clicked');
-  window.electronAPI.closeApp();
-});
+    // Cleanup interval on page unload
+    window.addEventListener('beforeunload', () => {
+      clearInterval(weatherInterval);
+    });
 
-tabsButton.addEventListener('click', () => {
-  const activeWebview = document.querySelector('webview.active');
-  if (activeWebview) {
-    activeWebview.reload();
-    logMessage('info', 'Reloading page');
-  }
-});
-
-// Update navigation button states for active webview
-function updateNavigationButtons() {
-  const activeWebview = document.querySelector('webview.active');
-  if (activeWebview) {
-    backButton.disabled = !activeWebview.canGoBack();
-    forwardButton.disabled = !activeWebview.canGoForward();
+    // Listen for download events from main process
+    if (window.electronAPI) {
+      window.electronAPI.onDownloadStart((data) => {
+        infoManager.setCardActive('download', true, data);
+      });
+      window.electronAPI.onDownloadProgress((data) => {
+        infoManager.setCardActive('download', true, data);
+      });
+      window.electronAPI.onDownloadDone(() => {
+        infoManager.setCardActive('download', false);
+      });
+    }
+  } catch (error) {
+    console.error('Error in initializeApp:', error);
   }
 }
 
-// Add listeners for updates to navigation button states
-document.querySelectorAll('webview').forEach(webview => {
-  webview.addEventListener('did-navigate', () => {
-    if (webview.classList.contains('active')) {
-      updateNavigationButtons();
-    }
-  });
-
-  webview.addEventListener('did-navigate-in-page', () => {
-    if (webview.classList.contains('active')) {
-      updateNavigationButtons();
-    }
-  });
+// Start the app when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  initializeApp().catch(console.error);
 });
 
 // Loading strip animation functions
@@ -1815,8 +1904,9 @@ function __nuruInjectReadingMode() {
     const NON_ARTICLE_PATTERNS = [
       /related|outbrain|sidebar|share|promo|newsletter|ad-|ads|advert|footer|nav|breadcrumb|pagination|cookie|subscribe|social|comment|disclaimer|author|byline|caption|credit|meta|tool|button|popup|modal|survey|poll|icon|tag|category|label|date|time|readmore|recommend|trending|popular|sponsored|paywall|login|signup|register|banner|breaking|ticker|player|embed|yt-|youtube|fb-|facebook|twitter|instagram/i
     ];
+    
+    // Skip unwanted parents
     node.querySelectorAll(allowed.map(tag=>tag.toLowerCase()).join(',')).forEach(el => {
-      // Skip unwanted parents
       if (el.closest('nav, aside, footer, header')) return;
       // Skip elements or parents with non-article patterns in class, id, role, or aria-label
       let skip = false;
@@ -2200,6 +2290,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   initResources();
   renderResources(mediaSelect.value);
   initializeTabs();
+  // Show tabs viewport by default, unless hidden-by-default is enabled
+  if (!settings.viewportsHiddenByDefault) {
+    showTabsViewport();
+  }
   // Initialize Reading Mode button
   readingBtn = document.getElementById('reading-mode-btn');
   if (readingBtn) {
@@ -2373,9 +2467,22 @@ class InfoManager {
     this.cards = {
       weather: { priority: 1, data: {}, active: false, render: this.renderWeather },
       download: { priority: 2, data: {}, active: false, render: this.renderDownload },
-      media: { priority: 3, data: {}, active: false, render: this.renderMedia }
+      downloadHistory: { priority: 3, data: {}, active: false, render: this.renderDownloadHistory },
+      media: { priority: 4, data: {}, active: false, render: this.renderMedia }
     };
     this.current = null;
+    
+    // Initialize download state tracking
+    this.downloadState = {
+      lastProgressTime: Date.now(), // Initialize with current time
+      lastReceivedBytes: 0,
+      lastUpdate: 0,
+      lastRenderTime: 0,
+      animationFrame: null,
+      currentData: null,
+      speedHistory: [],
+      averageSpeed: 0 // Initialize to 0 instead of undefined
+    };
   }
 
   setCardActive(type, active, data) {
@@ -2386,73 +2493,543 @@ class InfoManager {
   }
 
   updateDisplay() {
+    // Get all active cards
     const activeCards = Object.entries(this.cards)
-      .filter(([_, card]) => card.active)
-      .sort((a, b) => b[1].priority - a[1].priority);
-    const next = activeCards.length > 0 ? activeCards[0][0] : null;
-    if (next !== this.current) {
-      this.current = next;
-      if (next) this.cards[next].render.call(this, this.cards[next].data);
-      else this.container.innerHTML = '';
-    } else if (next) {
-      this.cards[next].render.call(this, this.cards[next].data);
+      .filter(([_, card]) => card.active);
+      
+    // If no active cards, clear the container
+    if (activeCards.length === 0) {
+      return;
     }
+    
+    // Instead of only showing the highest priority card,
+    // render each card in its own container
+    activeCards.forEach(([cardType, card]) => {
+      // Each card type has its own container element
+      switch(cardType) {
+        case 'weather':
+          // Weather card shows in info-container
+          const weatherContainer = document.getElementById('info-container');
+          if (weatherContainer) {
+            weatherContainer.style.display = 'flex';
+            this.cards[cardType].render.call(this, card.data);
+          }
+          break;
+          
+        case 'downloadHistory':
+          // Download history has its own container
+          const downloadHistoryContainer = document.getElementById('download-history-container');
+          if (downloadHistoryContainer) {
+            this.cards[cardType].render.call(this, card.data);
+          }
+          break;
+          
+        case 'download':
+          // Current download progress also has its own rendering logic
+          this.cards[cardType].render.call(this, card.data);
+          break;
+          
+        default:
+          // For other cards, fallback to old behavior using the main container
+          this.cards[cardType].render.call(this, card.data);
+      }
+    });
   }
 
   renderWeather(data) {
-    this.container.innerHTML = `
-      <div class="weather-card">
-        <i class="${data.iconClass}"></i>
-        <div class="weather-details">
-          <span class="weather-temp">${data.temp}</span>
-          <span class="weather-location">${data.location}</span>
-        </div>
-      </div>`;
+    const container = document.getElementById('info-container');
+    if (!container) return;
+    
+    const tempEl = container.querySelector('.weather-temp');
+    const locationEl = container.querySelector('.weather-location');
+    const iconEl = container.querySelector('.weather-icon i');
+
+    // Show the container
+    container.style.display = 'flex';
+
+    if (data.loading) {
+      if (tempEl) tempEl.textContent = 'Loading...';
+      if (locationEl) locationEl.textContent = '';
+      if (iconEl) iconEl.className = 'fas fa-spinner fa-spin';
+    } else if (data.error) {
+      if (tempEl) tempEl.textContent = '--°F';
+      if (locationEl) locationEl.textContent = 'No weather data';
+      if (iconEl) iconEl.className = 'fas fa-exclamation-triangle';
+    } else {
+      if (tempEl) tempEl.textContent = data.temp || '--°F';
+      if (locationEl) locationEl.textContent = data.location || '';
+      if (iconEl) iconEl.className = data.iconClass || 'fas fa-cloud-sun';
+    }
+  }
+  
+  renderDownloadHistory(data) {
+    const downloadHistoryContainer = document.getElementById('download-history-container');
+    const downloadHistoryList = document.getElementById('download-history-list');
+    if (!downloadHistoryContainer || !downloadHistoryList) return;
+    
+    // Make sure the download history container is visible without affecting others
+    downloadHistoryContainer.style.display = 'block';
+    
+    // Ensure the container for cards is properly positioned
+    const tabsList = document.getElementById('tabs-list');
+    if (tabsList) {
+      // Add a margin to push down the tabs list
+      tabsList.style.marginTop = '10px';
+    }
+    
+    // Clear any existing entries
+    downloadHistoryList.innerHTML = '';
+    
+    if (!data || data.length === 0) {
+      const emptyItem = document.createElement('div');
+      emptyItem.className = 'download-history-item';
+      emptyItem.textContent = 'No downloads yet';
+      downloadHistoryList.appendChild(emptyItem);
+      return;
+    }
+    
+    // Sort downloads by timestamp (newest first)
+    const sortedData = [...data].sort((a, b) => {
+      return new Date(b.timestamp) - new Date(a.timestamp);
+    });
+    
+    // Add each download to the list
+    sortedData.forEach(item => {
+      const historyItem = document.createElement('div');
+      historyItem.className = 'download-history-item';
+      
+      // Format the date nicely
+      const date = new Date(item.timestamp);
+      const formattedDate = date.toLocaleString();
+      
+      // Try to extract filename from URL
+      let filename = '';
+      try {
+        const url = new URL(item.url);
+        filename = url.pathname.split('/').pop() || item.url;
+      } catch (e) {
+        filename = item.url;
+      }
+      
+      historyItem.textContent = `${formattedDate} - ${filename}`;
+      historyItem.title = item.url; // Show full URL on hover
+      
+      downloadHistoryList.appendChild(historyItem);
+    });
   }
 
+  // Smoothing function for download speed using exponential moving average (EMA)
+  updateSpeed(speed) {
+    const { speedHistory } = this.downloadState;
+    
+    // Use a smoothing factor (0.3 = more smoothing, 0.7 = more responsive)
+    const smoothingFactor = 0.5;
+    
+    // If we have previous average, calculate EMA
+    if (this.downloadState.averageSpeed !== undefined) {
+      this.downloadState.averageSpeed = 
+        (speed * smoothingFactor) + 
+        (this.downloadState.averageSpeed * (1 - smoothingFactor));
+    } else {
+      // First time, just use the current speed
+      this.downloadState.averageSpeed = speed;
+    }
+    
+    // Store last few speeds for reference (but they don't affect the average)
+    speedHistory.push(speed);
+    if (speedHistory.length > 5) {
+      speedHistory.shift();
+    }
+  }
+
+  // Throttled render function
+  scheduleRender(data) {
+    const now = Date.now();
+    const minRenderInterval = 200; // Increased to 200ms for smoother updates
+    
+    // Always update the latest data
+    this.downloadState.currentData = { ...data };
+    
+    // If we already have a render scheduled, keep it
+    if (this.downloadState.animationFrame) {
+      return;
+    }
+    
+    // Calculate time since last render
+    const timeSinceLastRender = now - this.downloadState.lastRenderTime;
+    
+    // Always use requestAnimationFrame for smoother animations
+    this.downloadState.animationFrame = requestAnimationFrame(() => {
+      // If not enough time has passed since last render, schedule for later
+      if (timeSinceLastRender < minRenderInterval) {
+        const timeToNextRender = minRenderInterval - timeSinceLastRender;
+        setTimeout(() => {
+          this._renderDownload(this.downloadState.currentData);
+          this.downloadState.animationFrame = null;
+          this.downloadState.lastRenderTime = Date.now();
+        }, timeToNextRender);
+      } else {
+        // If enough time has passed, render immediately
+        this._renderDownload(this.downloadState.currentData);
+        this.downloadState.animationFrame = null;
+        this.downloadState.lastRenderTime = now;
+      }
+    });
+  }
+
+  // Main render function
   renderDownload(data) {
-    this.container.innerHTML = `
-      <div class="download-card">
-        <span class="download-filename">${data.filename}</span>
-        <progress value="${data.percent}" max="100"></progress>
-        <span class="download-percent">${data.percent}%</span>
-      </div>`;
+    const now = Date.now();
+    const elapsed = now - this.downloadState.lastProgressTime;
+    
+    // Always update the received bytes for accurate progress tracking
+    const downloaded = data.receivedBytes - this.downloadState.lastReceivedBytes;
+    
+    // Update speed if we have previous data and enough time has passed
+    if (elapsed > 100) {
+      const speed = elapsed > 0 ? (downloaded / elapsed) * 1000 : 0; // bytes per second
+      this.updateSpeed(speed);
+      
+      // Update tracking variables
+      this.downloadState.lastProgressTime = now;
+      this.downloadState.lastReceivedBytes = data.receivedBytes;
+    } else if (downloaded > 0) {
+      // For the first update or very quick updates, calculate an initial speed
+      const initialSpeed = (downloaded / Math.max(1, elapsed)) * 1000;
+      this.updateSpeed(initialSpeed);
+    }
+    
+    // Always use the latest data, but with our smoothed speed
+    this.scheduleRender({
+      ...data,
+      speed: this.downloadState.averageSpeed
+    });
   }
 
-  renderMedia(data) {
-    this.container.innerHTML = `
-      <div class="media-card">
-        <!-- Media controls placeholder -->
-        <span>${data.title || 'Media Title'}</span>
-        <button>⏮️</button>
-        <button>⏯️</button>
-        <button>⏭️</button>
-      </div>`;
+  // Format file size helper
+  formatBytes(bytes, decimals) {
+    decimals = decimals || 2;
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  }
+
+  // Format time remaining helper
+  formatTimeRemaining(bytes, total, speed) {
+    // If we don't have valid data yet, show calculating
+    if (speed <= 0 || bytes <= 0 || total <= 0) return 'Calculating...';
+    
+    const remainingBytes = total - bytes;
+    // If download is complete or nearly complete
+    if (remainingBytes <= 0) return 'Almost done...';
+    
+    // Calculate seconds remaining with a minimum of 1 second
+    let seconds = Math.max(1, Math.ceil(remainingBytes / speed));
+    
+    // Handle edge cases
+    if (isNaN(seconds) || !isFinite(seconds)) return 'Calculating...';
+    
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    
+    // Format the time remaining
+    if (h > 0) return `${h}h ${m}m remaining`;
+    if (m > 0) return `${m}m ${s}s remaining`;
+    return `${s}s remaining`;
+  }
+
+  // Update progress bar smoothly
+  updateProgressBar(percent) {
+    var progressBar = this.container.querySelector('.progress-bar');
+    if (progressBar) {
+      // Use width instead of transform for better compatibility
+      progressBar.style.width = percent + '%';
+    }
+  }
+
+  // Render media controls
+  renderMedia() {
+    this.container.innerHTML = [
+      '<div class="media-card">',
+        '<div class="media-controls">',
+          '<button class="media-control">⏮</button>',
+          '<button class="media-control">⏯</button>',
+          '<button class="media-control">⏭</button>',
+        '</div>',
+      '</div>'
+    ].join('');
+  }
+
+  // Update only the dynamic parts of the UI
+  updateDownloadUI(data) {
+    var progressBar = this.container.querySelector('.progress-bar');
+    var sizeEl = this.container.querySelector('.download-size');
+    var speedEl = this.container.querySelector('.download-speed');
+    var timeEl = this.container.querySelector('.download-time');
+    
+    // Only update progress bar if it exists and the value changed
+    if (progressBar) {
+      this.updateProgressBar(data.percent);
+    }
+    
+    // Update text elements
+    if (sizeEl) {
+      sizeEl.textContent = this.formatBytes(data.receivedBytes) + ' / ' + this.formatBytes(data.totalBytes);
+    }
+    
+    if (speedEl) {
+      speedEl.textContent = data.speed > 0 ? this.formatBytes(data.speed) + '/s' : '';
+    }
+    
+    if (timeEl) {
+      timeEl.textContent = this.formatTimeRemaining(data.receivedBytes, data.totalBytes, data.speed);
+    }
+  }
+
+  // Actual DOM update function
+  _renderDownload(data) {
+    // Determine status text and icon
+    var statusText = 'Downloading...';
+    var statusIcon = '⏬';
+    var progressClass = '';
+    
+    if (data.state === 'completed') {
+      statusText = 'Download completed';
+      statusIcon = '✓';
+      progressClass = 'completed';
+    } else if (data.state === 'interrupted' || data.state === 'cancelled') {
+      statusText = data.state === 'cancelled' ? 'Download cancelled' : 'Download failed';
+      statusIcon = '✗';
+      progressClass = 'error';
+    }
+
+    // Check if this is the first render or if the card doesn't exist yet
+    var existingCard = this.container.querySelector('.download-card');
+    
+    if (!existingCard) {
+      // First render - create the full card
+      var newHTML = [
+        '<div class="download-card ' + progressClass + '" data-id="' + data.id + '">',
+          '<div class="download-header">',
+            '<span class="download-status">' + statusIcon + '</span>',
+            '<span class="download-status-text">' + statusText + '</span>',
+            '<button class="download-cancel" title="Cancel download">Cancel</button>',
+          '</div>',
+          '<div class="download-filename" title="' + data.filename + '">' + data.filename + '</div>',
+          '<div class="progress-container">',
+            '<div class="progress-bar" style="width: ' + data.percent + '%"></div>',
+          '</div>',
+          '<div class="download-details">',
+            '<span class="download-size">' + this.formatBytes(data.receivedBytes) + ' / ' + this.formatBytes(data.totalBytes) + '</span>',
+            '<span class="download-speed">' + (data.speed > 0 ? this.formatBytes(data.speed) + '/s' : '') + '</span>',
+            '<span class="download-time">' + this.formatTimeRemaining(data.receivedBytes, data.totalBytes, data.speed) + '</span>',
+          '</div>',
+        '</div>'
+      ].join('');
+      
+      this.container.innerHTML = newHTML;
+      
+      // Add cancel button event listener
+      var cancelBtn = this.container.querySelector('.download-cancel');
+      if (cancelBtn) {
+        var self = this;
+        cancelBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          
+          // Create confirmation dialog
+          var confirmDialog = document.createElement('div');
+          confirmDialog.className = 'download-cancel-confirm';
+          confirmDialog.innerHTML = [
+            '<div class="download-cancel-confirm-content">',
+            '  <h3>Cancel download</h3>',
+            '  <p>Are you sure?</p>',
+            '  <div class="download-cancel-confirm-buttons">',
+            '    <button class="download-cancel-no">No</button>',
+            '    <button class="download-cancel-yes">Yes</button>',
+            '  </div>',
+            '</div>'
+          ].join('');
+          
+          // Add dialog to the card
+          var downloadCard = self.container.querySelector('.download-card');
+          downloadCard.appendChild(confirmDialog);
+          
+          // Add event listeners for confirmation buttons
+          var yesBtn = confirmDialog.querySelector('.download-cancel-yes');
+          var noBtn = confirmDialog.querySelector('.download-cancel-no');
+          
+          yesBtn.addEventListener('click', function() {
+            if (window.electronAPI && window.electronAPI.cancelDownload) {
+              window.electronAPI.cancelDownload(data.id);
+              self.setCardActive('download', false);
+            }
+            confirmDialog.remove();
+          });
+          
+          noBtn.addEventListener('click', function() {
+            confirmDialog.remove();
+          });
+        });
+      }
+    } else {
+      // Update existing card
+      if (existingCard.className !== 'download-card ' + progressClass) {
+        existingCard.className = 'download-card ' + progressClass;
+      }
+      
+      // Update status if changed
+      var statusEl = existingCard.querySelector('.download-status');
+      var statusTextEl = existingCard.querySelector('.download-status-text');
+      
+      if (statusEl) statusEl.textContent = statusIcon;
+      if (statusTextEl) statusTextEl.textContent = statusText;
+      
+      // Update dynamic content
+      this.updateDownloadUI(data);
+    }
+
+    // Auto-hide after completion with delay
+    if (data.state === 'completed') {
+      var self = this;
+      setTimeout(function() {
+        if (self.current === 'download') {
+          self.setCardActive('download', false);
+        }
+      }, 3000);
+    }
+  }
+
+
+}
+
+const downloadHistoryBtn = document.getElementById('download-history-btn');
+const clearDownloadHistoryBtn = document.getElementById('clear-download-history-btn');
+const downloadHistoryContainer = document.getElementById('download-history-container');
+const downloadHistoryList = document.getElementById('download-history-list');
+
+// Track download history visibility locally
+let downloadHistoryVisible = false;
+
+// Function to toggle download history visibility
+function toggleDownloadHistory() {
+  console.log('Toggle download history called');
+  const infoContainer = document.getElementById('info-container');
+  if (!infoContainer) {
+    console.error('Info container not found');
+    return;
+  }
+  
+  const infoManager = infoContainer._infoManager || new InfoManager(infoContainer);
+  infoContainer._infoManager = infoManager;
+  
+  downloadHistoryVisible = !downloadHistoryVisible;
+  console.log('Download history visible:', downloadHistoryVisible);
+  
+  if (downloadHistoryVisible) {
+    // Get the download history and show it
+    console.log('Attempting to get download history');
+    if (!window.electronAPI || !window.electronAPI.getDownloadHistory) {
+      console.error('getDownloadHistory method not available on electronAPI');
+      console.log('Available methods:', Object.keys(window.electronAPI || {}));
+      return;
+    }
+    
+    window.electronAPI.getDownloadHistory()
+      .then(data => {
+        console.log('Download history received:', data);
+        infoManager.setCardActive('downloadHistory', true, data);
+      })
+      .catch(err => console.error('Error getting download history:', err));
+  } else {
+    infoManager.setCardActive('downloadHistory', false);
+    
+    // Reset the tabs list margin when closing
+    const tabsList = document.getElementById('tabs-list');
+    if (tabsList) {
+      tabsList.style.marginTop = '0';
+    }
+    
+    // Hide the download history container
+    const downloadHistoryContainer = document.getElementById('download-history-container');
+    if (downloadHistoryContainer) {
+      downloadHistoryContainer.style.display = 'none';
+    }
   }
 }
 
-// Initialize InfoManager and subscribe to events
-document.addEventListener('DOMContentLoaded', () => {
-  const infoContainer = document.getElementById('info-container');
-  const infoManager = new InfoManager(infoContainer);
+// Set up download history button click handler
+if (downloadHistoryBtn) {
+  downloadHistoryBtn.addEventListener('click', toggleDownloadHistory);
+}
 
-  // Initial placeholder weather
-  infoManager.setCardActive('weather', true, {
-    temp: '72°F',
-    location: 'City, Country',
-    iconClass: 'fas fa-cloud-sun'
+// Set up close button click handler
+const closeDownloadHistoryBtn = document.getElementById('close-download-history-btn');
+if (closeDownloadHistoryBtn) {
+  closeDownloadHistoryBtn.addEventListener('click', toggleDownloadHistory);
+}
+
+if (clearDownloadHistoryBtn) {
+  clearDownloadHistoryBtn.addEventListener('click', () => {
+    if (window.electronAPI && window.electronAPI.clearDownloadHistory) {
+      window.electronAPI.clearDownloadHistory()
+        .then(() => {
+          console.log('Download history cleared successfully');
+          // Clear the local display
+          downloadHistoryList.innerHTML = '';
+          const emptyItem = document.createElement('div');
+          emptyItem.className = 'download-history-item';
+          emptyItem.textContent = 'No downloads yet';
+          downloadHistoryList.appendChild(emptyItem);
+        })
+        .catch(err => console.error('Error clearing download history:', err));
+    } else {
+      console.error('clearDownloadHistory method not available');
+    }
   });
+}
 
-  // Listen for download events from main process
-  if (window.electronAPI) {
-    window.electronAPI.onDownloadStart((data) => {
-      infoManager.setCardActive('download', true, data);
-    });
-    window.electronAPI.onDownloadProgress((data) => {
-      infoManager.setCardActive('download', true, data);
-    });
-    window.electronAPI.onDownloadDone(() => {
-      infoManager.setCardActive('download', false);
-    });
-  }
-});
+// Download history show/hide handlers
+if (window.electronAPI.onShowDownloadHistoryCard) {
+  window.electronAPI.onShowDownloadHistoryCard((data) => {
+    const infoContainer = document.getElementById('info-container');
+    if (infoContainer) {
+      const infoManager = infoContainer._infoManager || new InfoManager(infoContainer);
+      infoContainer._infoManager = infoManager;
+      infoManager.setCardActive('downloadHistory', true, data);
+    }
+  });
+}
+
+// Listen for download history updates while the card is open
+if (window.electronAPI.onDownloadHistoryUpdated) {
+  window.electronAPI.onDownloadHistoryUpdated((data) => {
+    console.log('Download history updated event received', data);
+    const infoContainer = document.getElementById('info-container');
+    const downloadHistoryContainer = document.getElementById('download-history-container');
+    
+    // Only update if the download history container is visible
+    if (infoContainer && downloadHistoryContainer && 
+        downloadHistoryContainer.style.display !== 'none') {
+      const infoManager = infoContainer._infoManager || new InfoManager(infoContainer);
+      infoContainer._infoManager = infoManager;
+      
+      // Update the card with new data
+      infoManager.setCardActive('downloadHistory', true, data);
+    }
+  });
+}
+
+if (window.electronAPI.onHideDownloadHistoryCard) {
+  window.electronAPI.onHideDownloadHistoryCard(() => {
+    const infoContainer = document.getElementById('info-container');
+    if (infoContainer) {
+      const infoManager = infoContainer._infoManager || new InfoManager(infoContainer);
+      infoContainer._infoManager = infoManager;
+      infoManager.setCardActive('downloadHistory', false);
+    }
+  });
+}

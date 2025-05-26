@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src *; img-src 'self' data: https:; frame-src *;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nuru Browser</title>
+  <title>CB Browser</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="titlebar.css">
   <link rel="stylesheet" href="tabs.css">
@@ -108,12 +108,26 @@
           <button id="reading-mode-btn" class="nav-button hidden" title="Reading Mode"><i class="fas fa-book-open"></i></button>
         </div>
       </div>
-      <div id="info-container" class="info-container">
+      <div id="info-container" class="info-container" style="display: none;">
         <div class="weather-icon"><i class="fas fa-cloud-sun"></i></div>
         <div class="weather-info">
-          <span class="weather-temp">72°F</span>
-          <span class="weather-location">City, Country</span>
+          <span class="weather-temp"></span>
+          <span class="weather-location"></span>
         </div>
+      </div>
+      <div id="download-history-container" class="download-history-container" style="display: none;">
+        <div class="download-history-header">
+          <h3>Download History</h3>
+          <div class="download-history-actions">
+            <button id="clear-download-history-btn" class="clear-btn" title="Clear Download History">
+              <i class="fas fa-trash"></i>
+            </button>
+            <button id="close-download-history-btn" class="close-btn" title="Close Download History">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+        <div id="download-history-list" class="download-history-list"></div>
       </div>
     </div>
     <div id="pinned-apps-container"></div>
@@ -130,7 +144,7 @@
       <div class="footer-buttons" style="display:flex;justify-content:center;gap:15px;">
         <button id="settings-btn" class="nav-button" title="Settings"><i class="fas fa-cog"></i></button>
         <button id="bookmarks-btn" class="nav-button" title="Bookmarks"><i class="fas fa-bookmark"></i></button>
-        <button id="history-btn" class="nav-button" title="History"><i class="fas fa-history"></i></button>
+        <button id="download-history-btn" class="nav-button" title="Download History"><i class="fas fa-download"></i></button>
         <button id="tabs-button" class="nav-button" title="Reload Page">
           <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 12h7V5l-2.35 1.35z"/></svg>
         </button>

@@ -245,6 +245,329 @@ webview.active {
   background: transparent;
 }
 
+/* Download History Container */
+.download-history-container {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  margin: 10px 0;
+  padding: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  max-height: 300px;
+  width: 100%;
+  animation: fadeIn 0.3s ease-out;
+  display: none; /* Hidden by default */
+}
+
+.download-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.download-history-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  color: var(--text-color);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.download-history-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.clear-btn {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.clear-btn:hover {
+  color: var(--text-color);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.download-history-list {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.download-history-item {
+  padding: 8px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+  color: var(--text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.download-history-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Download Card */
+.download-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.3s ease-out;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.download-card.completed {
+  border-left: 4px solid #4caf50;
+}
+
+.download-card.error {
+  border-left: 4px solid #f44336;
+}
+
+.download-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+  gap: var(--spacing-sm);
+}
+
+.download-status {
+  font-size: 16px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(86, 97, 244, 0.2);
+  color: var(--accent-color);
+}
+
+.download-status-text {
+  flex: 1;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-color);
+}
+
+.download-cancel {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  opacity: 0.6;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.download-cancel:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.download-filename {
+  font-size: 13px;
+  color: var(--text-color);
+  margin-bottom: var(--spacing-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progress-container {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  margin-bottom: var(--spacing-sm);
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--accent-color);
+  border-radius: 2px;
+  width: 0;
+  transition: width 0.3s ease-out, background-color 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: progressShine 1.5s infinite;
+}
+
+.download-card.completed .progress-bar {
+  background: #4caf50;
+}
+
+.download-card.error .progress-bar {
+  background: #f44336;
+}
+
+.download-details {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.download-size {
+  flex: 1;
+}
+
+/* Download Cancel Confirmation Dialog */
+.download-cancel-confirm {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: var(--radius-md);
+}
+
+.download-cancel-confirm-content {
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-md);
+  text-align: center;
+  width: 80%;
+  max-width: 280px;
+}
+
+.download-cancel-confirm-content h3 {
+  margin: 0 0 var(--spacing-sm);
+  font-size: 16px;
+  color: var(--text-color);
+}
+
+.download-cancel-confirm-content p {
+  margin: 0 0 var(--spacing-md);
+  font-size: 14px;
+  color: var(--text-color-secondary);
+}
+
+.download-cancel-confirm-buttons {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-md);
+}
+
+.download-cancel-confirm-buttons button {
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.download-cancel-yes {
+  background: #f44336;
+  color: white;
+}
+
+.download-cancel-yes:hover {
+  background: #d32f2f;
+}
+
+.download-cancel-no {
+  background: var(--button-bg);
+  color: var(--text-color);
+}
+
+.download-cancel-no:hover {
+  background: var(--button-hover-bg);
+}
+
+.download-cancel {
+  background: rgba(255, 0, 0, 0.1);
+  color: var(--text-color);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  opacity: 0.8;
+  border: 1px solid rgba(255, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.download-cancel:hover {
+  opacity: 1;
+  background: rgba(255, 0, 0, 0.2);
+}
+
+.download-speed {
+  flex: 1;
+  text-align: center;
+}
+
+.download-time {
+  flex: 1;
+  text-align: right;
+}
+
+@keyframes progressShine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 /* Error overlay */
 #error-overlay {
   position: fixed;

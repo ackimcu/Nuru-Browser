@@ -584,6 +584,18 @@
           </div>
         </div>
       </div>
+
+      <div class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">Cards</h2>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Weather Location</span>
+          <input type="text" id="weather-location-input" list="weather-location-list" placeholder="Enter your city or address" autocomplete="off" style="flex:2; margin-left:10px; background: var(--bg-color); color: var(--text-color); border:1px solid var(--border-color); border-radius:6px; padding:8px;" />
+          <datalist id="weather-location-list"></datalist>
+          <button id="weather-save-btn" class="action-button" style="margin-left:10px; padding:6px 12px; flex:none;">Save</button>
+        </div>
+      </div>
     </div>
     
     <div class="save-container">
@@ -711,6 +723,37 @@ document.addEventListener('DOMContentLoaded', async () => {
   const applyThemeWebpagesToggle = document.getElementById('apply-theme-webpages-toggle');
   applyThemeWebpagesToggle.checked = settings.applyThemeToWebpages || false;
 
+  // Cards settings: weather location
+  const weatherInput = document.getElementById('weather-location-input');
+  weatherInput.value = settings.cards?.weatherLocation || '';
+  // Autocomplete via OpenStreetMap Nominatim
+  const weatherList = document.getElementById('weather-location-list');
+  let weatherTimer;
+  weatherInput.addEventListener('input', () => {
+    clearTimeout(weatherTimer);
+    const q = weatherInput.value.trim();
+    if (q.length < 3) { weatherList.innerHTML = ''; return; }
+    weatherTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`);
+        const items = await res.json();
+        weatherList.innerHTML = '';
+        items.forEach(item => {
+          const opt = document.createElement('option'); opt.value = item.display_name;
+          weatherList.appendChild(opt);
+        });
+      } catch (e) { console.error('Geocode error', e); }
+    }, 300);
+  });
+  // Immediate save button for weather location
+  const weatherSaveBtn = document.getElementById('weather-save-btn');
+  weatherSaveBtn.addEventListener('click', async () => {
+    const loc = weatherInput.value.trim();
+    const result = await window.settingsAPI.saveAllSettings({ cards: { weatherLocation: loc } });
+    if (result.success) showNotification('Weather location saved');
+    else showNotification(`Error saving: ${result.error}`, true);
+  });
+
   // Save button
   const saveBtn = document.getElementById('save-button');
   saveBtn.addEventListener('click', async () => {
@@ -724,7 +767,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       theme: themeSelect.value,
       themeExcludedDomains: excludeTextarea.value.split('\n').map(s => s.trim()).filter(Boolean),
       viewportsHiddenByDefault: viewportsToggle.checked,
-      applyThemeToWebpages: applyThemeWebpagesToggle.checked
+      applyThemeToWebpages: applyThemeWebpagesToggle.checked,
+      cards: { weatherLocation: weatherInput.value.trim() }
     };
     const result = await window.settingsAPI.saveAllSettings(payload);
     if (result.success) window.settingsAPI.closeSettings();

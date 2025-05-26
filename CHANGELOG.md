@@ -47,6 +47,13 @@ All notable changes to this project will be documented in this file.
 - fix: updated main viewport CSS to shrink (`width: calc(100% - 280px)`) when tabs pane is open to prevent overflow
 - fix: synchronized `tabs-viewport` and `history-viewport` top offsets and heights using `--spacing-sm`
 
+## [1.0.5] - 2025-05-26
+
+### Changed
+- Enhanced download card UI with a proper "Cancel" button instead of an "X"
+- Added confirmation dialog when canceling downloads to prevent accidental cancellation
+- Improved visual feedback for download cancellation actions
+
 ## [1.0.4] - 2025-05-24
 
 - feat: relocated reload button to footer

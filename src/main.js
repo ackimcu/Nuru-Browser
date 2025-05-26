@@ -1,3 +1,4 @@
+// Import Electron modules
 const { app, BrowserWindow, globalShortcut, ipcMain, dialog, nativeImage, session, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -54,6 +55,10 @@ const DEFAULT_SETTINGS = {
   ],
   features: {
     adblock: true
+  },
+  cards: {
+    weatherLocation: '',
+    downloadHistoryCardVisible: false
   }
 };
 
@@ -61,6 +66,11 @@ let mainWindow;
 let diagnosticsWindow;
 let settingsWindow = null; // Settings window reference
 let settings = DEFAULT_SETTINGS;
+let downloadHistory = [];
+let downloadHistoryCardVisible = false;
+
+// Path for persisting download history
+const DOWNLOAD_HISTORY_PATH = path.join(app.getPath('userData'), 'cb_browser_download_history.json');
 
 // Add ad blocklist loading utilities
 const BLOCKLIST_DIR = path.join(__dirname, '..', 'Ad Blocklist');
@@ -327,24 +337,68 @@ async function createMainWindow() {
     callback({});
   });
 
+  // Store active downloads
+  const activeDownloads = new Map();
+
   // Register download handler for webview downloads
   const downloadSession = require('electron').session.fromPartition('persist:browsing');
   downloadSession.on('will-download', (event, item) => {
+    // Track download in history
+    trackDownload(item.getURL());
     const filename = item.getFilename();
     const totalBytes = item.getTotalBytes();
-    const downloadId = Date.now();
+    const downloadId = Date.now().toString();
+    
+    // Store the download item
+    activeDownloads.set(downloadId, item);
+    
     // Notify renderer that a download has started
-    mainWindow.webContents.send('download-start', { id: downloadId, filename, totalBytes });
+    mainWindow.webContents.send('download-start', { 
+      id: downloadId, 
+      filename, 
+      totalBytes,
+      percent: 0,
+      receivedBytes: 0,
+      state: 'downloading'
+    });
+    
     // Listen for download progress
     item.on('updated', () => {
       const receivedBytes = item.getReceivedBytes();
       const percent = totalBytes > 0 ? Math.round(receivedBytes / totalBytes * 100) : 0;
-      mainWindow.webContents.send('download-progress', { id: downloadId, receivedBytes, totalBytes, percent });
+      mainWindow.webContents.send('download-progress', { 
+        id: downloadId, 
+        filename,
+        receivedBytes, 
+        totalBytes, 
+        percent,
+        state: 'downloading'
+      });
     });
+    
     // When download is finished or interrupted
     item.once('done', (e, state) => {
-      mainWindow.webContents.send('download-done', { id: downloadId, filename, state });
+      activeDownloads.delete(downloadId);
+      mainWindow.webContents.send('download-done', { 
+        id: downloadId, 
+        filename, 
+        state: state === 'completed' ? 'completed' : 'interrupted',
+        receivedBytes: item.getReceivedBytes(),
+        totalBytes,
+        percent: state === 'completed' ? 100 : Math.round((item.getReceivedBytes() / totalBytes) * 100) || 0
+      });
     });
+  });
+  
+  // Handle cancel download request
+  ipcMain.handle('cancel-download', (event, downloadId) => {
+    const downloadItem = activeDownloads.get(downloadId);
+    if (downloadItem) {
+      downloadItem.cancel();
+      activeDownloads.delete(downloadId);
+      return { success: true };
+    }
+    return { success: false, error: 'Download not found' };
   });
 }
 
@@ -778,8 +832,18 @@ ipcMain.handle('save-all-settings', (event, newSettings) => {
       }
     }
     
+    // Update cards settings if provided
+    if (newSettings.cards) {
+      settings.cards = { ...settings.cards, ...newSettings.cards };
+    }
+    
     // Save all settings to disk
     saveSettings();
+    
+    // Notify renderer of updated settings
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('settings-updated', settings);
+    }
     
     return { success: true };
   } catch (err) {
@@ -1225,6 +1289,26 @@ app.whenReady().then(async () => {
     createSettingsWindow();
   });
 
+  // Register download history handlers
+  log.info('Registering download history handlers');
+  ipcMain.handle('toggle-download-history-card', () => {
+    log.info('Toggle download history card handler called');
+    toggleDownloadHistoryCard();
+    return downloadHistoryCardVisible;
+  });
+  
+  ipcMain.handle('get-download-history', () => {
+    return downloadHistory;
+  });
+  
+  ipcMain.handle('clear-download-history', () => {
+    log.info('Clear download history handler called');
+    return clearDownloadHistory();
+  });
+  
+  // Load download history from persistent storage
+  loadDownloadHistory();
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createMainWindow();
@@ -1300,5 +1384,74 @@ ipcMain.on('show-settings', () => createSettingsWindow());
 ipcMain.handle('save-all-settings', (event, newSettings) => {
   settings = { ...settings, ...newSettings };
   saveSettings();
-  return settings;
+  return { success: true };
 });
+
+function toggleDownloadHistoryCard() {
+  log.info('Toggle handler invoked');
+  downloadHistoryCardVisible = !downloadHistoryCardVisible;
+  if (downloadHistoryCardVisible) {
+    // Logic to display the download history card
+    mainWindow.webContents.send('show-download-history-card', downloadHistory);
+  } else {
+    // Logic to hide the download history card
+    mainWindow.webContents.send('hide-download-history-card');
+  }
+}
+
+// Load download history from disk
+function loadDownloadHistory() {
+  try {
+    if (fs.existsSync(DOWNLOAD_HISTORY_PATH)) {
+      const data = fs.readFileSync(DOWNLOAD_HISTORY_PATH, 'utf8');
+      downloadHistory = JSON.parse(data);
+      log.info(`Loaded ${downloadHistory.length} download history items`);
+    } else {
+      log.info('No download history file found, using empty history');
+      downloadHistory = [];
+      saveDownloadHistory(); // Create the file
+    }
+  } catch (error) {
+    log.error('Failed to load download history:', error);
+    downloadHistory = [];
+    saveDownloadHistory();
+  }
+}
+
+// Save download history to disk
+function saveDownloadHistory() {
+  try {
+    log.info('Saving download history to:', DOWNLOAD_HISTORY_PATH);
+    
+    // Ensure the directory exists
+    const historyDir = path.dirname(DOWNLOAD_HISTORY_PATH);
+    if (!fs.existsSync(historyDir)) {
+      fs.mkdirSync(historyDir, { recursive: true });
+    }
+    
+    fs.writeFileSync(DOWNLOAD_HISTORY_PATH, JSON.stringify(downloadHistory, null, 2));
+    log.info('Download history saved successfully');
+  } catch (error) {
+    log.error('Failed to save download history:', error);
+  }
+}
+
+// Clear download history
+function clearDownloadHistory() {
+  downloadHistory = [];
+  saveDownloadHistory();
+  log.info('Download history cleared');
+  return { success: true };
+}
+
+// Track a new download and save to disk
+function trackDownload(url) {
+  downloadHistory.push({ url, timestamp: new Date() });
+  saveDownloadHistory();
+  
+  // If the download history card is visible, send updated history to the renderer
+  if (downloadHistoryCardVisible && mainWindow) {
+    log.info('Sending updated download history to renderer');
+    mainWindow.webContents.send('download-history-updated', downloadHistory);
+  }
+}

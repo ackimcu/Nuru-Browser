@@ -18,8 +18,8 @@
   flex-direction: column;
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
-  border-top-right-radius: 16px;
-  border-bottom-right-radius: 16px;
+  border-top-right-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
@@ -162,7 +162,7 @@
   display: flex;
   align-items: center;
   padding: 6px 8px;
-  border-radius: 12px;
+  border-radius: 6px !important;
   cursor: pointer;
   margin-bottom: 4px;
   transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -612,4 +612,83 @@
 .tabs-header #nav-buttons:hover {
   background: transparent;
   box-shadow: none;
+}
+
+/* Custom override: enforce row layout and reduce height for tab items */
+.tabs-list .tab-item {
+  flex-direction: row !important;
+  align-items: center !important;
+  padding: 4px 8px !important;
+  min-height: 32px !important;
+}
+.tabs-list .tab-item .tab-favicon {
+  width: 20px !important;
+  height: 20px !important;
+  margin-bottom: 0 !important;
+  margin-right: 8px !important;
+}
+.tabs-list .tab-item .tab-title {
+  margin-bottom: 0 !important;
+}
+
+/* Custom override: position pin and close buttons in flow */
+.tabs-list .tab-item .tab-pin,
+.tabs-list .tab-item .tab-close {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  margin-left: 5px !important;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Custom override: slim down and restyle the new-tab button */
+.tabs-list .tab-item.new-tab {
+  position: relative;
+  display: flex;
+  justify-content: center !important;
+  align-items: center;
+  padding: 4px 8px !important;
+  min-height: 32px !important;
+  border-radius: 6px !important;
+}
+.tabs-list .tab-item.new-tab .tab-favicon {
+  position: absolute !important;
+  left: 8px !important;
+  margin: 0 !important;
+}
+.tabs-list .tab-item.new-tab .tab-title {
+  margin: 0 !important;
+  text-align: center;
+}
+
+/* Adjust new-tab button height and padding */
+.tab-item.new-tab {
+  min-height: 32px !important;
+  padding: 4px 8px !important;
+}
+
+/* Ensure New Tab button matches slim tab item layout */
+.tab-item.new-tab {
+  flex-direction: row !important;
+  align-items: center !important;
+  padding: 4px 8px !important;
+  min-height: 32px !important;
+}
+.tab-item.new-tab .tab-favicon {
+  margin: 0 !important;
+  margin-right: 8px !important;
+}
+.tab-item.new-tab .tab-title {
+  flex: 1 !important;
+  margin: 0 !important;
+  text-align: center !important;
+}
+
+/* Nudge new-tab label and make bold */
+.tab-item.new-tab .tab-title {
+  font-weight: bold !important;
+  transform: translateX(-4px) !important;
 }
