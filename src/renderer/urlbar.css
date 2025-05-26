@@ -595,8 +595,8 @@
   color: var(--text-color);
 }
 
-/* Info container styling */
-.info-container {
+/* Card container styling */
+.card-container {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -604,19 +604,19 @@
   gap: 8px;
   padding: 8px 0;
 }
-.info-container .weather-icon i {
+.card-container .weather-icon i {
   font-size: 1.2em;
   color: var(--text-color);
 }
-.info-container .weather-info {
+.card-container .weather-info {
   display: flex;
   flex-direction: column;
 }
-.info-container .weather-temp {
+.card-container .weather-temp {
   font-size: 1em;
   color: var(--text-color);
 }
-.info-container .weather-location {
+.card-container .weather-location {
   font-size: 0.8em;
   color: var(--text-color);
   opacity: 0.75;

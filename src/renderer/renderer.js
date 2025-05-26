@@ -1090,7 +1090,7 @@ function setupWebviewEvents(webviewElement) {
     if (tabIndex !== -1) {
       tabs[tabIndex].title = event.title || 'Untitled';
       if (webviewElement.classList.contains('active')) {
-        document.title = `${event.title} - CB Loader`;
+        document.title = `${event.title} - NURU Browser`;
       }
       updateTabsUI();
     }
@@ -1448,29 +1448,29 @@ async function initializeApp() {
     // Wait for settings to be loaded first
     await loadSettings();
     
-    const infoContainer = document.getElementById('info-container');
-    if (!infoContainer) {
-      console.error('Info container not found');
+    const cardContainer = document.getElementById('card-container');
+    if (!cardContainer) {
+      console.error('Card container not found');
       return;
     }
     
-    const infoManager = new InfoManager(infoContainer);
+    const cardManager = new CardManager(cardContainer);
 
     // Fetch and display live weather data
     async function updateWeather() {
     // If we're called without arguments, use the saved location
     if (!settings.cards?.weatherLocation) {
-      infoManager.setCardActive('weather', false);
+      cardManager.setCardActive('weather', false);
       return;
     }
     console.log('updateWeather called with weatherLocation:', settings.cards?.weatherLocation);
     const loc = settings.cards?.weatherLocation;
     if (!loc) {
-      infoManager.setCardActive('weather', true, { error: true });
+      cardManager.setCardActive('weather', true, { error: true });
       return;
     }
     // Show loading spinner
-    infoManager.setCardActive('weather', true, { loading: true });
+    cardManager.setCardActive('weather', true, { loading: true });
     try {
       // Geocode location
       const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(loc)}`);
@@ -1490,10 +1490,10 @@ async function initializeApp() {
       const tempStr = `${fTemp}°F`;
       // Use a generic weather icon
       const iconClass = 'fas fa-cloud-sun';
-      infoManager.setCardActive('weather', true, { temp: tempStr, location: display_name, iconClass });
+      cardManager.setCardActive('weather', true, { temp: tempStr, location: display_name, iconClass });
     } catch (err) {
       console.error('Weather fetch error', err);
-      infoManager.setCardActive('weather', true, { error: true });
+      cardManager.setCardActive('weather', true, { error: true });
     }
   }
 
@@ -1508,7 +1508,7 @@ async function initializeApp() {
         if (newSettings.cards?.weatherLocation) {
           updateWeather();
         } else {
-          infoManager.setCardActive('weather', false);
+          cardManager.setCardActive('weather', false);
         }
       });
     }
@@ -1518,7 +1518,7 @@ async function initializeApp() {
       console.log('Initial weather update with saved location:', settings.cards.weatherLocation);
       await updateWeather();
     } else {
-      infoManager.setCardActive('weather', false);
+      cardManager.setCardActive('weather', false);
     }
 
     // Refresh weather data every 30 minutes
@@ -1537,13 +1537,13 @@ async function initializeApp() {
     // Listen for download events from main process
     if (window.electronAPI) {
       window.electronAPI.onDownloadStart((data) => {
-        infoManager.setCardActive('download', true, data);
+        cardManager.setCardActive('download', true, data);
       });
       window.electronAPI.onDownloadProgress((data) => {
-        infoManager.setCardActive('download', true, data);
+        cardManager.setCardActive('download', true, data);
       });
       window.electronAPI.onDownloadDone(() => {
-        infoManager.setCardActive('download', false);
+        cardManager.setCardActive('download', false);
       });
     }
   } catch (error) {
@@ -2153,10 +2153,6 @@ function __nuruInjectReadingMode() {
   exitBtn.onclick = () => overlay.remove();
   overlay.appendChild(exitBtn);
 
-  // --- Append overlay ---
-  document.body.appendChild(overlay);
-  overlay.focus();
-
   // --- Settings Persistence ---
   function saveSettings(obj) {
     localStorage.setItem('nuruReadingMode', JSON.stringify(obj));
@@ -2461,7 +2457,7 @@ updateTabsUI = function() {
 renderPinnedApps();
 
 // Info Cards Manager
-class InfoManager {
+class CardManager {
   constructor(container) {
     this.container = container;
     this.cards = {
@@ -2508,8 +2504,8 @@ class InfoManager {
       // Each card type has its own container element
       switch(cardType) {
         case 'weather':
-          // Weather card shows in info-container
-          const weatherContainer = document.getElementById('info-container');
+          // Weather card shows in card-container
+          const weatherContainer = document.getElementById('card-container');
           if (weatherContainer) {
             weatherContainer.style.display = 'flex';
             this.cards[cardType].render.call(this, card.data);
@@ -2537,7 +2533,7 @@ class InfoManager {
   }
 
   renderWeather(data) {
-    const container = document.getElementById('info-container');
+    const container = document.getElementById('card-container');
     if (!container) return;
     
     const tempEl = container.querySelector('.weather-temp');
@@ -2917,14 +2913,14 @@ let downloadHistoryVisible = false;
 // Function to toggle download history visibility
 function toggleDownloadHistory() {
   console.log('Toggle download history called');
-  const infoContainer = document.getElementById('info-container');
-  if (!infoContainer) {
-    console.error('Info container not found');
+  const cardContainer = document.getElementById('card-container');
+  if (!cardContainer) {
+    console.error('Card container not found');
     return;
   }
   
-  const infoManager = infoContainer._infoManager || new InfoManager(infoContainer);
-  infoContainer._infoManager = infoManager;
+  const cardManager = cardContainer._cardManager || new CardManager(cardContainer);
+  cardContainer._cardManager = cardManager;
   
   downloadHistoryVisible = !downloadHistoryVisible;
   console.log('Download history visible:', downloadHistoryVisible);
@@ -2941,11 +2937,11 @@ function toggleDownloadHistory() {
     window.electronAPI.getDownloadHistory()
       .then(data => {
         console.log('Download history received:', data);
-        infoManager.setCardActive('downloadHistory', true, data);
+        cardManager.setCardActive('downloadHistory', true, data);
       })
       .catch(err => console.error('Error getting download history:', err));
   } else {
-    infoManager.setCardActive('downloadHistory', false);
+    cardManager.setCardActive('downloadHistory', false);
     
     // Reset the tabs list margin when closing
     const tabsList = document.getElementById('tabs-list');
@@ -2995,11 +2991,11 @@ if (clearDownloadHistoryBtn) {
 // Download history show/hide handlers
 if (window.electronAPI.onShowDownloadHistoryCard) {
   window.electronAPI.onShowDownloadHistoryCard((data) => {
-    const infoContainer = document.getElementById('info-container');
-    if (infoContainer) {
-      const infoManager = infoContainer._infoManager || new InfoManager(infoContainer);
-      infoContainer._infoManager = infoManager;
-      infoManager.setCardActive('downloadHistory', true, data);
+    const cardContainer = document.getElementById('card-container');
+    if (cardContainer) {
+      const cardManager = cardContainer._cardManager || new CardManager(cardContainer);
+      cardContainer._cardManager = cardManager;
+      cardManager.setCardActive('downloadHistory', true, data);
     }
   });
 }
@@ -3008,28 +3004,28 @@ if (window.electronAPI.onShowDownloadHistoryCard) {
 if (window.electronAPI.onDownloadHistoryUpdated) {
   window.electronAPI.onDownloadHistoryUpdated((data) => {
     console.log('Download history updated event received', data);
-    const infoContainer = document.getElementById('info-container');
+    const cardContainer = document.getElementById('card-container');
     const downloadHistoryContainer = document.getElementById('download-history-container');
     
     // Only update if the download history container is visible
-    if (infoContainer && downloadHistoryContainer && 
+    if (cardContainer && downloadHistoryContainer && 
         downloadHistoryContainer.style.display !== 'none') {
-      const infoManager = infoContainer._infoManager || new InfoManager(infoContainer);
-      infoContainer._infoManager = infoManager;
+      const cardManager = cardContainer._cardManager || new CardManager(cardContainer);
+      cardContainer._cardManager = cardManager;
       
       // Update the card with new data
-      infoManager.setCardActive('downloadHistory', true, data);
+      cardManager.setCardActive('downloadHistory', true, data);
     }
   });
 }
 
 if (window.electronAPI.onHideDownloadHistoryCard) {
   window.electronAPI.onHideDownloadHistoryCard(() => {
-    const infoContainer = document.getElementById('info-container');
-    if (infoContainer) {
-      const infoManager = infoContainer._infoManager || new InfoManager(infoContainer);
-      infoContainer._infoManager = infoManager;
-      infoManager.setCardActive('downloadHistory', false);
+    const cardContainer = document.getElementById('card-container');
+    if (cardContainer) {
+      const cardManager = cardContainer._cardManager || new CardManager(cardContainer);
+      cardContainer._cardManager = cardManager;
+      cardManager.setCardActive('downloadHistory', false);
     }
   });
 }

@@ -50,6 +50,15 @@ All notable changes to this project will be documented in this file.
 ## [1.0.5] - 2025-05-26
 
 ### Changed
+- Renamed 'info-container' to 'card-container' for better semantic meaning
+- Renamed 'InfoManager' class to 'CardManager' to better reflect its purpose
+- Renamed all instances of 'CB Browser' and 'CB Loader' to 'NURU Browser'
+- Updated download history filename to use 'nuru_browser' prefix
+- Enhanced download card UI with a proper "Cancel" button and confirmation dialog
+- Added confirmation dialog when canceling downloads to prevent accidental cancellation
+- Improved visual feedback for download cancellation actions
+
+### Changed
 - Enhanced download card UI with a proper "Cancel" button instead of an "X"
 - Added confirmation dialog when canceling downloads to prevent accidental cancellation
 - Improved visual feedback for download cancellation actions

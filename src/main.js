@@ -70,7 +70,7 @@ let downloadHistory = [];
 let downloadHistoryCardVisible = false;
 
 // Path for persisting download history
-const DOWNLOAD_HISTORY_PATH = path.join(app.getPath('userData'), 'cb_browser_download_history.json');
+const DOWNLOAD_HISTORY_PATH = path.join(app.getPath('userData'), 'nuru_browser_download_history.json');
 
 // Add ad blocklist loading utilities
 const BLOCKLIST_DIR = path.join(__dirname, '..', 'Ad Blocklist');
