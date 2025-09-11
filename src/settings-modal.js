@@ -107,6 +107,24 @@ function setupSettingsHandlers(settings, mainWindow) {
     }
   });
 
+  // Save all settings at once
+  ipcMain.handle('save-all-settings', (event, newSettings) => {
+    try {
+      // Apply settings
+      Object.assign(settings, newSettings);
+      
+      // Save the settings to disk
+      const settingsPath = path.join(app.getPath('userData'), 'nuru_browser_settings.json');
+      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+      
+      log.info('All settings saved');
+      return { success: true };
+    } catch (err) {
+      log.error('Error saving all settings:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
   // Update zoom level
   ipcMain.handle('update-zoom-level', (event, zoomLevel) => {
     try {
@@ -163,6 +181,8 @@ function setupSettingsHandlers(settings, mainWindow) {
       return { success: false, error: err.message };
     }
   });
+
+  // Password Manager IPC handlers are now in main.js
 }
 
 /**

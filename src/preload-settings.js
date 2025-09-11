@@ -39,4 +39,20 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   deleteAllUserData: () => ipcRenderer.invoke('delete-all-user-data'),
   // Restart the application
   restartApp: () => ipcRenderer.invoke('restart-app'),
+
+  // Password Manager API
+  initPasswordManager: () => ipcRenderer.invoke('init-password-manager'),
+  setMasterPassword: (password, isNew) => ipcRenderer.invoke('set-master-password', password, isNew),
+  lockPasswordManager: () => ipcRenderer.invoke('lock-password-manager'),
+  savePassword: (entry) => ipcRenderer.invoke('save-password', entry),
+  getPassword: (id) => ipcRenderer.invoke('get-password', id),
+  getAllPasswords: () => ipcRenderer.invoke('get-all-passwords'),
+  searchPasswords: (query) => ipcRenderer.invoke('search-passwords', query),
+  getPasswordsByCategory: (category) => ipcRenderer.invoke('get-passwords-by-category', category),
+  getPasswordStats: () => ipcRenderer.invoke('get-password-stats'),
+  deletePassword: (id) => ipcRenderer.invoke('delete-password', id),
+  generatePassword: (options) => ipcRenderer.invoke('generate-password', options),
+  exportPasswords: () => ipcRenderer.invoke('export-passwords'),
+  importPasswords: (jsonData) => ipcRenderer.invoke('import-passwords', jsonData),
+  forgetPassword: () => ipcRenderer.invoke('forget-password'),
 });

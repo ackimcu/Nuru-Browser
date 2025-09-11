@@ -31,6 +31,7 @@ const backButton = document.getElementById('back-button');
 const forwardButton = document.getElementById('forward-button');
 const closeButton = document.getElementById('close-button');
 const tabsButton = document.getElementById('tabs-button');
+const settingsBtn = document.getElementById('settings-btn');
 // Generic stub element to avoid missing element errors
 const noopElem = { classList: { add: () => {}, remove: () => {}, contains: () => false, toggle: () => {} }, addEventListener: () => {}, removeEventListener: () => {}, appendChild: () => {}, style: {}, _hasClickListener: false };
 
@@ -113,43 +114,64 @@ function saveResources() {
 }
 
 // Event bindings
-mediaSelect.addEventListener('change', () => renderResources(mediaSelect.value));
-addResourceBtn.addEventListener('click', () => addResourceForm.classList.remove('hidden'));
-cancelResourceBtn.addEventListener('click', () => addResourceForm.classList.add('hidden'));
+if (mediaSelect) {
+  mediaSelect.addEventListener('change', () => renderResources(mediaSelect.value));
+}
+if (addResourceBtn && addResourceForm) {
+  addResourceBtn.addEventListener('click', () => addResourceForm.classList.remove('hidden'));
+}
+if (cancelResourceBtn && addResourceForm) {
+  cancelResourceBtn.addEventListener('click', () => addResourceForm.classList.add('hidden'));
+}
 
 // Autofill resource fields from active webview
 const addWebsiteBtn = document.getElementById('add-website-btn');
-addWebsiteBtn.addEventListener('click', () => {
-  const webview = document.querySelector('webview.active');
-  if (webview) {
-    const url = webview.getURL();
-    const name = webview.getTitle();
-    newResourceUrl.value = url;
-    newResourceName.value = name;
-    addResourceForm.classList.remove('hidden');
-  }
-});
+if (addWebsiteBtn) {
+  addWebsiteBtn.addEventListener('click', () => {
+    const webview = document.querySelector('webview.active');
+    if (webview) {
+      const url = webview.getURL();
+      const name = webview.getTitle();
+      if (newResourceUrl) newResourceUrl.value = url;
+      if (newResourceName) newResourceName.value = name;
+      if (addResourceForm) {
+        addResourceForm.classList.remove('hidden');
+      }
+    }
+  });
+}
 
-saveResourceBtn.addEventListener('click', () => {
-  const name = newResourceName.value.trim();
-  const url = newResourceUrl.value.trim();
-  const cat = newResourceCategory.value;
-  if (name && url) {
-    resources[cat].push({ name, url });
-    saveResources();
-    renderResources(mediaSelect.value);
-    addResourceForm.classList.add('hidden');
-    newResourceName.value = '';
-    newResourceUrl.value = '';
-  }
-});
+if (saveResourceBtn) {
+  saveResourceBtn.addEventListener('click', () => {
+    if (newResourceName && newResourceUrl && newResourceCategory) {
+      const name = newResourceName.value.trim();
+      const url = newResourceUrl.value.trim();
+      const cat = newResourceCategory.value;
+      if (name && url) {
+        if (!resources[cat]) resources[cat] = [];
+        resources[cat].push({ name, url });
+        saveResources();
+        if (mediaSelect) {
+          renderResources(mediaSelect.value);
+        }
+        if (addResourceForm) {
+          addResourceForm.classList.add('hidden');
+        }
+        newResourceName.value = '';
+        newResourceUrl.value = '';
+      }
+    }
+  });
+}
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', async () => {
   // Load settings then init UI
   await loadSettings();
   initResources();
-  renderResources(mediaSelect.value);
+  if (mediaSelect) {
+    renderResources(mediaSelect.value);
+  }
   initializeTabs();
   // Show tabs viewport by default, unless hidden-by-default is enabled
   if (!settings.viewportsHiddenByDefault) {
@@ -244,10 +266,12 @@ function updateUrlInput(url) {
 
 // Modern search bar logic
 const modernInput = document.getElementById('modern-search-input');
-modernInput.addEventListener('click', () => {
-  modernInput.select();
-  updateSuggestions(modernInput.value);
-});
+if (modernInput) {
+  modernInput.addEventListener('click', () => {
+    modernInput.select();
+    updateSuggestions(modernInput.value);
+  });
+}
 const suggestionsBox = document.getElementById('modern-suggestions');
 
 // Home button logic
@@ -315,76 +339,82 @@ function updateSuggestions(val) {
   adjustTabs(true);
 }
 
-modernInput.addEventListener('input', e => {
-  highlightedIdx = -1;
-  updateSuggestions(e.target.value);
-});
+if (modernInput) {
+  modernInput.addEventListener('input', e => {
+    highlightedIdx = -1;
+    updateSuggestions(e.target.value);
+  });
 
-modernInput.addEventListener('keydown', e => {
-  if (filtered.length && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-    if (e.key === 'ArrowDown') {
-      highlightedIdx = (highlightedIdx + 1) % filtered.length;
-      updateSuggestions(modernInput.value);
+  modernInput.addEventListener('keydown', e => {
+    if (filtered.length && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      if (e.key === 'ArrowDown') {
+        highlightedIdx = (highlightedIdx + 1) % filtered.length;
+        updateSuggestions(modernInput.value);
+        e.preventDefault();
+      } else if (e.key === 'ArrowUp') {
+        highlightedIdx = (highlightedIdx - 1 + filtered.length) % filtered.length;
+        updateSuggestions(modernInput.value);
+        e.preventDefault();
+      }
+    } else if (e.key === 'Enter') {
+      if (highlightedIdx >= 0 && filtered.length) {
+        modernInput.value = filtered[highlightedIdx];
+        triggerSearch(filtered[highlightedIdx]);
+      } else {
+        triggerSearch(modernInput.value);
+      }
+      if (suggestionsBox) suggestionsBox.classList.remove('open');
+      highlightedIdx = -1;
+      adjustTabs(false);
       e.preventDefault();
-    } else if (e.key === 'ArrowUp') {
-      highlightedIdx = (highlightedIdx - 1 + filtered.length) % filtered.length;
-      updateSuggestions(modernInput.value);
-      e.preventDefault();
+    } else if (e.key === 'Escape') {
+      if (suggestionsBox) suggestionsBox.classList.remove('open');
+      highlightedIdx = -1;
+      adjustTabs(false);
     }
-  } else if (e.key === 'Enter') {
-    if (highlightedIdx >= 0 && filtered.length) {
-      modernInput.value = filtered[highlightedIdx];
-      triggerSearch(filtered[highlightedIdx]);
-    } else {
-      triggerSearch(modernInput.value);
+  });
+}
+
+if (suggestionsBox) {
+  suggestionsBox.addEventListener('mousedown', e => {
+    // ignore delete button clicks
+    if (e.target.classList.contains('suggest-delete')) return;
+    const li = e.target.closest('li[data-idx]');
+    if (li) {
+      const idx = parseInt(li.getAttribute('data-idx'));
+      if (modernInput) modernInput.value = filtered[idx];
+      suggestionsBox.classList.remove('open');
+      highlightedIdx = -1;
+      adjustTabs(false);
+      triggerSearch(filtered[idx]);
     }
-    suggestionsBox.classList.remove('open');
-    highlightedIdx = -1;
-    adjustTabs(false);
-    e.preventDefault();
-  } else if (e.key === 'Escape') {
-    suggestionsBox.classList.remove('open');
-    highlightedIdx = -1;
-    adjustTabs(false);
-  }
-});
+  });
 
-suggestionsBox.addEventListener('mousedown', e => {
-  // ignore delete button clicks
-  if (e.target.classList.contains('suggest-delete')) return;
-  const li = e.target.closest('li[data-idx]');
-  if (li) {
-    const idx = parseInt(li.getAttribute('data-idx'));
-    modernInput.value = filtered[idx];
-    suggestionsBox.classList.remove('open');
-    highlightedIdx = -1;
-    adjustTabs(false);
-    triggerSearch(filtered[idx]);
-  }
-});
-
-// Delete suggestion
-suggestionsBox.addEventListener('click', e => {
-  if (e.target.classList.contains('suggest-delete')) {
-    const idx = parseInt(e.target.getAttribute('data-idx'));
-    history.splice(idx, 1);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-    updateSuggestions(modernInput.value);
-    e.stopPropagation();
-  }
-});
+  // Delete suggestion
+  suggestionsBox.addEventListener('click', e => {
+    if (e.target.classList.contains('suggest-delete')) {
+      const idx = parseInt(e.target.getAttribute('data-idx'));
+      history.splice(idx, 1);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      if (modernInput) updateSuggestions(modernInput.value);
+      e.stopPropagation();
+    }
+  });
+}
 
 // Hide suggestions on blur (with delay for click)
-modernInput.addEventListener('blur', () => setTimeout(() => {
-  suggestionsBox.classList.remove('open');
-  highlightedIdx = -1;
-  adjustTabs(false);
-}, 120));
+if (modernInput) {
+  modernInput.addEventListener('blur', () => setTimeout(() => {
+    if (suggestionsBox) suggestionsBox.classList.remove('open');
+    highlightedIdx = -1;
+    adjustTabs(false);
+  }, 120));
 
-// Show suggestions on focus if input has value
-modernInput.addEventListener('focus', () => {
-  if (modernInput.value) updateSuggestions(modernInput.value);
-});
+  // Show suggestions on focus if input has value
+  modernInput.addEventListener('focus', () => {
+    if (modernInput.value) updateSuggestions(modernInput.value);
+  });
+}
 
 // URL helper for shortened display
 let currentUrl = '';
@@ -397,17 +427,19 @@ function getShortUrl(url) {
   }
 }
 
-modernInput.addEventListener('focus', () => {
-  if (currentUrl) {
-    modernInput.value = currentUrl;
-    modernInput.select();
-  }
-});
-modernInput.addEventListener('blur', () => {
-  setTimeout(() => {
-    modernInput.value = getShortUrl(currentUrl);
-  }, 0);
-});
+if (modernInput) {
+  modernInput.addEventListener('focus', () => {
+    if (currentUrl) {
+      modernInput.value = currentUrl;
+      modernInput.select();
+    }
+  });
+  modernInput.addEventListener('blur', () => {
+    setTimeout(() => {
+      modernInput.value = getShortUrl(currentUrl);
+    }, 0);
+  });
+}
 
 function triggerSearch(q) {
   if (!q) return;
@@ -627,11 +659,11 @@ function showNotification(title, message, type = 'info') {
   }, 10);
   
   // Auto dismiss
-  setTimeout(() => {
-    notification.classList.remove('show');
     setTimeout(() => {
-      notification.remove();
-    }, 300);
+      notification.classList.remove('show');
+      setTimeout(() => {
+        notification.remove();
+      }, 300);
   }, 3000);
 
   logMessage('info', `Notification: ${title} - ${message}`);
@@ -973,47 +1005,59 @@ function updateNavButtons() {
 }
 
 // Navigation event handlers
-backButton.addEventListener('click', () => {
-  if (!backButton.disabled) {
-    webviewElement.goBack();
-  }
-});
+if (backButton) {
+  backButton.addEventListener('click', () => {
+    if (!backButton.disabled) {
+      webviewElement.goBack();
+    }
+  });
+}
 
-forwardButton.addEventListener('click', () => {
-  if (!forwardButton.disabled) {
-    webviewElement.goForward();
-  }
-});
+if (forwardButton) {
+  forwardButton.addEventListener('click', () => {
+    if (!forwardButton.disabled) {
+      webviewElement.goForward();
+    }
+  });
+}
 
 // Navigation button event listeners
-backButton.addEventListener('click', () => {
-  const activeWebview = document.querySelector('webview.active');
-  if (activeWebview && activeWebview.canGoBack()) {
-    activeWebview.goBack();
-    logMessage('info', 'Navigating back');
-  }
-});
+if (backButton) {
+  backButton.addEventListener('click', () => {
+    const activeWebview = document.querySelector('webview.active');
+    if (activeWebview && activeWebview.canGoBack()) {
+      activeWebview.goBack();
+      logMessage('info', 'Navigating back');
+    }
+  });
+}
 
-forwardButton.addEventListener('click', () => {
-  const activeWebview = document.querySelector('webview.active');
-  if (activeWebview && activeWebview.canGoForward()) {
-    activeWebview.goForward();
-    logMessage('info', 'Navigating forward');
-  }
-});
+if (forwardButton) {
+  forwardButton.addEventListener('click', () => {
+    const activeWebview = document.querySelector('webview.active');
+    if (activeWebview && activeWebview.canGoForward()) {
+      activeWebview.goForward();
+      logMessage('info', 'Navigating forward');
+    }
+  });
+}
 
-closeButton.addEventListener('click', () => {
-  logMessage('info', 'Close button clicked');
-  window.electronAPI.closeApp();
-});
+if (closeButton) {
+  closeButton.addEventListener('click', () => {
+    logMessage('info', 'Close button clicked');
+    window.electronAPI.closeApp();
+  });
+}
 
-tabsButton.addEventListener('click', () => {
-  const activeWebview = document.querySelector('webview.active');
-  if (activeWebview) {
-    activeWebview.reload();
-    logMessage('info', 'Reloading page');
-  }
-});
+if (tabsButton) {
+  tabsButton.addEventListener('click', () => {
+    const activeWebview = document.querySelector('webview.active');
+    if (activeWebview) {
+      activeWebview.reload();
+      logMessage('info', 'Reloading page');
+    }
+  });
+}
 
 // Update navigation button states for active webview
 function updateNavigationButtons() {
@@ -1396,30 +1440,34 @@ let hoverTimer;
 let tabsCloseTimer;
 
 // Show tabs viewport on hover
-tabsTriggerArea.addEventListener('mouseenter', () => {
-  clearTimeout(tabsCloseTimer);
-  hoverTimer = setTimeout(() => {
-    showTabsViewport();
-  }, 300);
-});
+if (tabsTriggerArea) {
+  tabsTriggerArea.addEventListener('mouseenter', () => {
+    clearTimeout(tabsCloseTimer);
+    hoverTimer = setTimeout(() => {
+      showTabsViewport();
+    }, 300);
+  });
 
-tabsTriggerArea.addEventListener('mouseleave', () => {
-  clearTimeout(hoverTimer);
-});
+  tabsTriggerArea.addEventListener('mouseleave', () => {
+    clearTimeout(hoverTimer);
+  });
+}
 
-tabsViewport.addEventListener('mouseleave', (e) => {
-  // Check if we're not moving to the trigger area
-  if (settings.viewportsHiddenByDefault && e.relatedTarget !== tabsTriggerArea) {
-    tabsCloseTimer = setTimeout(() => {
-      hideTabsViewport();
-    }, 500);
-  }
-});
+if (tabsViewport) {
+  tabsViewport.addEventListener('mouseleave', (e) => {
+    // Check if we're not moving to the trigger area
+    if (settings.viewportsHiddenByDefault && e.relatedTarget !== tabsTriggerArea) {
+      tabsCloseTimer = setTimeout(() => {
+        hideTabsViewport();
+      }, 500);
+    }
+  });
 
-// Prevent hover timer from closing viewport if mouse enters back
-tabsViewport.addEventListener('mouseenter', () => {
-  clearTimeout(tabsCloseTimer);
-});
+  // Prevent hover timer from closing viewport if mouse enters back
+  tabsViewport.addEventListener('mouseenter', () => {
+    clearTimeout(tabsCloseTimer);
+  });
+}
 
 // Click outside to close viewports immediately
 document.addEventListener('click', (e) => {
@@ -1478,7 +1526,23 @@ async function initializeApp() {
       const items = await geoRes.json();
       console.log('Geocode items:', items);
       if (!items.length) throw new Error('Location not found');
-      const { lat, lon, display_name } = items[0];
+      const { lat, lon, display_name, name, address } = items[0];
+      
+      // Extract a shorter, more readable location name
+      let shortLocation = name || address?.city || address?.town || address?.village || address?.state || display_name;
+      
+      // If we still have a very long location, try to extract just the city and state/country
+      if (shortLocation && shortLocation.length > 30) {
+        const parts = shortLocation.split(',');
+        if (parts.length >= 2) {
+          // Take first two parts (usually city, state/country)
+          shortLocation = parts.slice(0, 2).join(', ').trim();
+        } else {
+          // If it's still too long, truncate it
+          shortLocation = shortLocation.substring(0, 30) + '...';
+        }
+      }
+      
       // Fetch weather from Open-Meteo API
       const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
       console.log('Weather API response status:', weatherRes.status);
@@ -1490,7 +1554,7 @@ async function initializeApp() {
       const tempStr = `${fTemp}°F`;
       // Use a generic weather icon
       const iconClass = 'fas fa-cloud-sun';
-      cardManager.setCardActive('weather', true, { temp: tempStr, location: display_name, iconClass });
+      cardManager.setCardActive('weather', true, { temp: tempStr, location: shortLocation, iconClass });
     } catch (err) {
       console.error('Weather fetch error', err);
       cardManager.setCardActive('weather', true, { error: true });
@@ -1498,20 +1562,20 @@ async function initializeApp() {
   }
 
 
-    // Listen for settings updates and refresh weather
-    if (window.electronAPI?.onSettingsUpdated) {
-      window.electronAPI.onSettingsUpdated((newSettings) => {
-        console.log('Settings updated:', newSettings);
-        settings = newSettings;
-        applySettings();
-        // Only update weather if location changed
-        if (newSettings.cards?.weatherLocation) {
-          updateWeather();
-        } else {
-          cardManager.setCardActive('weather', false);
-        }
-      });
-    }
+  // Listen for settings updates and refresh weather
+  if (window.electronAPI?.onSettingsUpdated) {
+    window.electronAPI.onSettingsUpdated((newSettings) => {
+      console.log('Settings updated:', newSettings);
+      settings = newSettings;
+      applySettings();
+      // Only update weather if location changed
+      if (newSettings.cards?.weatherLocation) {
+        updateWeather();
+      } else {
+        cardManager.setCardActive('weather', false);
+      }
+    });
+  }
     
     // Initial weather update if location is set
     if (settings.cards?.weatherLocation) {
@@ -1543,7 +1607,7 @@ async function initializeApp() {
         cardManager.setCardActive('download', true, data);
       });
       window.electronAPI.onDownloadDone(() => {
-        cardManager.setCardActive('download', false);
+          cardManager.setCardActive('download', false);
       });
     }
   } catch (error) {
@@ -1638,34 +1702,38 @@ function completeLoadingAnimation() {
 }
 
 // History hover detection
-historyTriggerArea.addEventListener('mouseenter', () => {
-  clearTimeout(historyCloseTimer);
-  historyHoverTimer = setTimeout(() => {
-    historyViewport.classList.add('active');
-    appContainer.classList.add('history-open');
-    // Hide tabs viewport when history opens
-    hideTabsViewport();
-  }, 300);
-});
-historyTriggerArea.addEventListener('mouseleave', () => {
-  clearTimeout(historyHoverTimer);
-});
-historyViewport.addEventListener('mouseleave', (e) => {
-  // Check if we're not moving to the trigger area
-  if (e.relatedTarget !== historyTriggerArea) {
-    historyCloseTimer = setTimeout(() => {
-      historyViewport.classList.remove('active');
-      appContainer.classList.remove('history-open');
-      // Re-show tabs viewport unless hidden-by-default is enabled
-      if (!settings.viewportsHiddenByDefault) showTabsViewport();
-    }, 500);
-  }
-});
+if (historyTriggerArea) {
+  historyTriggerArea.addEventListener('mouseenter', () => {
+    clearTimeout(historyCloseTimer);
+    historyHoverTimer = setTimeout(() => {
+      if (historyViewport) historyViewport.classList.add('active');
+      if (appContainer) appContainer.classList.add('history-open');
+      // Hide tabs viewport when history opens
+      hideTabsViewport();
+    }, 300);
+  });
+  historyTriggerArea.addEventListener('mouseleave', () => {
+    clearTimeout(historyHoverTimer);
+  });
+}
+if (historyViewport) {
+  historyViewport.addEventListener('mouseleave', (e) => {
+    // Check if we're not moving to the trigger area
+    if (e.relatedTarget !== historyTriggerArea) {
+      historyCloseTimer = setTimeout(() => {
+        historyViewport.classList.remove('active');
+        if (appContainer) appContainer.classList.remove('history-open');
+        // Re-show tabs viewport unless hidden-by-default is enabled
+        if (!settings.viewportsHiddenByDefault) showTabsViewport();
+      }, 500);
+    }
+  });
 
-// Prevent hover timer from closing viewport if mouse enters back
-historyViewport.addEventListener('mouseenter', () => {
-  clearTimeout(historyCloseTimer);
-});
+  // Prevent hover timer from closing viewport if mouse enters back
+  historyViewport.addEventListener('mouseenter', () => {
+    clearTimeout(historyCloseTimer);
+  });
+}
 
 // Click outside to close history viewport
 document.addEventListener('click', (e) => {
@@ -1680,33 +1748,37 @@ document.addEventListener('click', (e) => {
 });
 
 // History item click handlers
-historyList.addEventListener('click', (e) => {
-  const closeBtn = e.target.closest('.history-item-close');
-  if (closeBtn) {
-    const idx = parseInt(closeBtn.getAttribute('data-index'));
-    historyData.splice(idx, 1);
-    saveHistory();
-    renderHistory();
-    return;
-  }
-  const item = e.target.closest('.history-item');
-  if (item) {
-    const idx = parseInt(item.getAttribute('data-index'));
-    const entry = historyData[idx];
-    if (entry) {
-      navigateToUrl(entry.url);
-      historyViewport.classList.remove('active');
-      appContainer.classList.remove('history-open');
+if (historyList) {
+  historyList.addEventListener('click', (e) => {
+    const closeBtn = e.target.closest('.history-item-close');
+    if (closeBtn) {
+      const idx = parseInt(closeBtn.getAttribute('data-index'));
+      historyData.splice(idx, 1);
+      saveHistory();
+      renderHistory();
+      return;
     }
-  }
-});
+    const item = e.target.closest('.history-item');
+    if (item) {
+      const idx = parseInt(item.getAttribute('data-index'));
+      const entry = historyData[idx];
+      if (entry) {
+        navigateToUrl(entry.url);
+        if (historyViewport) historyViewport.classList.remove('active');
+        if (appContainer) appContainer.classList.remove('history-open');
+      }
+    }
+  });
+}
 
 // Clear all history
-clearHistoryBtn.addEventListener('click', () => {
-  historyData = [];
-  saveHistory();
-  renderHistory();
-});
+if (clearHistoryBtn) {
+  clearHistoryBtn.addEventListener('click', () => {
+    historyData = [];
+    saveHistory();
+    renderHistory();
+  });
+}
 
 // Hook into navigation events to save history
 document.querySelectorAll('webview').forEach(webview => {
@@ -2015,7 +2087,7 @@ function __nuruInjectReadingMode() {
     // Copy computed styles from original header to clone
     copyComputedStyles(siteHeader, headerClone);
     overlay.appendChild(headerWrap);
-  } else {
+      } else {
     // Fallback: show document title and hostname as before
     const headerBar = document.createElement('div');
     headerBar.id = 'nuru-reading-headerbar';
@@ -2284,7 +2356,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load settings then init UI
   await loadSettings();
   initResources();
-  renderResources(mediaSelect.value);
+  if (mediaSelect) {
+    renderResources(mediaSelect.value);
+  }
   initializeTabs();
   // Show tabs viewport by default, unless hidden-by-default is enabled
   if (!settings.viewportsHiddenByDefault) {
@@ -2514,7 +2588,7 @@ class CardManager {
           
         case 'downloadHistory':
           // Download history has its own container
-          const downloadHistoryContainer = document.getElementById('download-history-container');
+      const downloadHistoryContainer = document.getElementById('download-history-container');
           if (downloadHistoryContainer) {
             this.cards[cardType].render.call(this, card.data);
           }
@@ -2962,6 +3036,11 @@ if (downloadHistoryBtn) {
   downloadHistoryBtn.addEventListener('click', toggleDownloadHistory);
 }
 
+// Set up settings button click handler
+if (settingsBtn) {
+  settingsBtn.addEventListener('click', showSettingsViewport);
+}
+
 // Set up close button click handler
 const closeDownloadHistoryBtn = document.getElementById('close-download-history-btn');
 if (closeDownloadHistoryBtn) {
@@ -3027,5 +3106,676 @@ if (window.electronAPI.onHideDownloadHistoryCard) {
       cardContainer._cardManager = cardManager;
       cardManager.setCardActive('downloadHistory', false);
     }
+  });
+}
+
+// Settings Viewport Functions - Top Sliding Full Screen
+const settingsViewport = document.querySelector('.settings-viewport');
+const settingsContent = document.getElementById('settings-content');
+const closeSettingsBtn = document.getElementById('close-settings-btn');
+
+function showSettingsViewport() {
+  if (!settingsViewport) {
+    console.error('settingsViewport not found!');
+    return;
+  }
+  
+  if (!settingsContent) {
+    console.error('settingsContent not found!');
+    return;
+  }
+  
+  // Initialize settings functionality
+  initializeSettingsContent();
+  
+  settingsViewport.classList.add('active');
+  appContainer.classList.add('settings-open');
+  
+  logMessage('info', 'Settings viewport opened');
+}
+
+function hideSettingsViewport() {
+  if (!settingsViewport) return;
+  settingsViewport.classList.remove('active');
+  appContainer.classList.remove('settings-open');
+  
+  logMessage('info', 'Settings viewport closed');
+}
+
+async function loadSettingsContent() {
+  try {
+    const response = await fetch('settings-content.html');
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const content = await response.text();
+    settingsContent.innerHTML = content;
+    
+    // Initialize settings functionality
+    initializeSettingsContent();
+  } catch (error) {
+    console.error('Failed to load settings content:', error);
+    settingsContent.innerHTML = '<div class="error">Failed to load settings content: ' + error.message + '</div>';
+  }
+}
+
+function initializeSettingsContent() {
+  // Navigation
+  const navItems = settingsContent.querySelectorAll('.nav-item');
+  const contentSections = settingsContent.querySelectorAll('.content-section');
+  
+  navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      const section = item.getAttribute('data-section');
+      
+      // Update active nav item
+      navItems.forEach(nav => nav.classList.remove('active'));
+      item.classList.add('active');
+      
+      // Show corresponding section
+      contentSections.forEach(sec => sec.classList.remove('active'));
+      const targetSection = settingsContent.querySelector(`#${section}-section`);
+      if (targetSection) targetSection.classList.add('active');
+    });
+  });
+  
+  // Initialize form controls with current settings
+  initializeSettingsForm();
+  
+  // Add event listeners
+  addSettingsEventListeners();
+}
+
+function initializeSettingsForm() {
+  // Zoom slider
+  const zoomSlider = settingsContent.querySelector('#zoom-slider');
+  const zoomValue = settingsContent.querySelector('#zoom-value');
+  if (zoomSlider && zoomValue) {
+    zoomSlider.value = settings.zoom_factor || 1;
+    zoomValue.textContent = `${settings.zoom_factor || 1}x`;
+  }
+  
+  // Restore last page toggle
+  const restoreToggle = settingsContent.querySelector('#restore-last-page-toggle');
+  if (restoreToggle) {
+    restoreToggle.checked = settings.restoreLastPage || false;
+  }
+  
+  // Search engine select
+  const seSelect = settingsContent.querySelector('#search-engine-select');
+  const seCustom = settingsContent.querySelector('#search-engine-custom-input');
+  if (seSelect) {
+    const presets = {
+      google: 'https://www.google.com/search?q=',
+      bing: 'https://www.bing.com/search?q=',
+      duckduckgo: 'https://duckduckgo.com/?q=',
+      yahoo: 'https://search.yahoo.com/search?p='
+    };
+    
+    const seEntry = settings.search_engine || {};
+    const seMatch = Object.entries(presets).find(([, url]) => url === seEntry.url);
+    if (seMatch) {
+      seSelect.value = seMatch[0];
+    } else {
+      seSelect.value = 'custom';
+      if (seCustom) {
+        seCustom.style.display = 'block';
+        seCustom.value = seEntry.url || '';
+      }
+    }
+  }
+  
+  // Homepage select
+  const hpSelect = settingsContent.querySelector('#homepage-select');
+  const hpCustom = settingsContent.querySelector('#homepage-custom-input');
+  if (hpSelect) {
+    const hpPresets = ['https://www.google.com/','https://www.bing.com/','https://duckduckgo.com/','https://search.yahoo.com/'];
+    if (hpPresets.includes(settings.homepage)) {
+      hpSelect.value = settings.homepage;
+    } else {
+      hpSelect.value = 'custom';
+      if (hpCustom) {
+        hpCustom.style.display = 'block';
+        hpCustom.value = settings.homepage || '';
+      }
+    }
+  }
+  
+  // Theme select
+  const themeSelect = settingsContent.querySelector('#theme-select');
+  if (themeSelect) {
+    themeSelect.value = settings.theme || 'dark';
+  }
+  
+  // Viewports hidden toggle
+  const viewportsToggle = settingsContent.querySelector('#viewports-hidden-toggle');
+  if (viewportsToggle) {
+    viewportsToggle.checked = settings.viewportsHiddenByDefault || false;
+  }
+  
+  // Weather location
+  const weatherInput = settingsContent.querySelector('#weather-location-input');
+  if (weatherInput) {
+    weatherInput.value = settings.cards?.weatherLocation || '';
+  }
+  
+  // Ad blocking
+  const adblockToggle = settingsContent.querySelector('#adblock-toggle');
+  if (adblockToggle) {
+    adblockToggle.checked = settings.features?.adblock || false;
+  }
+  
+  // Social login warning
+  const socialLoginToggle = settingsContent.querySelector('#social-login-warning-toggle');
+  if (socialLoginToggle) {
+    socialLoginToggle.checked = settings.showSocialLoginWarning !== false;
+  }
+  
+  // Development mode
+  const devModeToggle = settingsContent.querySelector('#development-mode-toggle');
+  if (devModeToggle) {
+    devModeToggle.checked = settings.development_mode || false;
+  }
+  
+  // Frameless
+  const framelessToggle = settingsContent.querySelector('#frameless-toggle');
+  if (framelessToggle) {
+    framelessToggle.checked = settings.frameless !== false;
+  }
+  
+  // Remember window state
+  const rememberWindowStateToggle = settingsContent.querySelector('#remember-window-state-toggle');
+  if (rememberWindowStateToggle) {
+    rememberWindowStateToggle.checked = settings.rememberWindowState !== false;
+  }
+  
+  // Theme exclusions
+  const themeExclusionsInput = settingsContent.querySelector('#theme-exclusions-input');
+  if (themeExclusionsInput) {
+    themeExclusionsInput.value = (settings.themeExcludedDomains || []).join(', ');
+  }
+  
+  // Reading mode font size
+  const readingFontSize = settingsContent.querySelector('#reading-font-size');
+  const readingFontSizeValue = settingsContent.querySelector('#reading-font-size-value');
+  if (readingFontSize && readingFontSizeValue) {
+    readingFontSize.value = settings.fontSize || 20;
+    readingFontSizeValue.textContent = `${settings.fontSize || 20}px`;
+  }
+  
+  // Autofill enabled
+  const autofillToggle = settingsContent.querySelector('#autofill-enabled-toggle');
+  if (autofillToggle) {
+    autofillToggle.checked = settings.autofillEnabled !== false;
+  }
+}
+
+function addSettingsEventListeners() {
+  // Zoom slider
+  const zoomSlider = settingsContent.querySelector('#zoom-slider');
+  const zoomValue = settingsContent.querySelector('#zoom-value');
+  if (zoomSlider && zoomValue) {
+    zoomSlider.addEventListener('input', async (e) => {
+      const value = parseFloat(e.target.value);
+      zoomValue.textContent = `${value}x`;
+      settings.zoom_factor = value;
+      applySettings();
+      
+      // Save immediately and show notification
+      try {
+        await window.electronAPI.updateSettings(settings);
+        showNotification('Settings Saved', 'Zoom level updated', 'success');
+      } catch (error) {
+        showNotification('Error', 'Failed to save zoom setting', 'error');
+      }
+    });
+  }
+  
+  // Restore last page toggle
+  const restoreToggle = settingsContent.querySelector('#restore-last-page-toggle');
+  if (restoreToggle) {
+    restoreToggle.addEventListener('change', async (e) => {
+      settings.restoreLastPage = e.target.checked;
+      
+      // Save immediately and show notification
+      try {
+        await window.electronAPI.updateSettings(settings);
+        showNotification('Settings Saved', 'Startup behavior updated', 'success');
+      } catch (error) {
+        showNotification('Error', 'Failed to save startup setting', 'error');
+      }
+    });
+  }
+  
+  // Search engine select
+  const seSelect = settingsContent.querySelector('#search-engine-select');
+  const seCustom = settingsContent.querySelector('#search-engine-custom-input');
+  if (seSelect) {
+    seSelect.addEventListener('change', async (e) => {
+      if (e.target.value === 'custom') {
+        if (seCustom) seCustom.style.display = 'block';
+      } else {
+        if (seCustom) seCustom.style.display = 'none';
+        const presets = {
+          google: 'https://www.google.com/search?q=',
+          bing: 'https://www.bing.com/search?q=',
+          duckduckgo: 'https://duckduckgo.com/?q=',
+          yahoo: 'https://search.yahoo.com/search?p='
+        };
+        settings.search_engine = { name: e.target.value, url: presets[e.target.value] };
+        
+        // Save immediately and show notification
+        try {
+          await window.electronAPI.updateSettings(settings);
+          showNotification('Settings Saved', 'Search engine updated', 'success');
+        } catch (error) {
+          showNotification('Error', 'Failed to save search engine setting', 'error');
+        }
+      }
+    });
+  }
+  
+  // Homepage select
+  const hpSelect = settingsContent.querySelector('#homepage-select');
+  const hpCustom = settingsContent.querySelector('#homepage-custom-input');
+  if (hpSelect) {
+    hpSelect.addEventListener('change', async (e) => {
+      if (e.target.value === 'custom') {
+        if (hpCustom) hpCustom.style.display = 'block';
+      } else {
+        if (hpCustom) hpCustom.style.display = 'none';
+        settings.homepage = e.target.value;
+        
+        // Save immediately and show notification
+        try {
+          await window.electronAPI.updateSettings(settings);
+          showNotification('Settings Saved', 'Homepage updated', 'success');
+        } catch (error) {
+          showNotification('Error', 'Failed to save homepage setting', 'error');
+        }
+      }
+    });
+  }
+  
+  // Theme select
+  const themeSelect = settingsContent.querySelector('#theme-select');
+  if (themeSelect) {
+    themeSelect.addEventListener('change', async (e) => {
+      settings.theme = e.target.value;
+      applySettings();
+      
+      // Save immediately and show notification
+      try {
+        await window.electronAPI.updateSettings(settings);
+        showNotification('Settings Saved', 'Theme updated', 'success');
+      } catch (error) {
+        showNotification('Error', 'Failed to save theme setting', 'error');
+      }
+    });
+  }
+  
+  // Viewports hidden toggle
+  const viewportsToggle = settingsContent.querySelector('#viewports-hidden-toggle');
+  if (viewportsToggle) {
+    viewportsToggle.addEventListener('change', async (e) => {
+      settings.viewportsHiddenByDefault = e.target.checked;
+      
+      // Save immediately and show notification
+      try {
+        await window.electronAPI.updateSettings(settings);
+        showNotification('Settings Saved', 'Layout options updated', 'success');
+      } catch (error) {
+        showNotification('Error', 'Failed to save layout setting', 'error');
+      }
+    });
+  }
+  
+  // Weather location
+  const weatherInput = settingsContent.querySelector('#weather-location-input');
+  const weatherSaveBtn = settingsContent.querySelector('#weather-save-btn');
+  if (weatherInput && weatherSaveBtn) {
+    weatherSaveBtn.addEventListener('click', async () => {
+      const loc = weatherInput.value.trim();
+      settings.cards = { ...settings.cards, weatherLocation: loc };
+      showNotification('Weather location saved', 'success');
+    });
+  }
+  
+  // Ad blocking toggle
+  const adblockToggle = settingsContent.querySelector('#adblock-toggle');
+  if (adblockToggle) {
+    adblockToggle.checked = settings.features?.adblock || false;
+    adblockToggle.addEventListener('change', async (e) => {
+      settings.features = { ...settings.features, adblock: e.target.checked };
+      
+      // Save immediately and show notification
+      try {
+        await window.electronAPI.updateSettings(settings);
+        showNotification('Settings Saved', 'Ad blocking updated', 'success');
+      } catch (error) {
+        showNotification('Error', 'Failed to save ad blocking setting', 'error');
+      }
+    });
+  }
+  
+  // Social login warning toggle
+  const socialLoginToggle = settingsContent.querySelector('#social-login-warning-toggle');
+  if (socialLoginToggle) {
+    socialLoginToggle.checked = settings.showSocialLoginWarning !== false;
+    socialLoginToggle.addEventListener('change', async (e) => {
+      settings.showSocialLoginWarning = e.target.checked;
+      
+      // Save immediately and show notification
+      try {
+        await window.electronAPI.updateSettings(settings);
+        showNotification('Settings Saved', 'Social login warning updated', 'success');
+      } catch (error) {
+        showNotification('Error', 'Failed to save social login warning setting', 'error');
+      }
+    });
+  }
+  
+  // Clear download history button
+  const clearDownloadHistoryBtn = settingsContent.querySelector('#clear-download-history-btn');
+  if (clearDownloadHistoryBtn) {
+    clearDownloadHistoryBtn.addEventListener('click', () => {
+      downloadHistory = [];
+      localStorage.removeItem('nuruDownloadHistory');
+      showNotification('Download history cleared', 'success');
+    });
+  }
+  
+  // Clear browsing history button
+  const clearBrowsingHistoryBtn = settingsContent.querySelector('#clear-browsing-history-btn');
+  if (clearBrowsingHistoryBtn) {
+    clearBrowsingHistoryBtn.addEventListener('click', () => {
+      historyData = [];
+      saveHistory();
+      showNotification('Browsing history cleared', 'success');
+    });
+  }
+  
+  // Password manager buttons
+  const masterPasswordBtn = settingsContent.querySelector('#master-password-btn');
+  const masterPasswordInput = settingsContent.querySelector('#master-password-input');
+  if (masterPasswordBtn && masterPasswordInput) {
+    masterPasswordBtn.addEventListener('click', async () => {
+      const password = masterPasswordInput.value;
+      if (!password) {
+        showNotification('Please enter a master password', 'error');
+        return;
+      }
+      try {
+        const result = await window.electronAPI.setMasterPassword(password, true);
+        if (result.success) {
+          showNotification('Master password set successfully', 'success');
+          masterPasswordInput.value = '';
+        } else {
+          showNotification(`Error: ${result.error}`, 'error');
+        }
+      } catch (error) {
+        showNotification(`Error: ${error.message}`, 'error');
+      }
+    });
+  }
+  
+  // Password export button
+  const exportPasswordsBtn = settingsContent.querySelector('#export-passwords-btn');
+  if (exportPasswordsBtn) {
+    exportPasswordsBtn.addEventListener('click', async () => {
+      try {
+        const result = await window.electronAPI.exportPasswords();
+        if (result.success) {
+          showNotification('Passwords exported successfully', 'success');
+        } else {
+          showNotification(`Export failed: ${result.error}`, 'error');
+        }
+      } catch (error) {
+        showNotification(`Export failed: ${error.message}`, 'error');
+      }
+    });
+  }
+  
+  // Password import button
+  const importPasswordsBtn = settingsContent.querySelector('#import-passwords-btn');
+  if (importPasswordsBtn) {
+    importPasswordsBtn.addEventListener('click', async () => {
+      // Create file input for import
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          try {
+            const text = await file.text();
+            const result = await window.electronAPI.importPasswords(text);
+            if (result.success) {
+              showNotification('Passwords imported successfully', 'success');
+            } else {
+              showNotification(`Import failed: ${result.error}`, 'error');
+            }
+          } catch (error) {
+            showNotification(`Import failed: ${error.message}`, 'error');
+          }
+        }
+      };
+      input.click();
+    });
+  }
+  
+  // Forget password button
+  const forgetPasswordBtn = settingsContent.querySelector('#forget-password-btn');
+  if (forgetPasswordBtn) {
+    forgetPasswordBtn.addEventListener('click', async () => {
+      if (confirm('Are you sure you want to forget the master password? This will delete all saved passwords.')) {
+        try {
+          const result = await window.electronAPI.forgetPassword();
+          if (result.success) {
+            showNotification('Master password forgotten', 'success');
+          } else {
+            showNotification(`Error: ${result.error}`, 'error');
+          }
+        } catch (error) {
+          showNotification(`Error: ${error.message}`, 'error');
+        }
+      }
+    });
+  }
+  
+  // Autofill toggle
+  const autofillToggle = settingsContent.querySelector('#autofill-enabled-toggle');
+  if (autofillToggle) {
+    autofillToggle.checked = settings.autofillEnabled !== false;
+    autofillToggle.addEventListener('change', async (e) => {
+      settings.autofillEnabled = e.target.checked;
+      
+      // Save immediately and show notification
+      try {
+        await window.electronAPI.updateSettings(settings);
+        showNotification('Settings Saved', 'Autofill updated', 'success');
+      } catch (error) {
+        showNotification('Error', 'Failed to save autofill setting', 'error');
+      }
+    });
+  }
+  
+  // Development mode toggle
+  const devModeToggle = settingsContent.querySelector('#development-mode-toggle');
+  if (devModeToggle) {
+    devModeToggle.checked = settings.development_mode || false;
+    devModeToggle.addEventListener('change', async (e) => {
+      settings.development_mode = e.target.checked;
+      
+      // Save immediately and show notification
+      try {
+        await window.electronAPI.updateSettings(settings);
+        showNotification('Settings Saved', 'Developer mode updated', 'success');
+      } catch (error) {
+        showNotification('Error', 'Failed to save developer mode setting', 'error');
+      }
+    });
+  }
+  
+  // Frameless toggle
+  const framelessToggle = settingsContent.querySelector('#frameless-toggle');
+  if (framelessToggle) {
+    framelessToggle.checked = settings.frameless !== false;
+    framelessToggle.addEventListener('change', async (e) => {
+      settings.frameless = e.target.checked;
+      
+      // Save immediately and show notification
+      try {
+        await window.electronAPI.updateSettings(settings);
+        showNotification('Settings Saved', 'Window frame updated', 'success');
+      } catch (error) {
+        showNotification('Error', 'Failed to save window frame setting', 'error');
+      }
+    });
+  }
+  
+  // Remember window state toggle
+  const rememberWindowStateToggle = settingsContent.querySelector('#remember-window-state-toggle');
+  if (rememberWindowStateToggle) {
+    rememberWindowStateToggle.checked = settings.rememberWindowState !== false;
+    rememberWindowStateToggle.addEventListener('change', async (e) => {
+      settings.rememberWindowState = e.target.checked;
+      
+      // Save immediately and show notification
+      try {
+        await window.electronAPI.updateSettings(settings);
+        showNotification('Settings Saved', 'Window state setting updated', 'success');
+      } catch (error) {
+        showNotification('Error', 'Failed to save window state setting', 'error');
+      }
+    });
+  }
+  
+  // Theme exclusions
+  const themeExclusionsInput = settingsContent.querySelector('#theme-exclusions-input');
+  const saveThemeExclusionsBtn = settingsContent.querySelector('#save-theme-exclusions-btn');
+  if (themeExclusionsInput && saveThemeExclusionsBtn) {
+    themeExclusionsInput.value = (settings.themeExcludedDomains || []).join(', ');
+    saveThemeExclusionsBtn.addEventListener('click', () => {
+      const domains = themeExclusionsInput.value.split(',').map(d => d.trim()).filter(d => d);
+      settings.themeExcludedDomains = domains;
+      showNotification('Theme exclusions saved', 'success');
+    });
+  }
+  
+  // Reading mode font size
+  const readingFontSize = settingsContent.querySelector('#reading-font-size');
+  const readingFontSizeValue = settingsContent.querySelector('#reading-font-size-value');
+  if (readingFontSize && readingFontSizeValue) {
+    readingFontSize.value = settings.fontSize || 20;
+    readingFontSizeValue.textContent = `${settings.fontSize || 20}px`;
+    readingFontSize.addEventListener('input', async (e) => {
+      const value = parseInt(e.target.value);
+      readingFontSizeValue.textContent = `${value}px`;
+      settings.fontSize = value;
+      
+      // Save immediately and show notification
+      try {
+        await window.electronAPI.updateSettings(settings);
+        showNotification('Settings Saved', 'Reading mode font size updated', 'success');
+      } catch (error) {
+        showNotification('Error', 'Failed to save font size setting', 'error');
+      }
+    });
+  }
+  
+  // Manage pinned apps button
+  const managePinnedAppsBtn = settingsContent.querySelector('#manage-pinned-apps-btn');
+  if (managePinnedAppsBtn) {
+    managePinnedAppsBtn.addEventListener('click', () => {
+      showNotification('Pinned apps management coming soon', 'info');
+    });
+  }
+  
+  // Clear cache button
+  const clearCacheBtn = settingsContent.querySelector('#clear-cache-btn');
+  if (clearCacheBtn) {
+    clearCacheBtn.addEventListener('click', async () => {
+      try {
+        const result = await window.electronAPI.clearCache();
+        if (result.success) {
+          showNotification('Cache cleared successfully', 'success');
+        } else {
+          showNotification(`Error clearing cache: ${result.error}`, 'error');
+        }
+      } catch (error) {
+        showNotification(`Error clearing cache: ${error.message}`, 'error');
+      }
+    });
+  }
+  
+  // Delete user data button
+  const deleteUserDataBtn = settingsContent.querySelector('#delete-user-data-btn');
+  if (deleteUserDataBtn) {
+    deleteUserDataBtn.addEventListener('click', async () => {
+      if (confirm('Are you sure you want to delete all user data? This cannot be undone.')) {
+        try {
+          const result = await window.electronAPI.deleteAllUserData();
+          if (result.success) {
+            showNotification('User data deleted. Restarting app...', 'success');
+            setTimeout(() => window.electronAPI.restartApp(), 1000);
+          } else {
+            showNotification(`Error deleting user data: ${result.error}`, 'error');
+          }
+        } catch (error) {
+          showNotification(`Error deleting user data: ${error.message}`, 'error');
+        }
+      }
+    });
+  }
+  
+  // Diagnostics button
+  const diagnosticsBtn = settingsContent.querySelector('#diagnostics-btn');
+  if (diagnosticsBtn) {
+    diagnosticsBtn.addEventListener('click', () => {
+      window.electronAPI.showDiagnostics();
+    });
+  }
+  
+  // Save settings button
+  const saveSettingsBtn = settingsContent.querySelector('#save-settings-btn');
+  if (saveSettingsBtn) {
+    saveSettingsBtn.addEventListener('click', async () => {
+      try {
+        const result = await window.electronAPI.updateSettings(settings);
+        if (result.success) {
+          showNotification('Settings saved successfully!', 'success');
+          hideSettingsViewport();
+        } else {
+          showNotification(`Failed to save settings: ${result.error}`, 'error');
+        }
+      } catch (error) {
+        showNotification(`Error saving settings: ${error.message}`, 'error');
+      }
+    });
+  }
+}
+
+// Close settings button
+if (closeSettingsBtn) {
+  closeSettingsBtn.addEventListener('click', () => {
+    hideSettingsViewport();
+  });
+}
+
+// Close settings with Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && settingsViewport && settingsViewport.classList.contains('active')) {
+    hideSettingsViewport();
+  }
+});
+
+// Listen for context menu settings request
+if (window.electronAPI && window.electronAPI.onShowSettings) {
+  window.electronAPI.onShowSettings(() => {
+    showSettingsViewport();
   });
 }

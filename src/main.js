@@ -5,7 +5,6 @@ const fs = require('fs');
 const os = require('os');
 const log = require('electron-log');
 const { autoUpdater } = require('electron-updater');
-const settingsModal = require('./settings-modal'); // Import settings modal
 const { spawn } = require('child_process');
 const https = require('https');
 
@@ -64,7 +63,6 @@ const DEFAULT_SETTINGS = {
 
 let mainWindow;
 let diagnosticsWindow;
-let settingsWindow = null; // Settings window reference
 let settings = DEFAULT_SETTINGS;
 let downloadHistory = [];
 let downloadHistoryCardVisible = false;
@@ -183,16 +181,16 @@ app.on('web-contents-created', (event, contents) => {
     contents.on('context-menu', (e, params) => {
       const { linkURL, pageURL, selectionText } = params;
       const menuTemplate = [
-        { label: '🔗 Open Link in New Tab', click: () => mainWindow.webContents.send('context-menu-new-tab', linkURL || pageURL) },
-        { label: '🔄 Reload', click: () => contents.reload() },
-        { label: '💾 Save As', click: () => contents.savePage(pageURL, { saveAs: true }) },
+        { label: 'Open Link in New Tab', click: () => mainWindow.webContents.send('context-menu-new-tab', linkURL || pageURL) },
+        { label: 'Reload', click: () => contents.reload() },
+        { label: 'Save As', click: () => contents.savePage(pageURL, { saveAs: true }) },
         { type: 'separator' },
-        { role: 'copy', label: '📋 Copy', enabled: !!selectionText },
-        { role: 'paste', label: '📋 Paste' },
+        { role: 'copy', label: 'Copy', enabled: !!selectionText },
+        { role: 'paste', label: 'Paste' },
         { type: 'separator' },
-        { label: '🛠 Open Diagnostics', click: () => createDiagnosticsWindow() },
-        { label: '🔖 Open Bookmarks', click: () => mainWindow.webContents.send('toggle-selects-modal') },
-        { label: '⚙️ Open Settings', click: () => createSettingsWindow() }
+        { label: 'Open Diagnostics', click: () => createDiagnosticsWindow() },
+        { label: 'Open Bookmarks', click: () => mainWindow.webContents.send('toggle-selects-modal') },
+        { label: 'Open Settings', click: () => mainWindow.webContents.send('show-settings') }
       ];
       const menu = Menu.buildFromTemplate(menuTemplate);
       menu.popup({ window: mainWindow });
@@ -852,12 +850,6 @@ ipcMain.handle('save-all-settings', (event, newSettings) => {
   }
 });
 
-// Handle closing settings window
-ipcMain.on('close-settings', () => {
-  if (settingsWindow) {
-    settingsWindow.close();
-  }
-});
 
 // DNS prediction and search engine handling
 ipcMain.handle('get-dns-predictions', async (event, url) => {
@@ -1280,13 +1272,13 @@ app.whenReady().then(async () => {
   
   // Register Ctrl+S for Settings
   globalShortcut.register('CommandOrControl+S', () => {
-    createSettingsWindow();
+    mainWindow.webContents.send('show-settings');
   });
   
-  // Add IPC handler for showing settings modal
+  // Add IPC handler for showing settings viewport
   ipcMain.on('show-settings', () => {
-    log.info('Showing settings modal');
-    createSettingsWindow();
+    log.info('Showing settings viewport');
+    mainWindow.webContents.send('show-settings');
   });
 
   // Register download history handlers
@@ -1358,34 +1350,7 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll();
 });
 
-// Create and show Settings window
-function createSettingsWindow() {
-  if (settingsWindow) { settingsWindow.focus(); return; }
-  settingsWindow = new BrowserWindow({
-    width: 900, height: 800, resizable: false, frame: false, titleBarStyle: 'hidden', roundedCorners: true, transparent: true, backgroundColor: '#00000000',
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: path.join(__dirname, 'preload-settings.js')
-    }
-  });
-  settingsWindow.loadFile(path.join(__dirname, 'renderer', 'settings.html'));
-  // Send current settings to settings window once it's ready
-  settingsWindow.webContents.on('did-finish-load', () => {
-    settingsWindow.webContents.send('settings-data', settings);
-  });
-  settingsWindow.on('closed', () => { settingsWindow = null; });
-}
 
-// IPC: open settings via renderer or menu
-ipcMain.on('show-settings', () => createSettingsWindow());
-
-// Handle saving all settings from settings window
-ipcMain.handle('save-all-settings', (event, newSettings) => {
-  settings = { ...settings, ...newSettings };
-  saveSettings();
-  return { success: true };
-});
 
 function toggleDownloadHistoryCard() {
   log.info('Toggle handler invoked');

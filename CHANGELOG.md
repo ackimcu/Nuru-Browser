@@ -20,11 +20,9 @@ All notable changes to this project will be documented in this file.
   - Settings UI (built-in settings modal)
   - Development Mode (additional debugging features)
   - Custom Taskbar Icon (48×48 Nuru logo)
-  - Reading Mode (article reading mode for distraction-free view)
-  - Resource Manager (manage custom resources/categories)
   - Search History & Suggestions (persistent history, suggestion dropdown)
   - External Link Handling (open links in tabs instead of new windows)
-  - Enhanced Context Menu (copy, paste, open link in new tab, diagnostics, bookmarks, settings)
+  - Enhanced Context Menu (copy, paste, open link in new tab, diagnostics, settings)
   - Media Progress Tracking (audio/video playback progress injection)
   - Social Login Protection (disable social login elements and pop-ups)
 

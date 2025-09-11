@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeApp: () => ipcRenderer.send('close-app'),
   checkForUpdates: () => ipcRenderer.send('check-for-updates'),
   showSettings: () => ipcRenderer.send('show-settings'),
+  onShowSettings: (callback) => ipcRenderer.on('show-settings', callback),
+  onShowSettingsViewport: (callback) => ipcRenderer.on('show-settings-viewport', callback),
   
   // Search functionality
   saveSearchEngine: (engine) => ipcRenderer.invoke('save-search-engine', engine),
@@ -86,8 +88,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Context menu: new tab command
   onContextMenuNewTab: (callback) => ipcRenderer.on('context-menu-new-tab', (_, url) => callback(url)),
   
-  // Toggle Nuru Selects modal
-  onToggleSelectsModal: (callback) => ipcRenderer.on('toggle-selects-modal', () => callback()),
+  // Password manager context menu commands
+  onOpenPasswordManager: (callback) => ipcRenderer.on('open-password-manager', () => callback()),
+  onAddPassword: (callback) => ipcRenderer.on('add-password', () => callback()),
+  onGeneratePassword: (callback) => ipcRenderer.on('generate-password', () => callback()),
+  
   
   // Download events
   onDownloadStart: (callback) => ipcRenderer.on('download-start', (_, data) => callback(data)),
@@ -105,4 +110,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onShowDownloadHistoryCard: (callback) => ipcRenderer.on('show-download-history-card', (_, data) => callback(data)),
   onHideDownloadHistoryCard: (callback) => ipcRenderer.on('hide-download-history-card', () => callback()),
   onDownloadHistoryUpdated: (callback) => ipcRenderer.on('download-history-updated', (_, data) => callback(data)),
+
+  // Autofill API
+  getPasswordSuggestions: (domain) => ipcRenderer.invoke('get-password-suggestions', domain),
+  savePasswordFromForm: (entry) => ipcRenderer.invoke('save-password-from-form', entry),
+  injectAutofillScript: (webviewId) => ipcRenderer.invoke('inject-autofill-script', webviewId),
 });

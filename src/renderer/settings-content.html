@@ -1,0 +1,500 @@
+<!-- Settings Content for Integrated Viewport -->
+<div class="settings-sidebar">
+  <div class="sidebar-title">Categories</div>
+  <nav>
+    <a href="#" class="nav-item active" data-section="general">
+      <span class="nav-icon">⚙️</span>
+      General
+    </a>
+    <a href="#" class="nav-item" data-section="appearance">
+      <span class="nav-icon">🎨</span>
+      Appearance
+    </a>
+    <a href="#" class="nav-item" data-section="privacy">
+      <span class="nav-icon">🔒</span>
+      Privacy & Security
+    </a>
+    <a href="#" class="nav-item" data-section="data">
+      <span class="nav-icon">💾</span>
+      Data Management
+    </a>
+    <a href="#" class="nav-item" data-section="passwords">
+      <span class="nav-icon">🔑</span>
+      Password Manager
+    </a>
+    <a href="#" class="nav-item" data-section="window">
+      <span class="nav-icon">🪟</span>
+      Window & Interface
+    </a>
+    <a href="#" class="nav-item" data-section="advanced">
+      <span class="nav-icon">⚡</span>
+      Advanced
+    </a>
+  </nav>
+</div>
+
+<div class="settings-main-content">
+  <!-- General Settings -->
+  <div class="content-section active" id="general-section">
+    <div class="section-header">
+      <h2 class="section-title">General Settings</h2>
+      <p class="section-description">Configure basic browser behavior and preferences</p>
+    </div>
+    <div class="settings-grid">
+      <!-- Zoom Level Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Zoom Level</div>
+            <div class="setting-description">Adjust the default zoom level for web pages</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="range-container">
+            <input type="range" id="zoom-slider" class="range-slider" min="0.5" max="3" step="0.1" value="1">
+            <span class="range-value" id="zoom-value">1x</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Startup Behavior Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Startup Behavior</div>
+            <div class="setting-description">Choose what happens when the browser starts</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="toggle-container">
+            <label class="toggle-switch">
+              <input type="checkbox" id="restore-last-page-toggle">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Restore last page on startup</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Search Provider Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Search Provider</div>
+            <div class="setting-description">Choose your default search engine</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="form-group">
+            <select id="search-engine-select" class="form-select">
+              <option value="google">Google</option>
+              <option value="bing">Bing</option>
+              <option value="duckduckgo">DuckDuckGo</option>
+              <option value="yahoo">Yahoo</option>
+              <option value="custom">Custom</option>
+            </select>
+            <input type="text" id="search-engine-custom-input" class="form-input" placeholder="https://example.com/search?q=" style="display:none; margin-top: var(--space-3);" />
+          </div>
+        </div>
+      </div>
+      
+      <!-- Homepage Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Homepage</div>
+            <div class="setting-description">Set your default homepage</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="form-group">
+            <select id="homepage-select" class="form-select">
+              <option value="https://www.google.com/">Google</option>
+              <option value="https://www.bing.com/">Bing</option>
+              <option value="https://duckduckgo.com/">DuckDuckGo</option>
+              <option value="https://search.yahoo.com/">Yahoo</option>
+              <option value="custom">Custom</option>
+            </select>
+            <input type="text" id="homepage-custom-input" class="form-input" placeholder="https://example.com" style="display:none; margin-top: var(--space-3);" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Appearance Settings -->
+  <div class="content-section" id="appearance-section">
+    <div class="section-header">
+      <h2 class="section-title">Appearance</h2>
+      <p class="section-description">Customize the look and feel of your browser</p>
+    </div>
+    <div class="settings-grid">
+      <!-- Theme Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Theme</div>
+            <div class="setting-description">Choose your preferred color theme</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="form-group">
+            <select id="theme-select" class="form-select">
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="blue">Blue</option>
+              <option value="green">Green</option>
+              <option value="purple">Purple</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Layout Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Layout Options</div>
+            <div class="setting-description">Configure interface layout preferences</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="toggle-container">
+            <label class="toggle-switch">
+              <input type="checkbox" id="viewports-hidden-toggle">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Hide viewports by default</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Privacy & Security Settings -->
+  <div class="content-section" id="privacy-section">
+    <div class="section-header">
+      <h2 class="section-title">Privacy & Security</h2>
+      <p class="section-description">Manage your privacy and security preferences</p>
+    </div>
+    <div class="settings-grid">
+      <!-- Ad Blocking Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Ad Blocking</div>
+            <div class="setting-description">Block advertisements and tracking scripts</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="toggle-container">
+            <label class="toggle-switch">
+              <input type="checkbox" id="adblock-toggle">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Enable ad blocking</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Social Login Warning Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Social Login Warning</div>
+            <div class="setting-description">Show warning when social login is attempted</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="toggle-container">
+            <label class="toggle-switch">
+              <input type="checkbox" id="social-login-warning-toggle">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Show social login warnings</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Weather Location Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Weather Location</div>
+            <div class="setting-description">Set your location for weather information</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="form-group">
+            <input type="text" id="weather-location-input" class="form-input" list="weather-location-list" placeholder="Enter your city or address" autocomplete="off" />
+            <datalist id="weather-location-list"></datalist>
+            <button id="weather-save-btn" class="action-button success" style="margin-top: var(--space-3);">Save Location</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Data Management Settings -->
+  <div class="content-section" id="data-section">
+    <div class="section-header">
+      <h2 class="section-title">Data Management</h2>
+      <p class="section-description">Manage your browser data and storage</p>
+    </div>
+    <div class="settings-grid">
+      <!-- Clear Cache Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Clear Cache</div>
+            <div class="setting-description">Remove temporary files to free up space</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <button id="clear-cache-btn" class="action-button">Clear Cache</button>
+        </div>
+      </div>
+      
+      <!-- Clear Download History Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Clear Download History</div>
+            <div class="setting-description">Remove all download history records</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <button id="clear-download-history-btn" class="action-button">Clear Download History</button>
+        </div>
+      </div>
+      
+      <!-- Clear Browsing History Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Clear Browsing History</div>
+            <div class="setting-description">Remove all browsing history records</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <button id="clear-browsing-history-btn" class="action-button">Clear Browsing History</button>
+        </div>
+      </div>
+      
+      <!-- Delete All Data Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Delete All User Data</div>
+            <div class="setting-description">Remove all stored data and reset browser</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <button id="delete-user-data-btn" class="action-button danger">Delete All Data</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Password Manager Section -->
+  <div class="content-section" id="passwords-section">
+    <div class="section-header">
+      <h2 class="section-title">Password Manager</h2>
+      <p class="section-description">Manage your saved passwords securely</p>
+    </div>
+    <div class="settings-grid">
+      <!-- Password Manager Setup Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Master Password</div>
+            <div class="setting-description">Set up or change your master password</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div id="password-manager-setup">
+            <div class="form-group">
+              <input type="password" id="master-password-input" class="form-input" placeholder="Enter master password" />
+              <button id="master-password-btn" class="action-button" style="margin-top: var(--space-3);">Create/Update Master Password</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Password Manager Actions Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Password Actions</div>
+            <div class="setting-description">Manage your password vault</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="button-group">
+            <button id="export-passwords-btn" class="action-button">Export Passwords</button>
+            <button id="import-passwords-btn" class="action-button">Import Passwords</button>
+            <button id="forget-password-btn" class="action-button danger">Forget Master Password</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Autofill Settings Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Autofill</div>
+            <div class="setting-description">Configure automatic form filling</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="toggle-container">
+            <label class="toggle-switch">
+              <input type="checkbox" id="autofill-enabled-toggle">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Enable autofill suggestions</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Window & Interface Settings -->
+  <div class="content-section" id="window-section">
+    <div class="section-header">
+      <h2 class="section-title">Window & Interface</h2>
+      <p class="section-description">Configure window behavior and interface preferences</p>
+    </div>
+    <div class="settings-grid">
+      <!-- Window Frame Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Window Frame</div>
+            <div class="setting-description">Show or hide the window frame</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="toggle-container">
+            <label class="toggle-switch">
+              <input type="checkbox" id="frameless-toggle">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Frameless window</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Window State Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Window State</div>
+            <div class="setting-description">Remember window position and size</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="toggle-container">
+            <label class="toggle-switch">
+              <input type="checkbox" id="remember-window-state-toggle">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Remember window state</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Pinned Apps Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Pinned Apps</div>
+            <div class="setting-description">Manage pinned applications</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <button id="manage-pinned-apps-btn" class="action-button">Manage Pinned Apps</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Advanced Settings -->
+  <div class="content-section" id="advanced-section">
+    <div class="section-header">
+      <h2 class="section-title">Advanced</h2>
+      <p class="section-description">Advanced browser configuration options</p>
+    </div>
+    <div class="settings-grid">
+      <!-- Developer Mode Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Developer Mode</div>
+            <div class="setting-description">Enable development features and debugging</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="toggle-container">
+            <label class="toggle-switch">
+              <input type="checkbox" id="development-mode-toggle">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Enable developer mode</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Theme Exclusions Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Theme Exclusions</div>
+            <div class="setting-description">Domains where theme should not be applied</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="form-group">
+            <textarea id="theme-exclusions-input" class="form-input" placeholder="Enter domains separated by commas (e.g., google.com, facebook.com)" rows="3"></textarea>
+            <button id="save-theme-exclusions-btn" class="action-button" style="margin-top: var(--space-3);">Save Exclusions</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Developer Tools Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Developer Tools</div>
+            <div class="setting-description">Access browser developer tools and diagnostics</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <button id="diagnostics-btn" class="action-button">Open Diagnostics</button>
+        </div>
+      </div>
+      
+      <!-- Reading Mode Settings Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Reading Mode</div>
+            <div class="setting-description">Configure reading mode appearance</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="form-group">
+            <label for="reading-font-size">Font Size:</label>
+            <input type="range" id="reading-font-size" class="range-slider" min="12" max="36" value="20" />
+            <span id="reading-font-size-value">20px</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Save Button -->
+<div class="settings-save-container">
+  <button id="save-settings-btn" class="save-button">Save Settings</button>
+</div>

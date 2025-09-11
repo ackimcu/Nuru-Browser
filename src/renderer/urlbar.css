@@ -42,14 +42,38 @@
   font-family: 'Poppins', sans-serif;
   font-size: 1em;
   font-weight: 700;
-  border: none;
-  outline: none;
+  border: none !important;
+  outline: none !important;
   background: transparent;
   color: var(--text-color);
   padding: 12px 0;
   letter-spacing: 0.5px;
   transition: color 0.2s ease;
   min-width: 0;
+  /* Force remove any browser default borders/outlines */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-focus-ring-color: transparent;
+  -moz-outline: none;
+  -webkit-outline: none;
+  outline-offset: 0;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  /* Override global input styles from styles.css */
+  border-top: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  /* Remove any focus outlines */
+  box-shadow: none !important;
+}
+
+.modern-search-input:focus {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-focus-ring-color: transparent;
 }
 
 .modern-search-input::placeholder {
@@ -315,7 +339,7 @@
 
 .url-search-input:focus {
   background-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 0 0 2px rgba(var(--accent-color-rgb), 0.25);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 0 0 2px transparent;
 }
 
 /* Security indicator for URL */
