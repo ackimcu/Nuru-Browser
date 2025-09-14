@@ -166,6 +166,14 @@ if (saveResourceBtn) {
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', async () => {
+  // Check if we're on the start page
+  const isStartPage = window.location.pathname.includes('start-page.html');
+  
+  if (isStartPage) {
+    // Start page is handled by start-page.js
+    return;
+  }
+  
   // Load settings then init UI
   await loadSettings();
   initResources();
@@ -176,6 +184,99 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Show tabs viewport by default, unless hidden-by-default is enabled
   if (!settings.viewportsHiddenByDefault) {
     showTabsViewport();
+  }
+  
+  // Handle messages from start page webview
+  window.addEventListener('message', (event) => {
+    if (event.data && event.data.type) {
+      switch (event.data.type) {
+        case 'navigate-to-url':
+          createTab(event.data.url, true);
+          updateTabsUI();
+          break;
+        case 'open-new-tab':
+          createTab(event.data.url || 'https://www.google.com', true);
+          updateTabsUI();
+          break;
+        case 'show-downloads':
+          toggleDownloadHistoryCard();
+          break;
+        case 'open-settings':
+          showSettingsViewport();
+          break;
+        case 'clear-cache':
+          if (window.electronAPI && window.electronAPI.clearCache) {
+            window.electronAPI.clearCache().then(() => {
+              showNotification('Cache cleared successfully', 'success');
+            }).catch(() => {
+              showNotification('Failed to clear cache', 'error');
+            });
+          }
+          break;
+      }
+    }
+  });
+
+  // Initialize weather temperature unit setting
+  const weatherTempUnitSelect = document.getElementById('weather-temperature-unit-select');
+  if (weatherTempUnitSelect) {
+    weatherTempUnitSelect.value = settings.cards?.weatherTemperatureUnit || 'celsius';
+    
+    // Add event listener for temperature unit change
+    weatherTempUnitSelect.addEventListener('change', async (e) => {
+      settings.cards = { ...settings.cards, weatherTemperatureUnit: e.target.value };
+      
+      // Save immediately and show notification
+      try {
+        const result = await window.electronAPI.updateSettings(settings);
+        // updateSettings returns the settings object, not a result object
+        if (result) {
+          showNotification('Temperature unit updated', 'success');
+          
+          // Update weather display if weather is currently shown
+          if (settings.cards?.weatherLocation) {
+            try {
+              await updateWeather();
+            } catch (weatherError) {
+              console.log('Weather update failed, but temperature unit was saved:', weatherError);
+              // Don't show error for weather update failure, just log it
+            }
+          }
+        } else {
+          showNotification('Error', 'Failed to save temperature unit', 'error');
+        }
+      } catch (error) {
+        console.error('Temperature unit save error:', error);
+        showNotification('Error', 'Failed to save temperature unit', 'error');
+      }
+    });
+  }
+  
+  // Initialize frameless toggle (inverted logic: checked = show frame, unchecked = frameless)
+  const framelessToggle = document.getElementById('frameless-toggle');
+  if (framelessToggle) {
+    framelessToggle.checked = !settings.frameless;
+    
+    // Add event listener for frameless toggle change
+    framelessToggle.addEventListener('change', async (e) => {
+      settings.frameless = !e.target.checked; // Invert the logic
+      
+      // Update nav buttons and clock visibility immediately
+      updateNavAndClockVisibility();
+      
+      // Save immediately and show notification
+      try {
+        const result = await window.electronAPI.updateSettings(settings);
+        if (result) {
+          showNotification('Window frame setting updated. Please restart the app to apply changes.', 'success');
+        } else {
+          showNotification('Error', 'Failed to save window frame setting', 'error');
+        }
+      } catch (error) {
+        console.error('Frameless toggle save error:', error);
+        showNotification('Error', 'Failed to save window frame setting', 'error');
+      }
+    });
   }
   // Initialize Reading Mode button
   readingBtn = document.getElementById('reading-mode-btn');
@@ -193,14 +294,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- Reading Mode Detection & Notification ---
   function detectArticlePage(webview) {
-    if (!webview) return;
-    webview.executeJavaScript(`!!document.querySelector('article, main')`).then(isArticle => {
-      const btn = document.getElementById('reading-mode-btn');
-      if (btn) {
-        if (isArticle) btn.classList.remove('hidden');
-        else btn.classList.add('hidden');
-      }
-    });
+    if (!webview || !webview.getWebContentsId) return;
+    try {
+      webview.executeJavaScript(`!!document.querySelector('article, main')`).then(isArticle => {
+        const btn = document.getElementById('reading-mode-btn');
+        if (btn) {
+          if (isArticle) btn.classList.remove('hidden');
+          else btn.classList.add('hidden');
+        }
+      }).catch(error => {
+        // WebView not ready yet, skip detection
+        console.log('WebView not ready for reading mode detection');
+      });
+    } catch (error) {
+      // WebView not ready yet, skip detection
+      console.log('WebView not ready for reading mode detection');
+    }
   }
 
   // Update reading-mode icon visibility for active webview
@@ -246,12 +355,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function navigateToUrl(url) {
   const activeWebview = document.querySelector('webview.active');
+  
+  // Handle special URLs like nuru://start
+  let finalUrl = url;
+  if (url === 'nuru://start') {
+    // Convert to file URL for the start page
+    finalUrl = 'file://' + window.location.pathname.replace('index.html', 'start-page.html');
+  }
+  
   if (activeWebview) {
-    activeWebview.src = url;
-    logMessage('info', `Navigating to: ${url}`);
+    activeWebview.src = finalUrl;
+    logMessage('info', `Navigating to: ${finalUrl}`);
   } else {
     // Create a new tab if no active webview
-    createTab(url);
+    createTab(finalUrl);
   }
 }
 
@@ -261,6 +378,12 @@ function updateUrlInput(url) {
     modernInput.value = getShortUrl(url);
   } else if (modernInput) {
     modernInput.value = url;
+  }
+  
+  // Update placeholder text based on current page
+  if (modernInput) {
+    const isStartPage = url === 'nuru://start' || url.includes('start-page.html');
+    modernInput.placeholder = isStartPage ? 'Nuru Startpage' : 'Search or enter address...';
   }
 }
 
@@ -275,17 +398,43 @@ if (modernInput) {
 const suggestionsBox = document.getElementById('modern-suggestions');
 
 // Home button logic
-document.addEventListener('DOMContentLoaded', () => {
+function setupHomeButton() {
   const btnHome = document.getElementById('home-btn');
   if (btnHome) {
-    btnHome.addEventListener('click', () => {
-      if (settings && settings.homepage && settings.homepage.trim()) {
-        navigateToUrl(settings.homepage.trim());
-      } else if (typeof showNotification === 'function') {
-        showNotification('No homepage set in settings.', true);
+    btnHome.addEventListener('click', async () => {
+      try {
+        // Always get fresh settings to ensure we have the latest homepage
+        const currentSettings = await window.electronAPI.getSettings();
+        const homepage = currentSettings.homepage || 'nuru://start';
+        
+        console.log('Home button clicked, homepage setting:', homepage);
+        
+        if (homepage && homepage.trim()) {
+          navigateToUrl(homepage.trim());
+        } else {
+          showNotification('No homepage set in settings.', true);
+        }
+      } catch (error) {
+        console.error('Error getting settings for home button:', error);
+        // Fallback to current settings or default
+        const homepage = settings?.homepage || 'nuru://start';
+        console.log('Using fallback homepage:', homepage);
+        navigateToUrl(homepage);
       }
     });
+    console.log('Home button event listener attached');
+  } else {
+    console.warn('Home button not found in DOM');
   }
+}
+
+// Set up home button when DOM is ready
+document.addEventListener('DOMContentLoaded', setupHomeButton);
+
+// Also set up home button after settings are loaded (in case DOM loads before settings)
+window.addEventListener('load', () => {
+  // Re-setup home button to ensure it's properly attached
+  setupHomeButton();
 });
 
 const searchBar = document.getElementById('modern-search-bar');
@@ -672,19 +821,37 @@ function showNotification(title, message, type = 'info') {
 // Initialize Tab Management
 function initializeTabs() {
   if (tabs.length > 0) return;
-  const defaultURL = 'https://www.google.com/';
-  // Determine URL based on restoreLastPage setting
-  const lastPage = settings.restoreLastPage
-    ? (localStorage.getItem('lastPage') || defaultURL)
-    : defaultURL;
+  
+  // Always use homepage setting as the primary URL
+  const homepageURL = settings.homepage || 'https://www.google.com/';
+  
+  // Only use last page if restoreLastPage is enabled AND no specific homepage is set (or homepage is default)
+  const shouldRestore = settings.restoreLastPage && (!settings.homepage || settings.homepage === 'https://www.google.com/' || settings.homepage === 'nuru://start');
+  const lastPage = shouldRestore 
+    ? (localStorage.getItem('lastPage') || homepageURL)
+    : homepageURL;
+    
+  // Handle special URLs like nuru://start
+  let finalURL = lastPage;
+  if (lastPage === 'nuru://start') {
+    // Convert to file URL for the start page
+    finalURL = 'file://' + window.location.pathname.replace('index.html', 'start-page.html');
+  }
+  
   // Add the initial tab to the tabs array
   tabs.push({ id: 'webview-0', title: lastPage, url: lastPage, favicon: null });
   // Update the initial webview src
-  activeWebview.setAttribute('src', lastPage);
+  activeWebview.setAttribute('src', finalURL);
   updateUrlInput(lastPage);
   // Render UI and bind events
   updateTabsUI();
   setupWebviewEvents(activeWebview);
+  
+  // Ensure placeholder is set correctly on initial load
+  if (modernInput) {
+    const isStartPage = lastPage === 'nuru://start' || lastPage.includes('start-page.html');
+    modernInput.placeholder = isStartPage ? 'Nuru Startpage' : 'Search or enter address...';
+  }
 }
 
 // Create a new tab
@@ -731,6 +898,9 @@ function createTab(url = 'https://www.google.com/', activate = true) {
   
   // Activate the tab if requested
   if (activate) switchToTab(tabId);
+  
+  // Update tab counter
+  updateTabCounter();
   
   logMessage('info', `Created new tab with ID: ${tabId}`);
   
@@ -831,6 +1001,9 @@ function closeTab(tabId) {
       }
     }, 250);
   }
+  
+  // Update tab counter
+  updateTabCounter();
   
   // If there are no more tabs, create a new one
   if (tabs.length === 0) {
@@ -1062,9 +1235,14 @@ if (tabsButton) {
 // Update navigation button states for active webview
 function updateNavigationButtons() {
   const activeWebview = document.querySelector('webview.active');
-  if (activeWebview) {
-    backButton.disabled = !activeWebview.canGoBack();
-    forwardButton.disabled = !activeWebview.canGoForward();
+  if (activeWebview && activeWebview.getWebContentsId) {
+    try {
+      backButton.disabled = !activeWebview.canGoBack();
+      forwardButton.disabled = !activeWebview.canGoForward();
+    } catch (error) {
+      // WebView not ready yet, skip update
+      console.log('WebView not ready for navigation buttons update');
+    }
   }
 }
 
@@ -1321,8 +1499,8 @@ function setupWebviewEvents(webviewElement) {
   // Update buttons when page finishes loading
   webviewElement.addEventListener('did-stop-loading', updateNavigationButtons);
   
-  // Initial update
-  updateNavigationButtons();
+  // Update buttons when WebView is ready
+  webviewElement.addEventListener('dom-ready', updateNavigationButtons);
   
   webviewElement.addEventListener('ipc-message', (event) => {
     const selector = `.tab-item[data-tab-id="${webviewElement.id}"] .media-progress-bar`;
@@ -1503,22 +1681,30 @@ async function initializeApp() {
     }
     
     const cardManager = new CardManager(cardContainer);
+    cardContainer._cardManager = cardManager;
+    
+    // Start the startup sequence
+    cardManager.startStartupSequence();
 
     // Fetch and display live weather data
     async function updateWeather() {
     // If we're called without arguments, use the saved location
     if (!settings.cards?.weatherLocation) {
-      cardManager.setCardActive('weather', false);
+      // Don't interfere with startup sequence
+      if (cardManager.startupComplete) {
+        cardManager.setCardActive('intro', false);
+      }
       return;
     }
     console.log('updateWeather called with weatherLocation:', settings.cards?.weatherLocation);
     const loc = settings.cards?.weatherLocation;
     if (!loc) {
-      cardManager.setCardActive('weather', true, { error: true });
+      // Show error in tabs header instead
+      updateTabsWeather({ error: true });
       return;
     }
-    // Show loading spinner
-    cardManager.setCardActive('weather', true, { loading: true });
+    // Show loading state in tabs header
+    updateTabsWeather({ loading: true });
     try {
       // Geocode location
       const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(loc)}`);
@@ -1549,15 +1735,25 @@ async function initializeApp() {
       const weatherData = await weatherRes.json();
       console.log('Weather data:', weatherData);
       if (!weatherData.current_weather) throw new Error('No weather data');
+      
       const cTemp = weatherData.current_weather.temperature;
-      const fTemp = (cTemp * 9/5 + 32).toFixed(1);
-      const tempStr = `${fTemp}°F`;
-      // Use a generic weather icon
-      const iconClass = 'fas fa-cloud-sun';
-      cardManager.setCardActive('weather', true, { temp: tempStr, location: shortLocation, iconClass });
+      const tempUnit = settings.cards?.weatherTemperatureUnit || 'celsius';
+      let tempStr;
+      
+      if (tempUnit === 'fahrenheit') {
+        const fTemp = (cTemp * 9/5 + 32).toFixed(1);
+        tempStr = `${fTemp}°F`;
+      } else {
+        tempStr = `${cTemp.toFixed(1)}°C`;
+      }
+      
+      // Weather data is now shown in tabs header, not in intro card
+      // Update the tabs weather display
+      updateTabsWeather({ temp: tempStr, location: shortLocation, iconClass: 'fas fa-cloud-sun' });
     } catch (err) {
       console.error('Weather fetch error', err);
-      cardManager.setCardActive('weather', true, { error: true });
+      // Weather errors are handled in tabs header, not intro card
+      updateTabsWeather({ error: true });
     }
   }
 
@@ -1568,21 +1764,22 @@ async function initializeApp() {
       console.log('Settings updated:', newSettings);
       settings = newSettings;
       applySettings();
-      // Only update weather if location changed
+      // Only update weather if location changed and startup is complete
       if (newSettings.cards?.weatherLocation) {
         updateWeather();
-      } else {
-        cardManager.setCardActive('weather', false);
       }
     });
   }
     
-    // Initial weather update if location is set
+    // Initial weather update if location is set (after startup)
     if (settings.cards?.weatherLocation) {
       console.log('Initial weather update with saved location:', settings.cards.weatherLocation);
-      await updateWeather();
-    } else {
-      cardManager.setCardActive('weather', false);
+      // Wait for startup to complete before updating weather
+      setTimeout(() => {
+        if (cardManager.startupComplete) {
+          updateWeather();
+        }
+      }, 3500); // Wait 3.5 seconds to ensure startup is complete
     }
 
     // Refresh weather data every 30 minutes
@@ -1592,6 +1789,13 @@ async function initializeApp() {
         updateWeather();
       }
     }, 30 * 60 * 1000); // 30 minutes
+    
+    // Listen for weather update requests (e.g., when temperature unit changes)
+    window.addEventListener('weather-update-requested', async () => {
+      if (settings.cards?.weatherLocation) {
+        await updateWeather();
+      }
+    });
 
     // Cleanup interval on page unload
     window.addEventListener('beforeunload', () => {
@@ -1805,6 +2009,110 @@ function updateDateTime() {
 // Initialize with current time
 updateDateTime();
 setInterval(updateDateTime, 1000);
+
+// Function to update nav buttons and clock visibility based on frameless setting
+function updateNavAndClockVisibility() {
+  const navButtons = document.querySelector('.tabs-header #nav-buttons');
+  const clockContainer = document.querySelector('.tabs-header #tabs-clock-container');
+  const tabsTime = document.getElementById('tabs-time');
+  const tabsDate = document.getElementById('tabs-date');
+  const tabsCounter = document.getElementById('tabs-counter');
+  const tabsWeather = document.getElementById('tabs-weather');
+  
+  if (navButtons && clockContainer) {
+    if (settings.frameless) {
+      // Frameless mode: show nav buttons and weather, hide clock (toggle is off)
+      navButtons.classList.add('show-when-framed');
+      clockContainer.classList.add('show-when-framed');
+      
+      // Show weather, hide clock elements and tab counter
+      if (tabsWeather) tabsWeather.style.display = 'flex';
+      if (tabsCounter) tabsCounter.style.display = 'none';
+      if (tabsTime) tabsTime.style.display = 'none';
+      if (tabsDate) tabsDate.style.display = 'none';
+    } else {
+      // Window frame mode: hide nav buttons and everything (toggle is on)
+      navButtons.classList.remove('show-when-framed');
+      clockContainer.classList.remove('show-when-framed');
+      
+      // Hide everything
+      if (tabsWeather) tabsWeather.style.display = 'none';
+      if (tabsCounter) tabsCounter.style.display = 'none';
+      if (tabsTime) tabsTime.style.display = 'none';
+      if (tabsDate) tabsDate.style.display = 'none';
+    }
+  }
+}
+
+// Initialize visibility on load
+updateNavAndClockVisibility();
+
+// Function to update tab counter
+function updateTabCounter() {
+  const tabCountElement = document.getElementById('tab-count');
+  const tabLabelElement = document.getElementById('tab-label');
+  const tabsCountDisplay = document.getElementById('tabs-count-display');
+  
+  if (tabCountElement && tabLabelElement) {
+    const count = tabs.length;
+    tabCountElement.textContent = count;
+    tabLabelElement.textContent = count === 1 ? 'tab' : 'tabs';
+  }
+  
+  // Update the display next to "Open Tabs"
+  if (tabsCountDisplay) {
+    tabsCountDisplay.textContent = tabs.length;
+  }
+}
+
+// Initialize tab counter on load
+updateTabCounter();
+
+// Function to activate Quick Actions card for testing
+function activateQuickActionsCard() {
+  const cardContainer = document.getElementById('card-container');
+  if (cardContainer) {
+    const cardManager = cardContainer._cardManager || new CardManager(cardContainer);
+    cardContainer._cardManager = cardManager;
+    cardManager.setCardActive('quickActions', true);
+  }
+}
+
+// Function to activate Media Player card for testing
+function activateMediaPlayerCard() {
+  const cardContainer = document.getElementById('card-container');
+  if (cardContainer) {
+    const cardManager = cardContainer._cardManager || new CardManager(cardContainer);
+    cardContainer._cardManager = cardManager;
+    cardManager.setCardActive('mediaPlayer', true, {
+      title: 'Sample Song',
+      artist: 'Sample Artist',
+      isPlaying: false,
+      duration: 180,
+      currentTime: 0
+    });
+  }
+}
+
+// Function to update weather display in tabs header
+function updateTabsWeather(data) {
+  const tabsWeather = document.getElementById('tabs-weather');
+  if (!tabsWeather) return;
+  
+  const tempEl = tabsWeather.querySelector('.weather-temp');
+  const locationEl = tabsWeather.querySelector('.weather-location');
+  
+  if (data.loading) {
+    if (tempEl) tempEl.textContent = '--°';
+    if (locationEl) locationEl.textContent = 'Loading...';
+  } else if (data.error) {
+    if (tempEl) tempEl.textContent = '--°';
+    if (locationEl) locationEl.textContent = 'No weather';
+  } else {
+    if (tempEl) tempEl.textContent = data.temp || '--°';
+    if (locationEl) locationEl.textContent = data.location || 'Unknown';
+  }
+}
 
 function formatTime(date) {
   let hours = date.getHours();
@@ -2277,14 +2585,6 @@ function __nuruInjectReadingMode() {
   // --- Keyboard Shortcuts ---
   overlay.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') overlay.remove();
-    if ((e.key === '+' || e.key === '=') && settings.fontSize < 36) {
-      settings.fontSize = (settings.fontSize || 20) + 2;
-      saveSettings(settings); applySettings();
-    }
-    if ((e.key === '-' || e.key === '_') && settings.fontSize > 12) {
-      settings.fontSize = (settings.fontSize || 20) - 2;
-      saveSettings(settings); applySettings();
-    }
   });
   overlay.tabIndex = 0;
   overlay.focus();
@@ -2380,14 +2680,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- Reading Mode Detection & Notification ---
   function detectArticlePage(webview) {
-    if (!webview) return;
-    webview.executeJavaScript(`!!document.querySelector('article, main')`).then(isArticle => {
-      const btn = document.getElementById('reading-mode-btn');
-      if (btn) {
-        if (isArticle) btn.classList.remove('hidden');
-        else btn.classList.add('hidden');
-      }
-    });
+    if (!webview || !webview.getWebContentsId) return;
+    try {
+      webview.executeJavaScript(`!!document.querySelector('article, main')`).then(isArticle => {
+        const btn = document.getElementById('reading-mode-btn');
+        if (btn) {
+          if (isArticle) btn.classList.remove('hidden');
+          else btn.classList.add('hidden');
+        }
+      }).catch(error => {
+        // WebView not ready yet, skip detection
+        console.log('WebView not ready for reading mode detection');
+      });
+    } catch (error) {
+      // WebView not ready yet, skip detection
+      console.log('WebView not ready for reading mode detection');
+    }
   }
 
   // Update reading-mode icon visibility for active webview
@@ -2535,11 +2843,16 @@ class CardManager {
   constructor(container) {
     this.container = container;
     this.cards = {
-      weather: { priority: 1, data: {}, active: false, render: this.renderWeather },
-      download: { priority: 2, data: {}, active: false, render: this.renderDownload },
-      downloadHistory: { priority: 3, data: {}, active: false, render: this.renderDownloadHistory },
-      media: { priority: 4, data: {}, active: false, render: this.renderMedia }
+      intro: { priority: 1, data: {}, active: false, render: this.renderIntro },
+      quickActions: { priority: 2, data: {}, active: false, render: this.renderQuickActions },
+      mediaPlayer: { priority: 3, data: {}, active: false, render: this.renderMediaPlayer },
+      download: { priority: 4, data: {}, active: false, render: this.renderDownload },
+      downloadHistory: { priority: 5, data: {}, active: false, render: this.renderDownloadHistory },
+      media: { priority: 6, data: {}, active: false, render: this.renderMedia }
     };
+    
+    // Track startup state
+    this.startupComplete = false;
     this.current = null;
     
     // Initialize download state tracking
@@ -2561,6 +2874,27 @@ class CardManager {
     if (data) this.cards[type].data = data;
     this.updateDisplay();
   }
+  
+  // Startup sequence: show intro for 3 seconds, then quick actions
+  startStartupSequence() {
+    // Show intro card immediately
+    this.setCardActive('intro', true);
+    
+    // After 2.5 seconds, start exit animation
+    setTimeout(() => {
+      const container = document.getElementById('card-container');
+      if (container && container.classList.contains('intro-card')) {
+        container.classList.add('exiting');
+      }
+    }, 2500);
+    
+    // After 3 seconds, switch to quick actions
+    setTimeout(() => {
+      this.setCardActive('intro', false);
+      this.setCardActive('quickActions', true);
+      this.startupComplete = true;
+    }, 3000);
+  }
 
   updateDisplay() {
     // Get all active cards
@@ -2572,16 +2906,58 @@ class CardManager {
       return;
     }
     
-    // Instead of only showing the highest priority card,
-    // render each card in its own container
-    activeCards.forEach(([cardType, card]) => {
-      // Each card type has its own container element
-      switch(cardType) {
-        case 'weather':
-          // Weather card shows in card-container
-          const weatherContainer = document.getElementById('card-container');
-          if (weatherContainer) {
-            weatherContainer.style.display = 'flex';
+    // During startup, only show intro card
+    if (!this.startupComplete && this.cards.intro.active) {
+      this.renderCard('intro', this.cards.intro);
+      return;
+    }
+    
+    // After startup, show the highest priority active card
+    // But exclude intro card from normal priority system after startup
+    const nonIntroCards = activeCards.filter(([cardType, _]) => cardType !== 'intro');
+    
+    if (nonIntroCards.length > 0) {
+      const sortedCards = nonIntroCards.sort((a, b) => a[1].priority - b[1].priority);
+      const [cardType, card] = sortedCards[0];
+      this.renderCard(cardType, card);
+    } else {
+      // If no non-intro cards are active, show quick actions as default
+      this.renderCard('quickActions', this.cards.quickActions);
+    }
+  }
+  
+  renderCard(cardType, card) {
+    // Hide all containers first and clean up intro classes
+    document.querySelectorAll('.card-container').forEach(container => {
+      container.style.display = 'none';
+      container.classList.remove('intro-card', 'exiting');
+    });
+    
+    // Each card type has its own container element
+    switch(cardType) {
+        case 'intro':
+          // Intro card shows in card-container
+          const introContainer = document.getElementById('card-container');
+          if (introContainer) {
+            introContainer.style.display = 'flex';
+            this.cards[cardType].render.call(this, card.data);
+          }
+          break;
+          
+        case 'quickActions':
+          // Quick Actions card shows in quick-actions-container
+          const quickActionsContainer = document.getElementById('quick-actions-container');
+          if (quickActionsContainer) {
+            quickActionsContainer.style.display = 'flex';
+            this.cards[cardType].render.call(this, card.data);
+          }
+          break;
+          
+        case 'mediaPlayer':
+          // Media Player card shows in media-player-container
+          const mediaPlayerContainer = document.getElementById('media-player-container');
+          if (mediaPlayerContainer) {
+            mediaPlayerContainer.style.display = 'flex';
             this.cards[cardType].render.call(this, card.data);
           }
           break;
@@ -2603,33 +2979,172 @@ class CardManager {
           // For other cards, fallback to old behavior using the main container
           this.cards[cardType].render.call(this, card.data);
       }
-    });
   }
 
-  renderWeather(data) {
+  renderIntro(data) {
     const container = document.getElementById('card-container');
     if (!container) return;
     
-    const tempEl = container.querySelector('.weather-temp');
-    const locationEl = container.querySelector('.weather-location');
-    const iconEl = container.querySelector('.weather-icon i');
+    const appLogo = document.getElementById('app-logo');
 
-    // Show the container
+    // Add intro card class for animations
+    container.classList.add('intro-card');
+    container.classList.remove('exiting');
+
+    // Show the container with centered logo
     container.style.display = 'flex';
-
-    if (data.loading) {
-      if (tempEl) tempEl.textContent = 'Loading...';
-      if (locationEl) locationEl.textContent = '';
-      if (iconEl) iconEl.className = 'fas fa-spinner fa-spin';
-    } else if (data.error) {
-      if (tempEl) tempEl.textContent = '--°F';
-      if (locationEl) locationEl.textContent = 'No weather data';
-      if (iconEl) iconEl.className = 'fas fa-exclamation-triangle';
-    } else {
-      if (tempEl) tempEl.textContent = data.temp || '--°F';
-      if (locationEl) locationEl.textContent = data.location || '';
-      if (iconEl) iconEl.className = data.iconClass || 'fas fa-cloud-sun';
+    container.style.justifyContent = 'center';
+    container.style.alignItems = 'center';
+    
+    if (appLogo) {
+      appLogo.style.display = 'block';
     }
+    
+    // Also update the tabs weather display
+    updateTabsWeather(data);
+  }
+  
+  renderQuickActions(data) {
+    const container = document.getElementById('quick-actions-container');
+    if (!container) return;
+    
+    // Set up event listeners for quick action buttons
+    this.setupQuickActionListeners();
+  }
+  
+  renderMediaPlayer(data) {
+    const container = document.getElementById('media-player-container');
+    if (!container) return;
+    
+    // Update media player with current data
+    this.updateMediaPlayer(data);
+  }
+  
+  setupQuickActionListeners() {
+    // New Tab
+    const newTabBtn = document.getElementById('quick-new-tab');
+    if (newTabBtn) {
+      newTabBtn.addEventListener('click', () => {
+        createTab();
+        showNotification('New tab created', 'success');
+      });
+    }
+    
+    // Bookmark Page
+    const bookmarkBtn = document.getElementById('quick-bookmark');
+    if (bookmarkBtn) {
+      bookmarkBtn.addEventListener('click', () => {
+        const activeWebview = document.querySelector('webview.active');
+        if (activeWebview) {
+          activeWebview.executeJavaScript(`
+            const title = document.title;
+            const url = window.location.href;
+            window.electronAPI.addBookmark({ title, url });
+          `);
+          showNotification('Page bookmarked', 'success');
+        }
+      });
+    }
+    
+    // Screenshot
+    const screenshotBtn = document.getElementById('quick-screenshot');
+    if (screenshotBtn) {
+      screenshotBtn.addEventListener('click', () => {
+        const activeWebview = document.querySelector('webview.active');
+        if (activeWebview) {
+          activeWebview.capturePage().then(image => {
+            // Convert to data URL and trigger download
+            const dataUrl = image.toDataURL();
+            const link = document.createElement('a');
+            link.download = `screenshot-${Date.now()}.png`;
+            link.href = dataUrl;
+            link.click();
+            showNotification('Screenshot saved', 'success');
+          });
+        }
+      });
+    }
+    
+    // Reading Mode
+    const readingBtn = document.getElementById('quick-reading-mode');
+    if (readingBtn) {
+      readingBtn.addEventListener('click', () => {
+        const activeWebview = document.querySelector('webview.active');
+        if (activeWebview) {
+          activeWebview.executeJavaScript('(' + __nuruInjectReadingMode.toString() + ')()')
+            .catch(err => console.error('Reading mode injection failed:', err));
+          showNotification('Reading mode activated', 'success');
+        }
+      });
+    }
+    
+    // Clear Cache
+    const clearCacheBtn = document.getElementById('quick-clear-cache');
+    if (clearCacheBtn) {
+      clearCacheBtn.addEventListener('click', () => {
+        if (window.electronAPI && window.electronAPI.clearCache) {
+          window.electronAPI.clearCache();
+          showNotification('Cache cleared', 'success');
+        }
+      });
+    }
+    
+    // Refresh Page
+    const refreshBtn = document.getElementById('quick-refresh');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => {
+        const activeWebview = document.querySelector('webview.active');
+        if (activeWebview) {
+          activeWebview.reload();
+          showNotification('Page refreshed', 'success');
+        }
+      });
+    }
+  }
+  
+  updateMediaPlayer(data) {
+    const titleEl = document.querySelector('#media-player-container .media-title');
+    const artistEl = document.querySelector('#media-player-container .media-artist');
+    const playPauseBtn = document.getElementById('media-play-pause');
+    const progressFill = document.querySelector('#media-player-container .progress-fill');
+    const currentTimeEl = document.querySelector('#media-player-container .current-time');
+    const totalTimeEl = document.querySelector('#media-player-container .total-time');
+    
+    if (data.title) {
+      if (titleEl) titleEl.textContent = data.title;
+      if (artistEl) artistEl.textContent = data.artist || 'Unknown Artist';
+    } else {
+      if (titleEl) titleEl.textContent = 'No media playing';
+      if (artistEl) artistEl.textContent = 'Nuru Browser';
+    }
+    
+    // Update play/pause button
+    if (playPauseBtn) {
+      const icon = playPauseBtn.querySelector('i');
+      if (data.isPlaying) {
+        if (icon) icon.className = 'fas fa-pause';
+      } else {
+        if (icon) icon.className = 'fas fa-play';
+      }
+    }
+    
+    // Update progress
+    if (data.duration && data.currentTime) {
+      const progress = (data.currentTime / data.duration) * 100;
+      if (progressFill) progressFill.style.width = `${progress}%`;
+      if (currentTimeEl) currentTimeEl.textContent = this.formatTime(data.currentTime);
+      if (totalTimeEl) totalTimeEl.textContent = this.formatTime(data.duration);
+    } else {
+      if (progressFill) progressFill.style.width = '0%';
+      if (currentTimeEl) currentTimeEl.textContent = '0:00';
+      if (totalTimeEl) totalTimeEl.textContent = '0:00';
+    }
+  }
+  
+  formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
   
   renderDownloadHistory(data) {
@@ -3232,7 +3747,7 @@ function initializeSettingsForm() {
   const hpSelect = settingsContent.querySelector('#homepage-select');
   const hpCustom = settingsContent.querySelector('#homepage-custom-input');
   if (hpSelect) {
-    const hpPresets = ['https://www.google.com/','https://www.bing.com/','https://duckduckgo.com/','https://search.yahoo.com/'];
+    const hpPresets = ['nuru://start','https://www.google.com/','https://www.bing.com/','https://duckduckgo.com/','https://search.yahoo.com/'];
     if (hpPresets.includes(settings.homepage)) {
       hpSelect.value = settings.homepage;
     } else {
@@ -3262,17 +3777,18 @@ function initializeSettingsForm() {
     weatherInput.value = settings.cards?.weatherLocation || '';
   }
   
+  // Weather temperature unit
+  const weatherTempUnitSelect = settingsContent.querySelector('#weather-temperature-unit-select');
+  if (weatherTempUnitSelect) {
+    weatherTempUnitSelect.value = settings.cards?.weatherTemperatureUnit || 'celsius';
+  }
+  
   // Ad blocking
   const adblockToggle = settingsContent.querySelector('#adblock-toggle');
   if (adblockToggle) {
     adblockToggle.checked = settings.features?.adblock || false;
   }
   
-  // Social login warning
-  const socialLoginToggle = settingsContent.querySelector('#social-login-warning-toggle');
-  if (socialLoginToggle) {
-    socialLoginToggle.checked = settings.showSocialLoginWarning !== false;
-  }
   
   // Development mode
   const devModeToggle = settingsContent.querySelector('#development-mode-toggle');
@@ -3280,10 +3796,10 @@ function initializeSettingsForm() {
     devModeToggle.checked = settings.development_mode || false;
   }
   
-  // Frameless
+  // Frameless (inverted logic: checked = show frame, unchecked = frameless)
   const framelessToggle = settingsContent.querySelector('#frameless-toggle');
   if (framelessToggle) {
-    framelessToggle.checked = settings.frameless !== false;
+    framelessToggle.checked = !settings.frameless;
   }
   
   // Remember window state
@@ -3292,19 +3808,7 @@ function initializeSettingsForm() {
     rememberWindowStateToggle.checked = settings.rememberWindowState !== false;
   }
   
-  // Theme exclusions
-  const themeExclusionsInput = settingsContent.querySelector('#theme-exclusions-input');
-  if (themeExclusionsInput) {
-    themeExclusionsInput.value = (settings.themeExcludedDomains || []).join(', ');
-  }
   
-  // Reading mode font size
-  const readingFontSize = settingsContent.querySelector('#reading-font-size');
-  const readingFontSizeValue = settingsContent.querySelector('#reading-font-size-value');
-  if (readingFontSize && readingFontSizeValue) {
-    readingFontSize.value = settings.fontSize || 20;
-    readingFontSizeValue.textContent = `${settings.fontSize || 20}px`;
-  }
   
   // Autofill enabled
   const autofillToggle = settingsContent.querySelector('#autofill-enabled-toggle');
@@ -3436,11 +3940,382 @@ function addSettingsEventListeners() {
   // Weather location
   const weatherInput = settingsContent.querySelector('#weather-location-input');
   const weatherSaveBtn = settingsContent.querySelector('#weather-save-btn');
+  const detectLocationBtn = settingsContent.querySelector('#detect-location-btn');
+  const locationStatus = settingsContent.querySelector('#location-status');
+  
   if (weatherInput && weatherSaveBtn) {
     weatherSaveBtn.addEventListener('click', async () => {
       const loc = weatherInput.value.trim();
       settings.cards = { ...settings.cards, weatherLocation: loc };
-      showNotification('Weather location saved', 'success');
+      
+      // Save immediately and show notification
+      try {
+        await window.electronAPI.updateSettings(settings);
+        showNotification('Weather location saved', 'success');
+      } catch (error) {
+        showNotification('Error', 'Failed to save weather location', 'error');
+      }
+    });
+  }
+  
+  // Weather temperature unit
+  const weatherTempUnitSelect = settingsContent.querySelector('#weather-temperature-unit-select');
+  if (weatherTempUnitSelect) {
+    weatherTempUnitSelect.addEventListener('change', async (e) => {
+      settings.cards = { ...settings.cards, weatherTemperatureUnit: e.target.value };
+      
+      // Save immediately and show notification
+      try {
+        const result = await window.electronAPI.updateSettings(settings);
+        // updateSettings returns the settings object, not a result object
+        if (result) {
+          showNotification('Temperature unit updated', 'success');
+          
+          // Update weather display if weather is currently shown
+          if (settings.cards?.weatherLocation) {
+            try {
+              await updateWeather();
+            } catch (weatherError) {
+              console.log('Weather update failed, but temperature unit was saved:', weatherError);
+              // Don't show error for weather update failure, just log it
+            }
+          }
+        } else {
+          showNotification('Error', 'Failed to save temperature unit', 'error');
+        }
+      } catch (error) {
+        console.error('Temperature unit save error:', error);
+        showNotification('Error', 'Failed to save temperature unit', 'error');
+      }
+    });
+  }
+
+  // Location detection functionality
+  if (detectLocationBtn && weatherInput && locationStatus) {
+    detectLocationBtn.addEventListener('click', async () => {
+      // Show loading state
+      detectLocationBtn.disabled = true;
+      detectLocationBtn.innerHTML = '<span class="button-icon">⏳</span>Detecting...';
+      locationStatus.style.display = 'block';
+      locationStatus.className = 'location-status loading';
+      locationStatus.textContent = 'Detecting your location...';
+
+      try {
+        // Check geolocation support
+        if (!navigator.geolocation) {
+          throw new Error('Geolocation is not supported by this browser');
+        }
+
+        console.log('Starting location detection...');
+        
+        // Check if we have permission to access geolocation
+        if (navigator.permissions) {
+          try {
+            const permission = await navigator.permissions.query({ name: 'geolocation' });
+            console.log('Geolocation permission state:', permission.state);
+            
+            if (permission.state === 'denied') {
+              throw new Error('Location access has been denied. Please check your browser settings and allow location access for this site.');
+            }
+          } catch (permError) {
+            console.warn('Could not check geolocation permission:', permError);
+            // Continue anyway, as some browsers don't support the permissions API
+          }
+        }
+        
+        // Get user's current position with multiple fallback strategies
+        const position = await new Promise((resolve, reject) => {
+          let attempts = 0;
+          const maxAttempts = 2;
+          
+          const tryGeolocation = (options) => {
+            attempts++;
+            
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                console.log('Geolocation successful:', pos);
+                resolve(pos);
+              },
+              (error) => {
+                // Only log the final failure, not intermediate attempts
+                if (attempts >= maxAttempts) {
+                  console.warn('All geolocation attempts failed, trying fallback methods...');
+                }
+                
+                // If this is the first attempt and it's a network error or timeout, try with different options
+                if (attempts < maxAttempts && (error.code === 2 || error.code === 3)) {
+                  console.log('Retrying with different geolocation options...');
+                  // Try with even more conservative options
+                  tryGeolocation({
+                    enableHighAccuracy: false,
+                    timeout: 5000, // Very short timeout for retry
+                    maximumAge: 0 // Don't use cache on retry
+                  });
+                  return;
+                }
+                
+                // Provide more specific error messages
+                if (error.code === 1) {
+                  reject(new Error('Location access denied. Please click "Allow" when prompted for location access, or check your browser settings.'));
+                } else if (error.code === 2) {
+                  reject(new Error('Location unavailable. This may be due to network issues or location services being disabled on your system. You can still enter your location manually.'));
+                } else if (error.code === 3) {
+                  reject(new Error('Location request timed out. Please try again.'));
+                } else {
+                  reject(new Error(`Location detection failed: ${error.message || 'Unknown error'}`));
+                }
+              },
+              options
+            );
+          };
+          
+          // Start with very conservative options for better compatibility
+          tryGeolocation({
+            enableHighAccuracy: false,
+            timeout: 10000, // Shorter timeout for first attempt
+            maximumAge: 0 // Don't use cache initially
+          });
+        });
+
+        const { latitude, longitude } = position.coords;
+        console.log(`Location detected: ${latitude}, ${longitude}`);
+        
+        // Show reverse geocoding status
+        locationStatus.className = 'location-status loading';
+        locationStatus.textContent = 'Converting coordinates to address...';
+
+        // Reverse geocode coordinates to get readable location
+        console.log('Reverse geocoding coordinates...');
+        const reverseGeoResponse = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`
+        );
+        
+        if (!reverseGeoResponse.ok) {
+          console.error('Reverse geocoding failed:', reverseGeoResponse.status, reverseGeoResponse.statusText);
+          throw new Error(`Failed to reverse geocode location (${reverseGeoResponse.status})`);
+        }
+
+        const reverseGeoData = await reverseGeoResponse.json();
+        console.log('Reverse geocoding result:', reverseGeoData);
+        
+        if (!reverseGeoData || !reverseGeoData.display_name) {
+          throw new Error('Could not determine location from coordinates');
+        }
+
+        // Extract a readable location name
+        const address = reverseGeoData.address;
+        let locationName = '';
+        
+        if (address) {
+          // Try to build a nice location string
+          const parts = [];
+          if (address.city) parts.push(address.city);
+          else if (address.town) parts.push(address.town);
+          else if (address.village) parts.push(address.village);
+          
+          if (address.state) parts.push(address.state);
+          else if (address.county) parts.push(address.county);
+          
+          if (address.country) parts.push(address.country);
+          
+          locationName = parts.join(', ');
+        }
+        
+        // Fallback to display_name if we couldn't build a nice name
+        if (!locationName) {
+          locationName = reverseGeoData.display_name;
+        }
+
+        // Update the input field
+        weatherInput.value = locationName;
+        
+        // Show success status
+        locationStatus.className = 'location-status success';
+        locationStatus.textContent = `Location detected: ${locationName}`;
+        
+        // Auto-save the detected location
+        settings.cards = { ...settings.cards, weatherLocation: locationName };
+        try {
+          await window.electronAPI.updateSettings(settings);
+          showNotification('Location detected and saved', 'success');
+        } catch (error) {
+          showNotification('Error', 'Failed to save detected location', 'error');
+        }
+
+      } catch (error) {
+        // Try IP-based geolocation as a fallback for any geolocation failure
+        locationStatus.className = 'location-status loading';
+        locationStatus.textContent = 'Trying alternative location detection...';
+        
+        let fallbackSucceeded = false;
+        
+        try {
+          // Try multiple IP-based geolocation services for better reliability
+          const ipServices = [
+            'https://ipapi.co/json/',
+            'https://ipinfo.io/json',
+            'https://api.ipgeolocation.io/ipgeo?apiKey=free',
+            'https://ip-api.com/json/',
+            'https://freegeoip.app/json/',
+            'https://ipwho.is/'
+          ];
+          
+          let ipData = null;
+          for (const service of ipServices) {
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 5000);
+              const ipResponse = await fetch(service, { signal: controller.signal });
+              clearTimeout(timeoutId);
+              if (ipResponse.ok) {
+                ipData = await ipResponse.json();
+                break;
+              }
+            } catch (serviceError) {
+              // Silently continue to next service - don't log every failure
+              continue;
+            }
+          }
+          
+          if (ipData) {
+            let locationName = '';
+            
+            // Handle different response formats
+            if (ipData.city && ipData.region && ipData.country) {
+              locationName = `${ipData.city}, ${ipData.region}, ${ipData.country}`;
+            } else if (ipData.city && ipData.country) {
+              locationName = `${ipData.city}, ${ipData.country}`;
+            } else if (ipData.display_name) {
+              locationName = ipData.display_name;
+            } else if (ipData.query && ipData.country) {
+              locationName = `${ipData.query}, ${ipData.country}`;
+            } else if (ipData.timezone) {
+              // Use timezone as a fallback
+              const timezone = ipData.timezone;
+              const city = timezone.split('/')[1]?.replace('_', ' ') || 'Unknown';
+              locationName = `${city} (${ipData.country || 'Unknown'})`;
+            } else if (ipData.country) {
+              locationName = ipData.country;
+            }
+            
+            if (locationName) {
+              weatherInput.value = locationName;
+              
+              locationStatus.className = 'location-status success';
+              locationStatus.textContent = `Location detected (approximate): ${locationName}`;
+              
+              // Auto-save the detected location
+              settings.cards = { ...settings.cards, weatherLocation: locationName };
+              try {
+                await window.electronAPI.updateSettings(settings);
+                showNotification('Approximate location detected and saved', 'success');
+              } catch (error) {
+                showNotification('Error', 'Failed to save approximate location', 'error');
+              }
+              
+              // Reset button state
+              detectLocationBtn.disabled = false;
+              detectLocationBtn.innerHTML = '<span class="button-icon">📍</span>Detect My Location';
+              fallbackSucceeded = true;
+              return;
+            }
+          }
+        } catch (ipError) {
+          console.warn('All IP-based geolocation services failed:', ipError);
+        }
+        
+        // Final fallback: Use browser timezone to estimate location
+        try {
+          const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          
+          if (timezone) {
+            // Extract city and country from timezone
+            const parts = timezone.split('/');
+            if (parts.length >= 2) {
+              const city = parts[1].replace('_', ' ');
+              const country = parts[0];
+              
+              // Map some common timezone countries to actual country names
+              const countryMap = {
+                'America': 'United States',
+                'Europe': 'Europe',
+                'Asia': 'Asia',
+                'Africa': 'Africa',
+                'Australia': 'Australia',
+                'Pacific': 'Pacific'
+              };
+              
+              // Special handling for specific timezones
+              let locationName = '';
+              if (timezone === 'America/St_Lucia') {
+                locationName = 'Castries, Saint Lucia';
+              } else if (timezone === 'America/New_York') {
+                locationName = 'New York, United States';
+              } else if (timezone === 'America/Los_Angeles') {
+                locationName = 'Los Angeles, United States';
+              } else if (timezone === 'Europe/London') {
+                locationName = 'London, United Kingdom';
+              } else if (timezone === 'Europe/Paris') {
+                locationName = 'Paris, France';
+              } else {
+                const countryName = countryMap[country] || country;
+                locationName = `${city}, ${countryName}`;
+              }
+              
+              weatherInput.value = locationName;
+              
+              locationStatus.className = 'location-status success';
+              locationStatus.textContent = `Location estimated from timezone: ${locationName}`;
+              
+              // Auto-save the estimated location
+              settings.cards = { ...settings.cards, weatherLocation: locationName };
+              try {
+                await window.electronAPI.updateSettings(settings);
+                showNotification('Location estimated from timezone and saved', 'success');
+              } catch (error) {
+                showNotification('Error', 'Failed to save estimated location', 'error');
+              }
+              
+              // Reset button state
+              detectLocationBtn.disabled = false;
+              detectLocationBtn.innerHTML = '<span class="button-icon">📍</span>Detect My Location';
+              fallbackSucceeded = true;
+              return;
+            }
+          }
+        } catch (tzError) {
+          // Silently handle timezone errors
+        }
+        
+        // Only show error if all fallback methods failed
+        if (!fallbackSucceeded) {
+          let errorMessage = 'Failed to detect location';
+          let notificationMessage = 'Location detection failed';
+          
+          // Use the error message from our improved error handling
+          if (error.message) {
+            errorMessage = error.message;
+            // Extract a shorter message for the notification
+            if (error.message.includes('access denied')) {
+              notificationMessage = 'Location access denied';
+            } else if (error.message.includes('unavailable')) {
+              notificationMessage = 'Location unavailable';
+            } else if (error.message.includes('timed out')) {
+              notificationMessage = 'Location request timed out';
+            } else {
+              notificationMessage = 'Location detection failed';
+            }
+          }
+
+          locationStatus.className = 'location-status error';
+          locationStatus.textContent = `${errorMessage}\n\nYou can still enter your location manually in the input field above.`;
+          showNotification(notificationMessage, 'error');
+        }
+      } finally {
+        // Reset button state
+        detectLocationBtn.disabled = false;
+        detectLocationBtn.innerHTML = '<span class="button-icon">📍</span>Detect My Location';
+      }
     });
   }
   
@@ -3461,22 +4336,6 @@ function addSettingsEventListeners() {
     });
   }
   
-  // Social login warning toggle
-  const socialLoginToggle = settingsContent.querySelector('#social-login-warning-toggle');
-  if (socialLoginToggle) {
-    socialLoginToggle.checked = settings.showSocialLoginWarning !== false;
-    socialLoginToggle.addEventListener('change', async (e) => {
-      settings.showSocialLoginWarning = e.target.checked;
-      
-      // Save immediately and show notification
-      try {
-        await window.electronAPI.updateSettings(settings);
-        showNotification('Settings Saved', 'Social login warning updated', 'success');
-      } catch (error) {
-        showNotification('Error', 'Failed to save social login warning setting', 'error');
-      }
-    });
-  }
   
   // Clear download history button
   const clearDownloadHistoryBtn = settingsContent.querySelector('#clear-download-history-btn');
@@ -3605,10 +4464,30 @@ function addSettingsEventListeners() {
   
   // Development mode toggle
   const devModeToggle = settingsContent.querySelector('#development-mode-toggle');
+  const developerToolsCard = settingsContent.querySelector('#developer-tools-card');
+  const developerToolsGroup = document.querySelector('#developer-tools-group');
+  
   if (devModeToggle) {
     devModeToggle.checked = settings.development_mode || false;
+    
+    // Set initial visibility of Developer Tools sections
+    if (developerToolsCard) {
+      developerToolsCard.style.display = settings.development_mode ? 'block' : 'none';
+    }
+    if (developerToolsGroup) {
+      developerToolsGroup.style.display = settings.development_mode ? 'block' : 'none';
+    }
+    
     devModeToggle.addEventListener('change', async (e) => {
       settings.development_mode = e.target.checked;
+      
+      // Show/hide Developer Tools sections based on toggle state
+      if (developerToolsCard) {
+        developerToolsCard.style.display = e.target.checked ? 'block' : 'none';
+      }
+      if (developerToolsGroup) {
+        developerToolsGroup.style.display = e.target.checked ? 'block' : 'none';
+      }
       
       // Save immediately and show notification
       try {
@@ -3620,17 +4499,20 @@ function addSettingsEventListeners() {
     });
   }
   
-  // Frameless toggle
+  // Frameless toggle (inverted logic: checked = show frame, unchecked = frameless)
   const framelessToggle = settingsContent.querySelector('#frameless-toggle');
   if (framelessToggle) {
-    framelessToggle.checked = settings.frameless !== false;
+    framelessToggle.checked = !settings.frameless;
     framelessToggle.addEventListener('change', async (e) => {
-      settings.frameless = e.target.checked;
+      settings.frameless = !e.target.checked; // Invert the logic
+      
+      // Update nav buttons and clock visibility immediately
+      updateNavAndClockVisibility();
       
       // Save immediately and show notification
       try {
         await window.electronAPI.updateSettings(settings);
-        showNotification('Settings Saved', 'Window frame updated', 'success');
+        showNotification('Settings Saved', 'Window frame setting updated. Please restart the app to apply changes.', 'success');
       } catch (error) {
         showNotification('Error', 'Failed to save window frame setting', 'error');
       }
@@ -3654,38 +4536,7 @@ function addSettingsEventListeners() {
     });
   }
   
-  // Theme exclusions
-  const themeExclusionsInput = settingsContent.querySelector('#theme-exclusions-input');
-  const saveThemeExclusionsBtn = settingsContent.querySelector('#save-theme-exclusions-btn');
-  if (themeExclusionsInput && saveThemeExclusionsBtn) {
-    themeExclusionsInput.value = (settings.themeExcludedDomains || []).join(', ');
-    saveThemeExclusionsBtn.addEventListener('click', () => {
-      const domains = themeExclusionsInput.value.split(',').map(d => d.trim()).filter(d => d);
-      settings.themeExcludedDomains = domains;
-      showNotification('Theme exclusions saved', 'success');
-    });
-  }
   
-  // Reading mode font size
-  const readingFontSize = settingsContent.querySelector('#reading-font-size');
-  const readingFontSizeValue = settingsContent.querySelector('#reading-font-size-value');
-  if (readingFontSize && readingFontSizeValue) {
-    readingFontSize.value = settings.fontSize || 20;
-    readingFontSizeValue.textContent = `${settings.fontSize || 20}px`;
-    readingFontSize.addEventListener('input', async (e) => {
-      const value = parseInt(e.target.value);
-      readingFontSizeValue.textContent = `${value}px`;
-      settings.fontSize = value;
-      
-      // Save immediately and show notification
-      try {
-        await window.electronAPI.updateSettings(settings);
-        showNotification('Settings Saved', 'Reading mode font size updated', 'success');
-      } catch (error) {
-        showNotification('Error', 'Failed to save font size setting', 'error');
-      }
-    });
-  }
   
   // Manage pinned apps button
   const managePinnedAppsBtn = settingsContent.querySelector('#manage-pinned-apps-btn');

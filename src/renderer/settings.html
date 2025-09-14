@@ -8,6 +8,7 @@
   <style>
     /* Import Inter font - Modern 2025 typography */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
     
     /* Modern 2025 Design System Variables */
     :root {
@@ -911,30 +912,6 @@
       box-shadow: 0 2px 8px rgba(86,97,244,0.2);
     }
 
-    /* Modern textarea styling for Theme Exclusion Domains */
-    #theme-excluded-domains {
-      width: 100%;
-      padding: 12px;
-      background: var(--bg-color);
-      color: var(--text-color);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      font-size: 1rem;
-      font-family: inherit;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      resize: vertical;
-      min-height: 100px;
-      box-shadow: inset 0 2px 6px rgba(0,0,0,0.2);
-    }
-    #theme-excluded-domains:focus {
-      outline: none;
-      border-color: var(--accent-color);
-      box-shadow: 0 0 0 2px rgba(86,97,244,0.3);
-    }
-    #theme-excluded-domains::placeholder {
-      color: var(--text-color);
-      opacity: 0.6;
-    }
 
     /* Enhanced Password Manager Styles */
     .password-manager-section {
@@ -1494,7 +1471,9 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 20px;
       color: var(--text-color);
+      font-family: 'Poppins', sans-serif;
       font-size: 12px;
+      font-weight: 700;
       cursor: pointer;
       transition: all 0.2s ease;
     }
@@ -1720,6 +1699,7 @@
               <div class="setting-control">
                 <div class="form-group">
                   <select id="homepage-select" class="form-select">
+                    <option value="nuru://start">Nuru Start Page</option>
                     <option value="https://www.google.com/">Google</option>
                     <option value="https://www.bing.com/">Bing</option>
                     <option value="https://duckduckgo.com/">DuckDuckGo</option>
@@ -1801,7 +1781,32 @@
                 <div class="form-group">
                   <input type="text" id="weather-location-input" class="form-input" list="weather-location-list" placeholder="Enter your city or address" autocomplete="off" />
                   <datalist id="weather-location-list"></datalist>
-                  <button id="weather-save-btn" class="action-button success" style="margin-top: var(--space-3);">Save Location</button>
+                  <div class="button-group" style="margin-top: var(--space-3); display: flex; gap: var(--space-2);">
+                    <button id="detect-location-btn" class="action-button" style="flex: 1;">
+                      <span class="button-icon">📍</span>
+                      Detect My Location
+                    </button>
+                    <button id="weather-save-btn" class="action-button success" style="flex: 1;">Save Location</button>
+                  </div>
+                  <div id="location-status" class="location-status" style="margin-top: var(--space-2); font-size: 0.9em; display: none;"></div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Weather Temperature Unit Card -->
+            <div class="setting-card">
+              <div class="setting-header">
+                <div class="setting-info">
+                  <div class="setting-label">Temperature Unit</div>
+                  <div class="setting-description">Choose your preferred temperature scale</div>
+                </div>
+              </div>
+              <div class="setting-control">
+                <div class="form-group">
+                  <select id="weather-temperature-unit-select" class="form-select">
+                    <option value="celsius">Celsius (°C)</option>
+                    <option value="fahrenheit">Fahrenheit (°F)</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -1901,9 +1906,28 @@
         </div>
         <div class="setting-row">
           <span class="setting-label">Weather Location</span>
-          <input type="text" id="weather-location-input" list="weather-location-list" placeholder="Enter your city or address" autocomplete="off" style="flex:2; margin-left:10px; background: var(--bg-color); color: var(--text-color); border:1px solid var(--border-color); border-radius:6px; padding:8px;" />
-          <datalist id="weather-location-list"></datalist>
-          <button id="weather-save-btn" class="action-button" style="margin-left:10px; padding:6px 12px; flex:none;">Save</button>
+          <div style="flex: 2; margin-left: 10px; display: flex; flex-direction: column; gap: 8px;">
+            <input type="text" id="weather-location-input" list="weather-location-list" placeholder="Enter your city or address" autocomplete="off" style="background: var(--bg-color); color: var(--text-color); border:1px solid var(--border-color); border-radius:6px; padding:8px;" />
+            <datalist id="weather-location-list"></datalist>
+            <div class="button-group" style="display: flex; gap: 8px;">
+              <button id="detect-location-btn" class="action-button" style="flex: 1; padding: 6px 12px;">
+                <span class="button-icon">📍</span>
+                Detect Location
+              </button>
+              <button id="weather-save-btn" class="action-button" style="flex: 1; padding: 6px 12px;">Save</button>
+            </div>
+            <div id="location-status" class="location-status" style="font-size: 0.9em; display: none;"></div>
+          </div>
+        </div>
+        
+        <div class="setting-row">
+          <span class="setting-label">Temperature Unit</span>
+          <div style="flex: 2; margin-left: 10px;">
+            <select id="weather-temperature-unit-select" style="background: var(--bg-color); color: var(--text-color); border:1px solid var(--border-color); border-radius:6px; padding:8px; width: 100%;">
+              <option value="celsius">Celsius (°C)</option>
+              <option value="fahrenheit">Fahrenheit (°F)</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -2357,6 +2381,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Cards settings: weather location
   const weatherInput = document.getElementById('weather-location-input');
   weatherInput.value = settings.cards?.weatherLocation || '';
+  
+  // Weather temperature unit
+  const weatherTempUnitSelect = document.getElementById('weather-temperature-unit-select');
+  if (weatherTempUnitSelect) {
+    weatherTempUnitSelect.value = settings.cards?.weatherTemperatureUnit || 'celsius';
+  }
   // Autocomplete via OpenStreetMap Nominatim
   const weatherList = document.getElementById('weather-location-list');
   let weatherTimer;
@@ -2384,6 +2414,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (result.success) showNotification('Weather location saved');
     else showNotification(`Error saving: ${result.error}`, true);
   });
+  
+  // Weather temperature unit change
+  if (weatherTempUnitSelect) {
+    weatherTempUnitSelect.addEventListener('change', async (e) => {
+      try {
+        const result = await window.settingsAPI.saveAllSettings({ cards: { weatherTemperatureUnit: e.target.value } });
+        if (result && result.success !== false) {
+          showNotification('Temperature unit updated');
+          // Update weather display if weather is currently shown
+          if (settings.cards?.weatherLocation) {
+            // Trigger weather update by dispatching a custom event
+            window.dispatchEvent(new CustomEvent('weather-update-requested'));
+          }
+        } else {
+          showNotification(`Error saving temperature unit: ${result?.error || 'Unknown error'}`, true);
+        }
+      } catch (error) {
+        console.error('Temperature unit save error:', error);
+        showNotification(`Error saving temperature unit: ${error.message}`, true);
+      }
+    });
+  }
 
   // Modern save functionality
   const saveBtn = document.getElementById('save-button');

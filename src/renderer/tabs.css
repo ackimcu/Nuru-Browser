@@ -47,7 +47,7 @@
 .tabs-header {
   padding: 4px 16px 4px 4px;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   background-color: var(--glass-bg);
   border-top-right-radius: 16px;
@@ -612,6 +612,83 @@
 .tabs-header #nav-buttons:hover {
   background: transparent;
   box-shadow: none;
+}
+
+/* Hide navigation buttons in tabs header when frameless mode is enabled */
+.tabs-header #nav-buttons {
+  display: none !important;
+}
+
+.tabs-header #nav-buttons.show-when-framed {
+  display: flex !important;
+}
+
+/* Hide clock container in tabs header when frameless mode is enabled */
+.tabs-header #tabs-clock-container {
+  display: none !important;
+}
+
+.tabs-header #tabs-clock-container.show-when-framed {
+  display: flex !important;
+}
+
+/* Center nav buttons in tabs header when visible */
+.tabs-header #nav-buttons.show-when-framed {
+  margin: 0 auto;
+}
+
+/* Tab counter styling (kept but hidden) */
+#tabs-counter {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-color);
+  line-height: 1.1;
+}
+
+#tab-count {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent-color);
+  margin-bottom: 2px;
+}
+
+#tab-label {
+  font-size: 11px;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Weather display in tabs header */
+#tabs-weather {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-color);
+}
+
+#tabs-weather .weather-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+#tabs-weather .weather-temp {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+#tabs-weather .weather-location {
+  font-size: 10px;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 /* Custom override: enforce row layout and reduce height for tab items */

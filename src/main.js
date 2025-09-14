@@ -36,33 +36,31 @@ const DEFAULT_SETTINGS = {
     icon: 'fab fa-google'
   },
   // Default homepage for the Home button
-  homepage: 'https://www.google.com/',
+  homepage: 'nuru://start',
   theme: 'dark',
   development_mode: false,
-  // Default list of domains to exclude from theming
-  themeExcludedDomains: [
-    'google.com',
-    'googlevideo.com',
-    'ytimg.com',
-    'gstatic.com',
-    'googleusercontent.com',
-    'gmail.com',
-    'drive.google.com',
-    'docs.google.com',
-    'sheets.google.com',
-    'slides.google.com'
-  ],
+  // Whether to remember window state (position, size)
+  rememberWindowState: true,
+  // Whether viewports are hidden by default
+  viewportsHiddenByDefault: false,
+  // Whether autofill is enabled
+  autofillEnabled: true,
   features: {
     adblock: true
   },
   cards: {
     weatherLocation: '',
-    downloadHistoryCardVisible: false
-  }
+    downloadHistoryCardVisible: false,
+    weatherTemperatureUnit: 'celsius' // 'celsius' or 'fahrenheit'
+  },
+  // Welcome page completion status
+  welcomeCompleted: false,
+  firstRun: true
 };
 
 let mainWindow;
 let diagnosticsWindow;
+let welcomeWindow;
 let settings = DEFAULT_SETTINGS;
 let downloadHistory = [];
 let downloadHistoryCardVisible = false;
@@ -186,11 +184,7 @@ app.on('web-contents-created', (event, contents) => {
         { label: 'Save As', click: () => contents.savePage(pageURL, { saveAs: true }) },
         { type: 'separator' },
         { role: 'copy', label: 'Copy', enabled: !!selectionText },
-        { role: 'paste', label: 'Paste' },
-        { type: 'separator' },
-        { label: 'Open Diagnostics', click: () => createDiagnosticsWindow() },
-        { label: 'Open Bookmarks', click: () => mainWindow.webContents.send('toggle-selects-modal') },
-        { label: 'Open Settings', click: () => mainWindow.webContents.send('show-settings') }
+        { role: 'paste', label: 'Paste' }
       ];
       const menu = Menu.buildFromTemplate(menuTemplate);
       menu.popup({ window: mainWindow });
@@ -250,11 +244,11 @@ async function createMainWindow() {
     y: y,
     backgroundColor: '#272727',
     frame: !settings.frameless,
-    transparent: true,
-    titleBarStyle: 'hidden',
-    roundedCorners: true,
-    vibrancy: 'ultra-dark',
-    visualEffectState: 'active',
+    transparent: settings.frameless, // Only transparent when frameless
+    titleBarStyle: settings.frameless ? 'hidden' : 'default',
+    roundedCorners: settings.frameless, // Only rounded corners when frameless
+    vibrancy: settings.frameless ? 'ultra-dark' : undefined, // Only vibrancy when frameless
+    visualEffectState: settings.frameless ? 'active' : undefined, // Only visual effects when frameless
     icon: nativeImage.createFromPath(path.join(__dirname, '..', 'logo', 'Nuru.png')).resize({ width: 48, height: 48 }),
     webPreferences: {
       nodeIntegration: false,
@@ -274,6 +268,74 @@ async function createMainWindow() {
   }
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+
+  // Handle geolocation permissions
+  mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    log.info(`Permission requested: ${permission}`);
+    
+    if (permission === 'geolocation') {
+      // Show a dialog to ask for geolocation permission
+      dialog.showMessageBox(mainWindow, {
+        type: 'question',
+        buttons: ['Allow', 'Deny'],
+        defaultId: 0,
+        title: 'Location Access Request',
+        message: 'Nuru Browser would like to access your location',
+        detail: 'This will be used to automatically detect your location for weather information. You can still manually enter your location if you prefer.',
+        noLink: true
+      }).then((result) => {
+        const allowed = result.response === 0; // 0 = Allow, 1 = Deny
+        log.info(`Geolocation permission ${allowed ? 'granted' : 'denied'}`);
+        callback(allowed);
+      }).catch((error) => {
+        log.error('Error showing permission dialog:', error);
+        callback(false); // Deny by default if dialog fails
+      });
+    } else {
+      // For other permissions, deny by default
+      callback(false);
+    }
+  });
+
+  // Configure geolocation to avoid Google services issues
+  mainWindow.webContents.session.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+    if (permission === 'geolocation') {
+      return true; // Allow geolocation permission checks
+    }
+    return false; // Deny other permissions
+  });
+
+  // Disable Google location services to prevent 403 errors
+  mainWindow.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+    if (details.url.includes('googleapis.com') && details.url.includes('location')) {
+      log.info('Blocking Google location services request to prevent 403 errors');
+      callback({ cancel: true });
+      return;
+    }
+    callback({});
+  });
+
+  // Allow IP-based geolocation services
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    if (details.url.includes('ipapi.co') || 
+        details.url.includes('ipinfo.io') || 
+        details.url.includes('ipgeolocation.io') ||
+        details.url.includes('ip-api.com') ||
+        details.url.includes('freegeoip.app') ||
+        details.url.includes('ipwho.is')) {
+      log.info('Allowing IP geolocation service:', details.url);
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Access-Control-Allow-Origin': ['*'],
+          'Access-Control-Allow-Methods': ['GET'],
+          'Access-Control-Allow-Headers': ['Content-Type']
+        }
+      });
+      return;
+    }
+    callback({});
+  });
 
   // Hardware acceleration check
   mainWindow.webContents.on('did-finish-load', () => {
@@ -398,6 +460,88 @@ async function createMainWindow() {
     }
     return { success: false, error: 'Download not found' };
   });
+}
+
+function createWelcomeWindow() {
+  // If welcome window already exists, focus it and return
+  if (welcomeWindow) {
+    welcomeWindow.focus();
+    return;
+  }
+
+  log.info('Creating welcome window');
+  
+  try {
+    // Get screen dimensions to center the window
+    const { screen } = require('electron');
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+    
+    // Calculate window dimensions (80% of screen size)
+    const windowWidth = Math.floor(screenWidth * 0.8);
+    const windowHeight = Math.floor(screenHeight * 0.8);
+    
+    // Center the window
+    const x = Math.floor((screenWidth - windowWidth) / 2);
+    const y = Math.floor((screenHeight - windowHeight) / 2);
+
+    welcomeWindow = new BrowserWindow({
+      width: windowWidth,
+      height: windowHeight,
+      x: x,
+      y: y,
+      minWidth: 1200,
+      minHeight: 800,
+      transparent: true,
+      backgroundColor: '#00000000',
+      frame: true,
+      titleBarStyle: 'default',
+      roundedCorners: true,
+      title: 'Welcome to Nuru Browser',
+      resizable: true,
+      maximizable: true,
+      minimizable: true,
+      closable: true,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, 'preload.js'),
+        sandbox: false, 
+        spellcheck: false,
+        devTools: false
+      }
+    });
+
+    // Load the welcome page HTML file
+    const welcomePath = path.join(__dirname, 'renderer', 'welcome-page.html');
+    log.info(`Loading welcome page from: ${welcomePath}`);
+    
+    if (!fs.existsSync(welcomePath)) {
+      throw new Error('Welcome page HTML file not found');
+    }
+    
+    welcomeWindow.loadFile(welcomePath);
+    
+    // Log when window is ready
+    welcomeWindow.webContents.on('did-finish-load', () => {
+      log.info('Welcome window loaded successfully');
+    });
+
+    // Handle load errors
+    welcomeWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+      log.error(`Failed to load welcome window: ${errorDescription} (${errorCode})`);
+      dialog.showErrorBox('Welcome Page Error', `Failed to load: ${errorDescription}`);
+    });
+    
+    // Cleanup when window is closed
+    welcomeWindow.on('closed', () => {
+      log.info('Welcome window closed');
+      welcomeWindow = null;
+    });
+  } catch (error) {
+    log.error(`Error creating welcome window: ${error.message}`);
+    dialog.showErrorBox('Welcome Page Error', `Could not open welcome page: ${error.message}`);
+  }
 }
 
 function createDiagnosticsWindow() {
@@ -741,6 +885,79 @@ ipcMain.handle('get-settings', () => {
   }
 });
 
+// Start page navigation handler
+ipcMain.handle('navigate-to-url', (event, url) => {
+  try {
+    log.info(`Start page navigation to: ${url}`);
+    
+    // Handle special URLs
+    if (url === 'nuru://start') {
+      // Send the start page URL to the renderer to load in webview
+      if (mainWindow) {
+        const startPagePath = path.join(__dirname, 'renderer', 'start-page.html').replace(/\\/g, '/');
+        mainWindow.webContents.send('navigate-to-url', 'file://' + startPagePath);
+        return { success: true };
+      }
+    }
+    
+    // Handle regular URLs - create a new tab
+    if (mainWindow) {
+      mainWindow.webContents.send('navigate-to-url', url);
+      return { success: true };
+    }
+    
+    return { success: false, error: 'Main window not available' };
+  } catch (error) {
+    log.error('Error navigating to URL:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Open new tab handler
+ipcMain.handle('open-new-tab', (event, url = 'https://www.google.com') => {
+  try {
+    log.info(`Opening new tab with URL: ${url}`);
+    if (mainWindow) {
+      mainWindow.webContents.send('open-new-tab', url);
+      return { success: true };
+    }
+    return { success: false, error: 'Main window not available' };
+  } catch (error) {
+    log.error('Error opening new tab:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Show downloads handler
+ipcMain.handle('show-downloads', () => {
+  try {
+    log.info('Showing downloads panel');
+    if (mainWindow) {
+      mainWindow.webContents.send('show-downloads');
+      return { success: true };
+    }
+    return { success: false, error: 'Main window not available' };
+  } catch (error) {
+    log.error('Error showing downloads:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Open settings handler
+ipcMain.handle('open-settings', () => {
+  try {
+    log.info('Opening settings');
+    if (mainWindow) {
+      mainWindow.webContents.send('show-settings');
+      return { success: true };
+    }
+    return { success: false, error: 'Main window not available' };
+  } catch (error) {
+    log.error('Error opening settings:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Handle intercepted links (middle-click, etc.)
 ipcMain.on('link-clicked', (event, url) => {
   if (mainWindow) {
@@ -814,10 +1031,6 @@ ipcMain.handle('save-all-settings', (event, newSettings) => {
       settings.theme = newSettings.theme;
     }
 
-    // Update dynamic theme exclusion domains if provided
-    if (newSettings.themeExcludedDomains !== undefined) {
-      settings.themeExcludedDomains = newSettings.themeExcludedDomains;
-    }
 
     // Update settings object with new values
     if (newSettings.browser) {
@@ -1076,6 +1289,45 @@ ipcMain.on('show-diagnostics', () => {
   createDiagnosticsWindow();
 });
 
+// Welcome page IPC handlers
+ipcMain.handle('check-welcome-completed', () => {
+  try {
+    // Check if welcome was completed by looking at settings
+    const welcomeCompleted = settings.welcomeCompleted || false;
+    return { completed: welcomeCompleted };
+  } catch (error) {
+    log.error('Error checking welcome completion status:', error);
+    return { completed: false };
+  }
+});
+
+ipcMain.on('close-welcome', () => {
+  log.info('Closing welcome window and opening main browser');
+  if (welcomeWindow) {
+    welcomeWindow.close();
+  }
+  // Create main window if it doesn't exist
+  if (!mainWindow) {
+    createMainWindow();
+  } else {
+    mainWindow.focus();
+  }
+});
+
+// Development: Reset welcome page for testing
+ipcMain.handle('reset-welcome', () => {
+  try {
+    settings.welcomeCompleted = false;
+    settings.firstRun = true;
+    saveSettings();
+    log.info('Welcome page reset for testing');
+    return { success: true };
+  } catch (error) {
+    log.error('Error resetting welcome page:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.on('close-app', () => {
   if (mainWindow) {
     mainWindow.close();
@@ -1258,7 +1510,26 @@ app.whenReady().then(async () => {
   registerGlobalAdblock();
   // Now load settings and create windows
   loadSettings();
-  await createMainWindow();
+  
+  // Check if this is a first-time user
+  const isFirstTime = !fs.existsSync(SETTINGS_PATH) || 
+                     (fs.existsSync(SETTINGS_PATH) && 
+                      JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8')).firstRun !== false);
+  
+  // FOR TESTING: Always show welcome page
+  const isTesting = true; // Set to false to restore normal behavior
+  
+  if (isFirstTime || isTesting) {
+    log.info('Showing welcome page (first-time user or testing mode)');
+    // Mark as not first run
+    settings.firstRun = false;
+    saveSettings();
+    // Show welcome page
+    createWelcomeWindow();
+  } else {
+    log.info('Returning user, opening main browser');
+    await createMainWindow();
+  }
   
   // Setup auto-updater if not in development
   if (app.isPackaged) {

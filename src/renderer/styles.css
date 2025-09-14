@@ -101,13 +101,13 @@ webview.active {
 #nav-buttons {
   position: fixed;
   bottom: 12px;
-  left: 12px;
+  left: 0px;
   display: flex;
   gap: 10px;
   z-index: 9999;
   background-color: rgba(32, 32, 32, 0.1);
   padding: 5px 10px;
-  border-radius: 10px;
+  border-radius: 0 10px 10px 0;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -126,9 +126,9 @@ webview.active {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background-color: rgba(51, 51, 51, 0.7);
+  background-color: rgba(100, 100, 100, 0.6);
   border: none;
-  color: #f2f2f2;
+  color: rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -165,7 +165,7 @@ webview.active {
 }
 
 .nav-button:hover {
-  background-color: #444;
+  background-color: rgba(120, 120, 120, 0.8);
   transform: translateY(-2px);
   box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
 }
@@ -735,6 +735,22 @@ webview.active {
   display: none !important;
 }
 
+/* Permanently hide reading mode button while keeping code intact */
+#reading-mode-btn {
+  display: none !important;
+}
+
+/* Permanently hide nav buttons in tabs viewport while keeping code intact */
+.tabs-viewport .tabs-header #nav-buttons,
+.tabs-viewport .tabs-header #nav-buttons.show-when-framed {
+  display: none !important;
+}
+
+/* Permanently hide weather card in tabs viewport while keeping code intact */
+.tabs-viewport #tabs-weather {
+  display: none !important;
+}
+
 /* Fullscreen Date/Time below nav */
 #fullscreen-date-time {
   position: fixed;
@@ -775,6 +791,237 @@ webview.active {
   font-size: 14px;
   color: var(--text-color);
   opacity: 0.8;
+}
+
+#tabs-count-display {
+  background-color: var(--accent-color);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+/* Modern Quick Actions Card Styling - Minimal Design */
+.quick-actions-card {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 16px auto;
+  max-width: none;
+  box-shadow: none;
+  position: relative;
+  overflow: visible;
+  animation: slideInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Grid Layout */
+.quick-actions-grid {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  justify-content: center;
+}
+
+.quick-actions-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: visible;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  flex-shrink: 0;
+  text-decoration: none;
+  outline: none;
+  animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Staggered animation for buttons */
+.quick-action-btn:nth-child(1) { animation-delay: 0.1s; }
+.quick-action-btn:nth-child(2) { animation-delay: 0.15s; }
+.quick-action-btn:nth-child(3) { animation-delay: 0.2s; }
+.quick-action-btn:nth-child(4) { animation-delay: 0.25s; }
+.quick-action-btn:nth-child(5) { animation-delay: 0.3s; }
+.quick-action-btn:nth-child(6) { animation-delay: 0.35s; }
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.quick-action-btn:hover {
+  transform: scale(1.1);
+}
+
+.quick-action-btn:active {
+  transform: scale(0.95);
+  transition: transform 0.1s ease;
+}
+
+.quick-action-btn:focus {
+  outline: none;
+}
+
+/* Icon Styling */
+.quick-action-btn i {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+  position: relative;
+  z-index: 2;
+}
+
+.quick-action-btn:hover i {
+  color: #ffffff;
+  transform: scale(1.1) rotate(3deg);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .quick-actions-card {
+    margin: 12px 0;
+    padding: 0;
+  }
+  
+  .quick-actions-grid {
+    gap: 4px;
+  }
+  
+  .quick-action-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    padding: 6px;
+    background: transparent;
+    border: none;
+  }
+  
+  .quick-action-btn i {
+    font-size: 14px;
+  }
+}
+
+/* Media Player Card Styling */
+#media-player-container {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  max-width: 350px;
+}
+
+.media-player-info {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.media-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.media-artist {
+  font-size: 12px;
+  color: var(--text-color);
+  opacity: 0.7;
+}
+
+.media-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.media-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.media-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.media-btn i {
+  font-size: 14px;
+}
+
+.media-progress {
+  width: 100%;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent-color);
+  transition: width 0.1s linear;
+}
+
+.media-time {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-color);
+  opacity: 0.7;
 }
 #tabs-list {
   display: flex;
@@ -1464,6 +1711,55 @@ textarea:focus {
 .button-group .action-button {
   flex: 1;
   min-width: 120px;
+}
+
+.button-group {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.button-icon {
+  margin-right: var(--space-1);
+  font-size: 0.9em;
+}
+
+.location-status {
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.location-status.success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.location-status.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.location-status.loading {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.action-button:disabled:hover {
+  background: var(--accent-color);
+  transform: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .form-group label {

@@ -47,6 +47,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSearchEngine: () => ipcRenderer.invoke('get-search-engine'),
   getDNSPredictions: (url) => ipcRenderer.invoke('get-dns-predictions', url),
   
+  // Start page functionality
+  navigateToUrl: (url) => ipcRenderer.invoke('navigate-to-url', url),
+  openNewTab: (url) => ipcRenderer.invoke('open-new-tab', url),
+  showDownloads: () => ipcRenderer.invoke('show-downloads'),
+  openSettings: () => ipcRenderer.invoke('open-settings'),
+  
+  // Event listeners for start page
+  onNavigateToUrl: (callback) => ipcRenderer.on('navigate-to-url', callback),
+  onOpenNewTab: (callback) => ipcRenderer.on('open-new-tab', callback),
+  onShowDownloads: (callback) => ipcRenderer.on('show-downloads', callback),
+  
   // IPC listeners
   onShowError: (callback) => {
     ipcRenderer.on('show-error', (_, errorData) => callback(errorData));
@@ -115,4 +126,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPasswordSuggestions: (domain) => ipcRenderer.invoke('get-password-suggestions', domain),
   savePasswordFromForm: (entry) => ipcRenderer.invoke('save-password-from-form', entry),
   injectAutofillScript: (webviewId) => ipcRenderer.invoke('inject-autofill-script', webviewId),
+  
+  // Welcome page API
+  closeWelcome: () => ipcRenderer.send('close-welcome'),
+  checkWelcomeCompleted: () => ipcRenderer.invoke('check-welcome-completed'),
+  saveAllSettings: (settings) => ipcRenderer.invoke('save-all-settings', settings),
+  resetWelcome: () => ipcRenderer.invoke('reset-welcome'),
 });

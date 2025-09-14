@@ -628,6 +628,89 @@
   gap: 8px;
   padding: 8px 0;
 }
+
+/* Intro card animations */
+@keyframes introFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes introLogoFloat {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes introGlow {
+  0% {
+    filter: drop-shadow(0 0 0px rgba(86, 97, 244, 0));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(86, 97, 244, 0.3));
+  }
+  100% {
+    filter: drop-shadow(0 0 0px rgba(86, 97, 244, 0));
+  }
+}
+
+@keyframes introSlideOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+}
+
+/* Intro card specific styles */
+.card-container.intro-card {
+  animation: introFadeIn 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  position: relative;
+  background: transparent;
+  border-radius: 12px;
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+  margin: 8px auto;
+  padding: 1px 12px;
+  min-height: 20px;
+  width: 200px;
+  max-width: 200px;
+}
+
+.card-container.intro-card #app-logo {
+  animation: introLogoFloat 3s ease-in-out infinite;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
+  height: 60px;
+  width: auto;
+}
+
+.card-container.intro-card #app-logo:hover {
+  animation: introGlow 2s ease-in-out infinite;
+  transform: scale(1.05);
+  filter: drop-shadow(0 8px 24px rgba(86, 97, 244, 0.3));
+}
+
+
+/* Smooth exit animation */
+.card-container.intro-card.exiting {
+  animation: introSlideOut 0.5s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
+}
 .card-container .weather-icon i {
   font-size: 1.2em;
   color: var(--text-color);

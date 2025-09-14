@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Nuru Browser</title>
+    <link rel="stylesheet" href="welcome-page.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
+</head>
+<body>
+    <div class="welcome-container">
+        <!-- Progress Bar -->
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-steps">
+                <span class="step active" data-step="1">1</span>
+                <span class="step" data-step="2">2</span>
+                <span class="step" data-step="3">3</span>
+                <span class="step" data-step="4">4</span>
+                <span class="step" data-step="5">5</span>
+            </div>
+        </div>
+
+        <!-- Welcome Content -->
+        <div class="welcome-content">
+            <!-- Step 1: Welcome -->
+            <div class="welcome-step active" id="step-1">
+                <div class="step-content">
+                    <div class="logo-container">
+                        <img src="../../logo/Nuru.png" alt="Nuru Browser" class="logo">
+                        <div class="logo-glow"></div>
+                    </div>
+                    <h1 class="welcome-title">Welcome to Nuru Browser! 🎉</h1>
+                    <p class="welcome-subtitle">Ready to browse the web in a whole new way? Let's get you set up!</p>
+                    <div class="feature-highlights">
+                        <div class="feature-item">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>No more annoying ads</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-palette"></i>
+                            <span>Make it yours</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-bolt"></i>
+                            <span>Super fast browsing</span>
+                        </div>
+                    </div>
+                    <button class="welcome-btn primary" onclick="nextStep()">
+                        Let's do this! 🚀
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Personalization -->
+            <div class="welcome-step" id="step-2">
+                <div class="step-content">
+                    <div class="step-header">
+                        <h2>Hey there! 👋</h2>
+                        <p>We'd love to get to know you better so we can make your browsing experience just right</p>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="input-group">
+                            <label for="user-name">What's your name? 😊</label>
+                            <input type="text" id="user-name" placeholder="Just your first name is fine!" maxlength="50">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="user-location">Where in the world are you? 🌍</label>
+                            <div class="location-input-container">
+                                <input type="text" id="user-location" placeholder="e.g., New York, London, Tokyo..." maxlength="100">
+                                <button class="detect-location-btn" id="detect-location" title="Let me find where you are">
+                                    <i class="fas fa-location-arrow"></i>
+                                </button>
+                            </div>
+                            <small class="location-help">This helps us show you local weather and news when you open new tabs</small>
+                        </div>
+                    </div>
+
+                    <div class="step-actions">
+                        <button class="welcome-btn secondary" onclick="prevStep()">
+                            <i class="fas fa-arrow-left"></i>
+                            Go back
+                        </button>
+                        <button class="welcome-btn primary" onclick="nextStep()" id="step2-next" disabled>
+                            Sounds good!
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Theme Selection -->
+            <div class="welcome-step" id="step-3">
+                <div class="step-content">
+                    <div class="step-header">
+                        <h2>How do you like to browse? 🎨</h2>
+                        <p>Choose a look that feels right for you</p>
+                    </div>
+                    
+                    <div class="theme-grid">
+                        <div class="theme-option" data-theme="dark">
+                            <div class="theme-preview dark-theme">
+                                <div class="preview-header"></div>
+                                <div class="preview-content">
+                                    <div class="preview-line"></div>
+                                    <div class="preview-line short"></div>
+                                    <div class="preview-line"></div>
+                                </div>
+                            </div>
+                            <div class="theme-info">
+                                <h3>Dark</h3>
+                                <p>Easy on the eyes</p>
+                            </div>
+                            <div class="theme-check">
+                                <i class="fas fa-check"></i>
+                            </div>
+                        </div>
+
+                        <div class="theme-option" data-theme="light">
+                            <div class="theme-preview light-theme">
+                                <div class="preview-header"></div>
+                                <div class="preview-content">
+                                    <div class="preview-line"></div>
+                                    <div class="preview-line short"></div>
+                                    <div class="preview-line"></div>
+                                </div>
+                            </div>
+                            <div class="theme-info">
+                                <h3>Light</h3>
+                                <p>Clean and bright</p>
+                            </div>
+                            <div class="theme-check">
+                                <i class="fas fa-check"></i>
+                            </div>
+                        </div>
+
+                        <div class="theme-option" data-theme="blue">
+                            <div class="theme-preview blue-theme">
+                                <div class="preview-header"></div>
+                                <div class="preview-content">
+                                    <div class="preview-line"></div>
+                                    <div class="preview-line short"></div>
+                                    <div class="preview-line"></div>
+                                </div>
+                            </div>
+                            <div class="theme-info">
+                                <h3>Blue</h3>
+                                <p>Professional look</p>
+                            </div>
+                            <div class="theme-check">
+                                <i class="fas fa-check"></i>
+                            </div>
+                        </div>
+
+                        <div class="theme-option" data-theme="green">
+                            <div class="theme-preview green-theme">
+                                <div class="preview-header"></div>
+                                <div class="preview-content">
+                                    <div class="preview-line"></div>
+                                    <div class="preview-line short"></div>
+                                    <div class="preview-line"></div>
+                                </div>
+                            </div>
+                            <div class="theme-info">
+                                <h3>Green</h3>
+                                <p>Nature inspired</p>
+                            </div>
+                            <div class="theme-check">
+                                <i class="fas fa-check"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-actions">
+                        <button class="welcome-btn secondary" onclick="prevStep()">
+                            <i class="fas fa-arrow-left"></i>
+                            Back
+                        </button>
+                        <button class="welcome-btn primary" onclick="nextStep()">
+                            Continue
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Search Engine -->
+            <div class="welcome-step" id="step-4">
+                <div class="step-content">
+                    <div class="step-header">
+                        <h2>Where do you like to search? 🔍</h2>
+                        <p>Pick your go-to search engine for the address bar</p>
+                    </div>
+                    
+                    <div class="search-engine-grid">
+                        <div class="search-engine-option" data-engine="google">
+                            <div class="engine-icon">
+                                <i class="fab fa-google"></i>
+                            </div>
+                            <div class="engine-info">
+                                <h3>Google</h3>
+                                <p>Most comprehensive search results</p>
+                            </div>
+                            <div class="engine-check">
+                                <i class="fas fa-check"></i>
+                            </div>
+                        </div>
+
+                        <div class="search-engine-option" data-engine="duckduckgo">
+                            <div class="engine-icon">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <div class="engine-info">
+                                <h3>DuckDuckGo</h3>
+                                <p>Privacy-focused search</p>
+                            </div>
+                            <div class="engine-check">
+                                <i class="fas fa-check"></i>
+                            </div>
+                        </div>
+
+                        <div class="search-engine-option" data-engine="bing">
+                            <div class="engine-icon">
+                                <i class="fab fa-microsoft"></i>
+                            </div>
+                            <div class="engine-info">
+                                <h3>Bing</h3>
+                                <p>Microsoft's search engine</p>
+                            </div>
+                            <div class="engine-check">
+                                <i class="fas fa-check"></i>
+                            </div>
+                        </div>
+
+                        <div class="search-engine-option" data-engine="yahoo">
+                            <div class="engine-icon">
+                                <i class="fas fa-yahoo"></i>
+                            </div>
+                            <div class="engine-info">
+                                <h3>Yahoo</h3>
+                                <p>Classic search experience</p>
+                            </div>
+                            <div class="engine-check">
+                                <i class="fas fa-check"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-actions">
+                        <button class="welcome-btn secondary" onclick="prevStep()">
+                            <i class="fas fa-arrow-left"></i>
+                            Back
+                        </button>
+                        <button class="welcome-btn primary" onclick="nextStep()">
+                            Continue
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 5: Privacy & Features -->
+            <div class="welcome-step" id="step-5">
+                <div class="step-content">
+                    <div class="step-header">
+                        <h2>Almost done! 🛡️</h2>
+                        <p>Just a few quick settings to make your browsing experience perfect</p>
+                    </div>
+                    
+                    <div class="settings-grid">
+                        <div class="setting-card">
+                            <div class="setting-header">
+                                <div class="setting-icon">
+                                    <i class="fas fa-shield-alt"></i>
+                                </div>
+                                <div class="setting-info">
+                                    <h3>Ad Blocking</h3>
+                                    <p>Block intrusive ads and trackers</p>
+                                </div>
+                            </div>
+                            <div class="setting-toggle">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="adblock-toggle" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-card">
+                            <div class="setting-header">
+                                <div class="setting-icon">
+                                    <i class="fas fa-key"></i>
+                                </div>
+                                <div class="setting-info">
+                                    <h3>Password Manager</h3>
+                                    <p>Save and manage your passwords securely</p>
+                                </div>
+                            </div>
+                            <div class="setting-toggle">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="password-manager-toggle" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-card">
+                            <div class="setting-header">
+                                <div class="setting-icon">
+                                    <i class="fas fa-magic"></i>
+                                </div>
+                                <div class="setting-info">
+                                    <h3>Autofill</h3>
+                                    <p>Automatically fill forms with saved information</p>
+                                </div>
+                            </div>
+                            <div class="setting-toggle">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="autofill-toggle" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-card">
+                            <div class="setting-header">
+                                <div class="setting-icon">
+                                    <i class="fas fa-cloud-sun"></i>
+                                </div>
+                                <div class="setting-info">
+                                    <h3>Weather Widget</h3>
+                                    <p>Show weather information in the interface</p>
+                                </div>
+                            </div>
+                            <div class="setting-toggle">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="weather-toggle" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-actions">
+                        <button class="welcome-btn secondary" onclick="prevStep()">
+                            <i class="fas fa-arrow-left"></i>
+                            Go back
+                        </button>
+                        <button class="welcome-btn primary" onclick="finishSetup()">
+                            <i class="fas fa-rocket"></i>
+                            Let's browse! 🌐
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Skip Button -->
+        <button class="skip-btn" onclick="skipSetup()" title="Skip setup and start browsing">
+            <i class="fas fa-forward"></i>
+            Skip Setup
+        </button>
+        
+        <!-- Scroll Indicator -->
+        <div class="scroll-indicator" id="scroll-indicator">
+            <i class="fas fa-chevron-down"></i>
+            <span>Scroll to see more</span>
+        </div>
+    </div>
+
+    <script src="welcome-page.js"></script>
+</body>
+</html>
