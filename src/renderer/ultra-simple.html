@@ -344,6 +344,7 @@
       font-size: 12px;
       color: #999;
     }
+    
   </style>
 </head>
 <body>
@@ -401,10 +402,28 @@
       </div>
       
       <div class="section">
+        <h2>Developer Tools</h2>
+        <div style="margin-bottom: 15px;">
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <input type="checkbox" id="welcome-test-mode-toggle" style="transform: scale(1.2);">
+            <span>Enable welcome screen test mode</span>
+          </label>
+          <div style="font-size: 12px; color: rgba(255, 255, 255, 0.7); margin-top: 5px; margin-left: 25px;">
+            Show the welcome screen every time the browser starts (useful for testing)
+          </div>
+        </div>
+        
+        <div class="action-buttons">
+          <button id="reset-welcome-btn" class="primary-button">Reset Welcome Screen</button>
+        </div>
+      </div>
+      
+      <div class="section">
         <h2>Logs</h2>
         <div class="logs" id="logs">Loading logs...</div>
         <button id="refresh-logs">Refresh Logs</button>
       </div>
+      
       
       <!-- Update Dialog -->
       <div id="update-dialog">
@@ -567,6 +586,43 @@
       }
     }
     
+    // Load welcome screen settings
+    async function loadWelcomeScreenSettings() {
+      try {
+        const settings = await window.diagnosticsAPI.getWelcomeScreenSettings();
+        const welcomeTestModeToggle = document.getElementById('welcome-test-mode-toggle');
+        
+        if (welcomeTestModeToggle && settings) {
+          welcomeTestModeToggle.checked = settings.showWelcomeScreenOnStartup || false;
+          console.log('Welcome screen test mode loaded:', welcomeTestModeToggle.checked);
+        }
+      } catch (error) {
+        console.error('Error loading welcome screen settings:', error);
+      }
+    }
+    
+    // Set welcome screen test mode
+    async function setWelcomeScreenTestMode(enabled) {
+      try {
+        await window.diagnosticsAPI.setWelcomeScreenTestMode(enabled);
+        console.log('Welcome screen test mode:', enabled ? 'enabled' : 'disabled');
+      } catch (error) {
+        console.error('Error setting welcome screen test mode:', error);
+      }
+    }
+    
+    // Reset welcome screen
+    async function resetWelcomeScreen() {
+      try {
+        await window.diagnosticsAPI.resetWelcomeScreen();
+        console.log('Welcome screen reset successfully');
+        alert('Welcome screen has been reset. It will show on the next browser restart.');
+      } catch (error) {
+        console.error('Error resetting welcome screen:', error);
+        alert('Error resetting welcome screen: ' + error.message);
+      }
+    }
+    
     // Check for updates
     async function checkForUpdates() {
       try {
@@ -722,6 +778,7 @@
       }
     }
     
+
     // Initialize
     function initialize() {
       console.log('Initializing diagnostics...');
@@ -731,6 +788,7 @@
         loadSystemInfo();
         checkWebGL();
         loadLogs();
+        loadWelcomeScreenSettings();
         updateTimestamp();
         
         // Setup buttons for main UI
@@ -748,6 +806,16 @@
           loadSystemInfo();
           updateTimestamp();
         });
+        
+        // Welcome screen controls
+        document.getElementById('welcome-test-mode-toggle').addEventListener('change', (e) => {
+          setWelcomeScreenTestMode(e.target.checked);
+        });
+        
+        document.getElementById('reset-welcome-btn').addEventListener('click', () => {
+          resetWelcomeScreen();
+        });
+        
         
         // Setup buttons for update dialog
         document.getElementById('cancel-update').addEventListener('click', () => {

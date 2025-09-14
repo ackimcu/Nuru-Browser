@@ -38,12 +38,18 @@ contextBridge.exposeInMainWorld('diagnosticsAPI', {
   },
   
   // Get logs
-  getLogs: () => ipcRenderer.invoke('get-log-content')
+  getLogs: () => ipcRenderer.invoke('get-log-content'),
+  
+  // Welcome screen settings
+  getWelcomeScreenSettings: () => ipcRenderer.invoke('get-settings').then(result => result?.developerSettings || {}),
+  setWelcomeScreenTestMode: (enabled) => ipcRenderer.invoke('set-setting', 'developerSettings.showWelcomeScreenOnStartup', enabled),
+  resetWelcomeScreen: () => ipcRenderer.invoke('reset-welcome-page')
 });
 
 // Expose settings API to diagnostics window for theme support
 contextBridge.exposeInMainWorld('settingsAPI', {
-  getSettings: () => ipcRenderer.invoke('get-settings')
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  saveAllSettings: (settings) => ipcRenderer.invoke('save-all-settings', settings)
 });
 
 // Listen for update events from the main process

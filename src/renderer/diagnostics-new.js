@@ -395,6 +395,33 @@ clearLogsBtn.addEventListener('click', () => {
 // Auto-refresh toggle
 autoRefreshToggle.addEventListener('change', setupLogAutoRefresh);
 
+// Welcome screen test mode toggle
+const welcomeTestModeToggle = document.getElementById('welcome-test-mode-toggle');
+const resetWelcomeBtn = document.getElementById('reset-welcome-btn');
+
+if (welcomeTestModeToggle) {
+  welcomeTestModeToggle.addEventListener('change', async (e) => {
+    try {
+      const enabled = e.target.checked;
+      await window.diagnosticsAPI.setWelcomeScreenTestMode(enabled);
+      console.log('Welcome screen test mode:', enabled ? 'enabled' : 'disabled');
+    } catch (error) {
+      console.error('Error setting welcome screen test mode:', error);
+    }
+  });
+}
+
+if (resetWelcomeBtn) {
+  resetWelcomeBtn.addEventListener('click', async () => {
+    try {
+      await window.diagnosticsAPI.resetWelcomeScreen();
+      console.log('Welcome screen reset successfully');
+    } catch (error) {
+      console.error('Error resetting welcome screen:', error);
+    }
+  });
+}
+
 // Utility functions
 /**
  * Set a button's loading state
@@ -490,6 +517,23 @@ function cleanupTimers() {
 }
 
 /**
+ * Load welcome screen settings
+ */
+async function loadWelcomeScreenSettings() {
+  try {
+    const settings = await window.diagnosticsAPI.getWelcomeScreenSettings();
+    const welcomeTestModeToggle = document.getElementById('welcome-test-mode-toggle');
+    
+    if (welcomeTestModeToggle && settings) {
+      welcomeTestModeToggle.checked = settings.showWelcomeScreenOnStartup || false;
+      console.log('Welcome screen test mode loaded:', welcomeTestModeToggle.checked);
+    }
+  } catch (error) {
+    console.error('Error loading welcome screen settings:', error);
+  }
+}
+
+/**
  * Initialize diagnostics window
  */
 function initialize() {
@@ -500,7 +544,8 @@ function initialize() {
     loadAppInfo(),
     loadSystemInfo(),
     checkWebGL(),
-    loadLogs()
+    loadLogs(),
+    loadWelcomeScreenSettings()
   ]).then(() => {
     console.log('Initial data loaded successfully');
   }).catch(error => {

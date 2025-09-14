@@ -54,7 +54,6 @@ const errorOverlay = document.getElementById('error-overlay');
 const errorTitle = document.getElementById('error-title');
 const errorMessage = document.getElementById('error-message');
 const updateCheckBtn = document.getElementById('update-check-btn');
-const diagnosticsBtn = document.getElementById('diagnostics-btn');
 const historyTriggerArea = document.querySelector('.history-trigger-area');
 const historyViewport = document.querySelector('.history-viewport');
 const historyList = document.getElementById('history-list');
@@ -343,7 +342,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Keyboard shortcuts: Ctrl+B for selects, Ctrl+D for diagnostics
   document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key.toLowerCase() === 'b') toggleSelectsModal();
-    if (e.ctrlKey && e.key.toLowerCase() === 'd') window.electronAPI.showDiagnostics();
+    if (e.ctrlKey && e.key.toLowerCase() === 'd') {
+      const toggle = document.querySelector('#show-browser-info-toggle');
+      if (toggle) {
+        toggle.checked = !toggle.checked;
+        toggle.dispatchEvent(new Event('change'));
+      }
+    }
   });
   // Context menu for selects
   if (window.electronAPI && window.electronAPI.onToggleSelectsModal) {
@@ -2729,7 +2734,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Keyboard shortcuts: Ctrl+B for selects, Ctrl+D for diagnostics
   document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key.toLowerCase() === 'b') toggleSelectsModal();
-    if (e.ctrlKey && e.key.toLowerCase() === 'd') window.electronAPI.showDiagnostics();
+    if (e.ctrlKey && e.key.toLowerCase() === 'd') {
+      const toggle = document.querySelector('#show-browser-info-toggle');
+      if (toggle) {
+        toggle.checked = !toggle.checked;
+        toggle.dispatchEvent(new Event('change'));
+      }
+    }
   });
   // Context menu for selects
   if (window.electronAPI && window.electronAPI.onToggleSelectsModal) {
@@ -4583,11 +4594,351 @@ function addSettingsEventListeners() {
     });
   }
   
-  // Diagnostics button
-  const diagnosticsBtn = settingsContent.querySelector('#diagnostics-btn');
-  if (diagnosticsBtn) {
-    diagnosticsBtn.addEventListener('click', () => {
-      window.electronAPI.showDiagnostics();
+  // Inline Diagnostics Functions
+  let logRefreshTimer = null;
+  
+  async function loadInlineDiagnostics() {
+    console.log('Loading inline diagnostics...');
+    
+    try {
+      // Load app info
+      const appInfo = await window.electronAPI.getAppInfo();
+      updateInlineElement('inline-app-name', appInfo.appName || 'Nuru Browser');
+      updateInlineElement('inline-app-version', appInfo.appVersion || '1.0.0');
+      updateInlineElement('inline-electron-version', appInfo.electronVersion || 'Unknown');
+      updateInlineElement('inline-chrome-version', appInfo.chromeVersion || 'Unknown');
+      updateInlineElement('inline-node-version', appInfo.nodeVersion || 'Unknown');
+      updateInlineElement('inline-platform', appInfo.platform || 'Unknown');
+      updateInlineElement('inline-architecture', appInfo.arch || 'Unknown');
+      updateInlineElement('inline-update-status', appInfo.updateStatus || 'Unknown');
+      
+      // Load system info
+      const sysInfo = await window.electronAPI.getSystemInfo();
+      updateInlineElement('inline-cpu-model', sysInfo.cpuModel || 'Unknown');
+      updateInlineElement('inline-cpu-cores', sysInfo.cpuCores || 'Unknown');
+      updateInlineElement('inline-total-memory', sysInfo.totalMemory ? `${sysInfo.totalMemory} GB` : 'Unknown');
+      updateInlineElement('inline-free-memory', sysInfo.freeMemory ? `${sysInfo.freeMemory} GB` : 'Unknown');
+      updateInlineElement('inline-os-type', sysInfo.osType || 'Unknown');
+      updateInlineElement('inline-os-release', sysInfo.osRelease || 'Unknown');
+      updateInlineElement('inline-hostname', sysInfo.hostname || 'Unknown');
+      updateInlineElement('inline-uptime', sysInfo.uptime ? `${sysInfo.uptime} minutes` : 'Unknown');
+      
+      // Check WebGL
+      await checkInlineWebGL();
+      
+      // Load logs
+      await loadInlineLogs();
+      
+      // Load welcome screen settings
+      await loadWelcomeScreenSettings();
+      
+    } catch (error) {
+      console.error('Failed to load inline diagnostics:', error);
+      // Set error state for all elements
+      const errorElements = [
+        'inline-app-name', 'inline-app-version', 'inline-electron-version',
+        'inline-chrome-version', 'inline-node-version', 'inline-platform',
+        'inline-architecture', 'inline-cpu-model', 'inline-cpu-cores',
+        'inline-total-memory', 'inline-free-memory', 'inline-os-type',
+        'inline-os-release', 'inline-hostname', 'inline-uptime', 'inline-update-status'
+      ];
+      
+      errorElements.forEach(id => {
+        const element = settingsContent.querySelector(`#${id}`);
+        if (element) {
+          element.textContent = 'Error loading';
+          element.classList.add('error');
+        }
+      });
+    }
+  }
+  
+  async function checkInlineWebGL() {
+    try {
+      const webGLInfo = await window.electronAPI.checkWebGL();
+      
+      if (webGLInfo.available) {
+        updateInlineElement('inline-webgl-status', 'Available', 'success');
+        updateInlineElement('inline-webgl-renderer', webGLInfo.renderer || 'Not available');
+        updateInlineElement('inline-webgl-vendor', webGLInfo.vendor || 'Not available');
+        updateInlineElement('inline-webgl-version', `WebGL ${webGLInfo.version || '1.0'}`);
+      } else {
+        updateInlineElement('inline-webgl-status', 'Not Available', 'error');
+        updateInlineElement('inline-webgl-renderer', 'Not available');
+        updateInlineElement('inline-webgl-vendor', 'Not available');
+        updateInlineElement('inline-webgl-version', 'Not available');
+      }
+    } catch (error) {
+      console.error('Failed to check WebGL:', error);
+      updateInlineElement('inline-webgl-status', 'Error checking', 'error');
+      updateInlineElement('inline-webgl-renderer', 'Error checking');
+      updateInlineElement('inline-webgl-vendor', 'Error checking');
+      updateInlineElement('inline-webgl-version', 'Error checking');
+    }
+  }
+  
+  function updateInlineElement(elementId, value, className = '') {
+    const element = settingsContent.querySelector(`#${elementId}`);
+    if (element) {
+      element.textContent = value;
+      element.className = 'info-value';
+      if (className) {
+        element.classList.add(className);
+      }
+    }
+  }
+  
+  // Load inline logs
+  async function loadInlineLogs() {
+    try {
+      const logContent = await window.electronAPI.readLogFile();
+      
+      if (!logContent || logContent === 'No logs found.') {
+        updateInlineElement('log-content-inline', 'No logs found or log file is empty.');
+        return;
+      }
+      
+      // Format log entries for better readability
+      const formattedContent = logContent
+        .split('\n')
+        .map(line => {
+          // Add color to different log levels
+          if (line.includes('[error]') || line.includes('ERROR')) {
+            return `<span class="log-error">${escapeHtml(line)}</span>`;
+          } else if (line.includes('[warn]') || line.includes('WARNING')) {
+            return `<span class="log-warning">${escapeHtml(line)}</span>`;
+          } else if (line.includes('[info]') || line.match(/INFO|›/)) {
+            return `<span class="log-info">${escapeHtml(line)}</span>`;
+          }
+          return escapeHtml(line);
+        })
+        .join('\n');
+      
+      // Use innerHTML to render the formatted content
+      const logElement = settingsContent.querySelector('#log-content-inline');
+      if (logElement) {
+        logElement.innerHTML = formattedContent;
+        
+        // Auto-scroll to bottom if enabled
+        const autoScrollToggle = settingsContent.querySelector('#auto-scroll-inline-toggle');
+        if (autoScrollToggle && autoScrollToggle.checked) {
+          const logContainer = logElement.parentElement;
+          logContainer.scrollTop = logContainer.scrollHeight;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load logs:', error);
+      const logElement = settingsContent.querySelector('#log-content-inline');
+      if (logElement) {
+        logElement.innerHTML = `<span class="log-error">Error loading logs: ${escapeHtml(error.message)}</span>`;
+      }
+    }
+  }
+  
+  // Load welcome screen settings
+  async function loadWelcomeScreenSettings() {
+    try {
+      const settings = await window.electronAPI.getWelcomeScreenSettings();
+      const welcomeTestModeToggle = settingsContent.querySelector('#welcome-test-mode-inline-toggle');
+      
+      if (welcomeTestModeToggle && settings) {
+        welcomeTestModeToggle.checked = settings.showWelcomeScreenOnStartup || false;
+      }
+    } catch (error) {
+      console.error('Error loading welcome screen settings:', error);
+    }
+  }
+  
+  // Check for updates
+  async function checkForUpdatesInline() {
+    const checkUpdatesBtn = settingsContent.querySelector('#check-updates-inline-btn');
+    if (checkUpdatesBtn) {
+      setButtonLoading(checkUpdatesBtn, true);
+    }
+    
+    try {
+      const updateResult = await window.electronAPI.checkForUpdates();
+      
+      if (updateResult.success === false) {
+        throw new Error(updateResult.error || 'Unknown error checking for updates');
+      }
+      
+      // Refresh app info to get latest update status
+      await loadInlineDiagnostics();
+      
+    } catch (error) {
+      console.error('Failed to check for updates:', error);
+      updateInlineElement('inline-update-status', 'Failed to check for updates', 'error');
+    } finally {
+      if (checkUpdatesBtn) {
+        setButtonLoading(checkUpdatesBtn, false);
+      }
+    }
+  }
+  
+  // Setup log auto-refresh
+  function setupLogAutoRefresh() {
+    // Clear existing timer
+    if (logRefreshTimer) {
+      clearInterval(logRefreshTimer);
+      logRefreshTimer = null;
+    }
+    
+    // Setup new timer if auto-refresh is enabled
+    const autoRefreshToggle = settingsContent.querySelector('#auto-refresh-inline-toggle');
+    if (autoRefreshToggle && autoRefreshToggle.checked) {
+      logRefreshTimer = setInterval(loadInlineLogs, 5000);
+      console.log('Log auto-refresh enabled (5s interval)');
+    } else {
+      console.log('Log auto-refresh disabled');
+    }
+  }
+  
+  // Set button loading state
+  function setButtonLoading(button, isLoading) {
+    if (isLoading) {
+      button.classList.add('loading');
+      button.disabled = true;
+    } else {
+      button.classList.remove('loading');
+      button.disabled = false;
+    }
+  }
+  
+  // Escape HTML to prevent XSS
+  function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return unsafe
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  // Browser Information toggle
+  const showBrowserInfoToggle = settingsContent.querySelector('#show-browser-info-toggle');
+  const browserInfoDisplay = settingsContent.querySelector('#browser-info-display');
+  
+  if (showBrowserInfoToggle && browserInfoDisplay) {
+    // Set initial state
+    showBrowserInfoToggle.checked = settings.show_browser_info || false;
+    browserInfoDisplay.style.display = settings.show_browser_info ? 'block' : 'none';
+    
+    // Toggle event listener
+    showBrowserInfoToggle.addEventListener('change', async (e) => {
+      const isEnabled = e.target.checked;
+      browserInfoDisplay.style.display = isEnabled ? 'block' : 'none';
+      
+      // Save the setting
+      settings.show_browser_info = isEnabled;
+      try {
+        await window.electronAPI.updateSettings(settings);
+      } catch (error) {
+        console.error('Failed to save browser info setting:', error);
+      }
+      
+      // Load diagnostics data if enabled
+      if (isEnabled) {
+        loadInlineDiagnostics();
+      }
+    });
+    
+    // Load diagnostics data if already enabled
+    if (settings.show_browser_info) {
+      loadInlineDiagnostics();
+    }
+  }
+  
+  // Inline diagnostics refresh button
+  const refreshBrowserInfoBtn = settingsContent.querySelector('#refresh-browser-info-btn');
+  if (refreshBrowserInfoBtn) {
+    refreshBrowserInfoBtn.addEventListener('click', () => {
+      loadInlineDiagnostics();
+    });
+  }
+  
+  // Inline WebGL check button
+  const checkWebglInlineBtn = settingsContent.querySelector('#check-webgl-inline-btn');
+  if (checkWebglInlineBtn) {
+    checkWebglInlineBtn.addEventListener('click', () => {
+      checkInlineWebGL();
+    });
+  }
+  
+  // Check for updates button
+  const checkUpdatesInlineBtn = settingsContent.querySelector('#check-updates-inline-btn');
+  if (checkUpdatesInlineBtn) {
+    checkUpdatesInlineBtn.addEventListener('click', () => {
+      checkForUpdatesInline();
+    });
+  }
+  
+  // Welcome screen test mode toggle
+  const welcomeTestModeInlineToggle = settingsContent.querySelector('#welcome-test-mode-inline-toggle');
+  if (welcomeTestModeInlineToggle) {
+    welcomeTestModeInlineToggle.addEventListener('change', async (e) => {
+      try {
+        const enabled = e.target.checked;
+        await window.electronAPI.setWelcomeScreenTestMode(enabled);
+        console.log('Welcome screen test mode:', enabled ? 'enabled' : 'disabled');
+      } catch (error) {
+        console.error('Error setting welcome screen test mode:', error);
+      }
+    });
+  }
+  
+  // Reset welcome screen button
+  const resetWelcomeInlineBtn = settingsContent.querySelector('#reset-welcome-inline-btn');
+  if (resetWelcomeInlineBtn) {
+    resetWelcomeInlineBtn.addEventListener('click', async () => {
+      try {
+        setButtonLoading(resetWelcomeInlineBtn, true);
+        await window.electronAPI.resetWelcomeScreen();
+        console.log('Welcome screen reset successfully');
+      } catch (error) {
+        console.error('Error resetting welcome screen:', error);
+      } finally {
+        setButtonLoading(resetWelcomeInlineBtn, false);
+      }
+    });
+  }
+  
+  // Log controls
+  const refreshLogsInlineBtn = settingsContent.querySelector('#refresh-logs-inline-btn');
+  if (refreshLogsInlineBtn) {
+    refreshLogsInlineBtn.addEventListener('click', () => {
+      loadInlineLogs();
+    });
+  }
+  
+  const clearLogsInlineBtn = settingsContent.querySelector('#clear-logs-inline-btn');
+  if (clearLogsInlineBtn) {
+    clearLogsInlineBtn.addEventListener('click', () => {
+      const logElement = settingsContent.querySelector('#log-content-inline');
+      if (logElement) {
+        logElement.textContent = 'Logs cleared from view. Click Refresh to reload.';
+      }
+    });
+  }
+  
+  // Auto-refresh toggle
+  const autoRefreshInlineToggle = settingsContent.querySelector('#auto-refresh-inline-toggle');
+  if (autoRefreshInlineToggle) {
+    autoRefreshInlineToggle.addEventListener('change', setupLogAutoRefresh);
+  }
+  
+  // Auto-scroll toggle
+  const autoScrollInlineToggle = settingsContent.querySelector('#auto-scroll-inline-toggle');
+  if (autoScrollInlineToggle) {
+    autoScrollInlineToggle.addEventListener('change', () => {
+      if (autoScrollInlineToggle.checked) {
+        const logElement = settingsContent.querySelector('#log-content-inline');
+        if (logElement) {
+          const logContainer = logElement.parentElement;
+          logContainer.scrollTop = logContainer.scrollHeight;
+        }
+      }
     });
   }
   

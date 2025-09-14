@@ -1931,6 +1931,52 @@
         </div>
       </div>
 
+      <!-- Advanced Settings Section -->
+      <div class="content-section" id="advanced-section">
+        <div class="section-header">
+          <h2 class="section-title">Advanced Settings</h2>
+          <p class="section-description">Advanced configuration and developer options</p>
+        </div>
+        
+        <!-- Development Mode Toggle -->
+        <div class="settings-section">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Development Mode</span>
+              <div class="setting-description">Enable development features and advanced options</div>
+            </div>
+            <div class="setting-control">
+              <button id="dev-mode-toggle" class="action-button">Enable Development Mode</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Developer Tools (only visible in development mode) -->
+        <div id="developer-tools-section" class="settings-section" style="display: none;">
+          <div class="section-header">
+            <h3 class="section-title">Developer Tools</h3>
+            <p class="section-description">Advanced settings for development and testing</p>
+          </div>
+          
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Show Welcome Screen on Startup</span>
+              <div class="setting-description">Enable this to show the welcome screen every time the browser starts (useful for testing)</div>
+            </div>
+            <div class="setting-control">
+              <div class="toggle-container">
+                <span class="toggle-text-off">Off</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="welcome-screen-toggle">
+                  <span class="slider"></span>
+                </label>
+                <span class="toggle-text-on">On</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Password Manager Section -->
       <div class="settings-section">
         <div class="section-header">
@@ -2295,6 +2341,60 @@ document.addEventListener('DOMContentLoaded', async () => {
   const settings = await window.settingsAPI.getSettings();
   applyTheme(settings.theme);
   
+  // Show/hide developer tools based on development mode
+  const developerToolsSection = document.getElementById('developer-tools-section');
+  function updateDeveloperToolsVisibility() {
+    if (developerToolsSection) {
+      if (settings.development_mode) {
+        developerToolsSection.style.display = 'block';
+      } else {
+        developerToolsSection.style.display = 'none';
+      }
+    }
+  }
+  updateDeveloperToolsVisibility();
+  
+  // Listen for development mode changes
+  window.addEventListener('development-mode-changed', (event) => {
+    settings.development_mode = event.detail;
+    updateDeveloperToolsVisibility();
+  });
+  
+  // Development mode toggle functionality
+  const devModeToggle = document.getElementById('dev-mode-toggle');
+  if (devModeToggle) {
+    // Update button text based on current state
+    function updateDevModeButton() {
+      if (settings.development_mode) {
+        devModeToggle.textContent = 'Disable Development Mode';
+        devModeToggle.classList.add('active');
+      } else {
+        devModeToggle.textContent = 'Enable Development Mode';
+        devModeToggle.classList.remove('active');
+      }
+    }
+    updateDevModeButton();
+    
+    // Handle toggle click
+    devModeToggle.addEventListener('click', async () => {
+      try {
+        const isDevMode = await window.settingsAPI.toggleDevelopmentMode();
+        settings.development_mode = isDevMode;
+        updateDevModeButton();
+        updateDeveloperToolsVisibility();
+        
+        if (isDevMode) {
+          showNotification('Development Mode Enabled', 'Developer tools are now available.');
+        } else {
+          showNotification('Development Mode Disabled', 'Developer tools are now hidden.');
+        }
+      } catch (error) {
+        console.error('Failed to toggle development mode:', error);
+        showNotification('Error', 'Failed to toggle development mode.');
+      }
+    });
+  }
+  
   const presets = {
     google: 'https://www.google.com/search?q=',
     bing: 'https://www.bing.com/search?q=',
@@ -2311,6 +2411,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const hpSelect = document.getElementById('homepage-select');
   const hpCustom = document.getElementById('homepage-custom-input');
   const themeSelect = document.getElementById('theme-select');
+  const welcomeScreenToggle = document.getElementById('welcome-screen-toggle');
 
   // Initialize UI with modern values
   if (zoomSlider) {
@@ -2347,6 +2448,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Theme
   themeSelect.value = settings.theme || 'dark';
+  
+  // Developer settings
+  if (welcomeScreenToggle) {
+    welcomeScreenToggle.checked = settings.developerSettings?.showWelcomeScreenOnStartup || false;
+  }
   
 
   // Modern event handlers
@@ -2451,7 +2557,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           homepage: hpSelect?.value === 'custom' ? hpCustom?.value?.trim() || '' : hpSelect?.value || '',
           theme: themeSelect?.value || 'dark',
           viewportsHiddenByDefault: viewportsToggle?.checked || false,
-          cards: { weatherLocation: weatherInput?.value?.trim() || '' }
+          cards: { weatherLocation: weatherInput?.value?.trim() || '' },
+          developerSettings: { 
+            showWelcomeScreenOnStartup: welcomeScreenToggle?.checked || false 
+          }
         };
         
         const result = await window.settingsAPI.saveAllSettings(payload);

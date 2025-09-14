@@ -209,6 +209,40 @@ try {
         console.error('[Diagnostics] System info error:', error);
         return { error: error.message };
       }
+    },
+
+    // Welcome screen settings
+    async getWelcomeScreenSettings() {
+      try {
+        console.log('[Diagnostics] Getting welcome screen settings');
+        const result = await ipcRenderer.invoke('get-settings');
+        return result?.developerSettings || {};
+      } catch (error) {
+        console.error('[Diagnostics] Error getting welcome screen settings:', error);
+        return { showWelcomeScreenOnStartup: false };
+      }
+    },
+
+    async setWelcomeScreenTestMode(enabled) {
+      try {
+        console.log('[Diagnostics] Setting welcome screen test mode:', enabled);
+        await ipcRenderer.invoke('set-setting', 'developerSettings.showWelcomeScreenOnStartup', enabled);
+        return { success: true };
+      } catch (error) {
+        console.error('[Diagnostics] Error setting welcome screen test mode:', error);
+        return { success: false, error: error.message };
+      }
+    },
+
+    async resetWelcomeScreen() {
+      try {
+        console.log('[Diagnostics] Resetting welcome screen');
+        await ipcRenderer.invoke('reset-welcome-page');
+        return { success: true };
+      } catch (error) {
+        console.error('[Diagnostics] Error resetting welcome screen:', error);
+        return { success: false, error: error.message };
+      }
     }
   };
 

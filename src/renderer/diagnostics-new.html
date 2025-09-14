@@ -164,6 +164,34 @@
         </div>
       </section>
       
+      <!-- Developer Tools Section -->
+      <section class="diagnostics-section" id="section-developer">
+        <div class="section-header">
+          <h2>Developer Tools</h2>
+          <span class="status-badge" id="developer-status">Ready</span>
+        </div>
+        
+        <div class="section-content">
+          <div class="developer-controls">
+            <div class="control-group">
+              <label class="toggle">
+                <input type="checkbox" id="welcome-test-mode-toggle">
+                <span class="toggle-label">Enable welcome screen test mode</span>
+              </label>
+              <div class="control-description">Show the welcome screen every time the browser starts (useful for testing)</div>
+            </div>
+            
+            <div class="control-group">
+              <button id="reset-welcome-btn" class="action-button">
+                <span class="button-text">Reset Welcome Screen</span>
+                <span class="spinner"></span>
+              </button>
+              <div class="control-description">Reset welcome screen completion status to show it again</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
       <!-- Logs Section -->
       <section class="diagnostics-section" id="section-logs">
         <div class="section-header">

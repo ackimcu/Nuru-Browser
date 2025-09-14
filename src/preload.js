@@ -25,12 +25,43 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Diagnostics and logging
   showDiagnostics: () => ipcRenderer.send('show-diagnostics'),
-  checkWebGL: () => {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    ipcRenderer.send('webgl-status', !!gl);
-    return !!gl;
+  checkWebGL: async () => {
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      
+      if (gl) {
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+        return {
+          available: true,
+          renderer: debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'Unknown',
+          vendor: debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : 'Unknown',
+          version: gl.getParameter(gl.VERSION) || 'Unknown'
+        };
+      } else {
+        return {
+          available: false,
+          renderer: 'Not available',
+          vendor: 'Not available',
+          version: 'Not available'
+        };
+      }
+    } catch (error) {
+      return {
+        available: false,
+        error: error.message,
+        renderer: 'Error',
+        vendor: 'Error',
+        version: 'Error'
+      };
+    }
   },
+  getAppInfo: () => ipcRenderer.invoke('get-app-info'),
+  getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
+  readLogFile: () => ipcRenderer.invoke('read-log-file'),
+  getWelcomeScreenSettings: () => ipcRenderer.invoke('get-welcome-screen-settings'),
+  setWelcomeScreenTestMode: (enabled) => ipcRenderer.invoke('set-welcome-screen-test-mode', enabled),
+  resetWelcomeScreen: () => ipcRenderer.invoke('reset-welcome-screen'),
   
   // Error handling
   logMessage: (level, message) => ipcRenderer.send('log-message', { level, message }),

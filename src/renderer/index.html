@@ -247,33 +247,114 @@
       <div id="settings-content">
         <!-- Settings Navigation -->
         <div class="settings-nav">
-          <div class="nav-item active" data-section="general">
-            <i class="fas fa-cog"></i>
-            <span>General</span>
+          <div class="nav-group">
+            <div class="nav-group-title">Core Settings</div>
+            <div class="nav-item active" data-section="general">
+              <div class="nav-item-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+                </svg>
+              </div>
+              <div class="nav-item-content">
+                <span class="nav-item-title">General</span>
+                <span class="nav-item-desc">Basic browser settings</span>
+              </div>
+              <div class="nav-item-indicator"></div>
+            </div>
+            
+            <div class="nav-item" data-section="appearance">
+              <div class="nav-item-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                </svg>
+              </div>
+              <div class="nav-item-content">
+                <span class="nav-item-title">Appearance</span>
+                <span class="nav-item-desc">Themes and visual settings</span>
+              </div>
+              <div class="nav-item-indicator"></div>
+            </div>
           </div>
-          <div class="nav-item" data-section="appearance">
-            <i class="fas fa-palette"></i>
-            <span>Appearance</span>
+          
+          <div class="nav-group">
+            <div class="nav-group-title">Privacy & Data</div>
+            <div class="nav-item" data-section="privacy">
+              <div class="nav-item-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <circle cx="12" cy="16" r="1"></circle>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </div>
+              <div class="nav-item-content">
+                <span class="nav-item-title">Privacy & Security</span>
+                <span class="nav-item-desc">Protection and safety</span>
+              </div>
+              <div class="nav-item-indicator"></div>
+            </div>
+            
+            <div class="nav-item" data-section="data">
+              <div class="nav-item-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
+                  <path d="M12 11l0 9"></path>
+                  <path d="M8 11l4-4 4 4"></path>
+                </svg>
+              </div>
+              <div class="nav-item-content">
+                <span class="nav-item-title">Data Management</span>
+                <span class="nav-item-desc">Storage and cleanup</span>
+              </div>
+              <div class="nav-item-indicator"></div>
+            </div>
+            
+            <div class="nav-item" data-section="passwords">
+              <div class="nav-item-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                </svg>
+              </div>
+              <div class="nav-item-content">
+                <span class="nav-item-title">Password Manager</span>
+                <span class="nav-item-desc">Secure password storage</span>
+              </div>
+              <div class="nav-item-indicator"></div>
+            </div>
           </div>
-          <div class="nav-item" data-section="privacy">
-            <i class="fas fa-shield-alt"></i>
-            <span>Privacy & Security</span>
-          </div>
-          <div class="nav-item" data-section="data">
-            <i class="fas fa-database"></i>
-            <span>Data Management</span>
-          </div>
-          <div class="nav-item" data-section="passwords">
-            <i class="fas fa-key"></i>
-            <span>Password Manager</span>
-          </div>
-          <div class="nav-item" data-section="window">
-            <i class="fas fa-window-maximize"></i>
-            <span>Window & Interface</span>
-          </div>
-          <div class="nav-item" data-section="advanced">
-            <i class="fas fa-cogs"></i>
-            <span>Advanced</span>
+          
+          <div class="nav-group">
+            <div class="nav-group-title">Interface</div>
+            <div class="nav-item" data-section="window">
+              <div class="nav-item-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                  <line x1="8" y1="21" x2="16" y2="21"></line>
+                  <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+              </div>
+              <div class="nav-item-content">
+                <span class="nav-item-title">Window & Interface</span>
+                <span class="nav-item-desc">Display and layout</span>
+              </div>
+              <div class="nav-item-indicator"></div>
+            </div>
+            
+            <div class="nav-item" data-section="advanced">
+              <div class="nav-item-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+                  <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+                </svg>
+              </div>
+              <div class="nav-item-content">
+                <span class="nav-item-title">Advanced</span>
+                <span class="nav-item-desc">Developer and debug tools</span>
+              </div>
+              <div class="nav-item-indicator"></div>
+            </div>
           </div>
         </div>
         
@@ -508,7 +589,183 @@
             <div class="setting-group" id="developer-tools-group" style="display: none;">
               <h4>Developer Tools</h4>
               <div class="setting-control">
-                <button id="diagnostics-btn" class="action-button">Open Diagnostics</button>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="show-browser-info-toggle">
+                  <span class="slider"></span>
+                </label>
+                <span class="toggle-label">Show Browser Information</span>
+              </div>
+              
+              <!-- Browser Information Display Area -->
+              <div id="browser-info-display" class="browser-info-display" style="display: none;">
+                <div class="browser-info-content">
+                  <!-- App Information Section -->
+                  <div class="info-section">
+                    <h4>Application Information</h4>
+                    <div class="info-grid">
+                      <div class="info-item">
+                        <span class="info-label">App Name:</span>
+                        <span class="info-value" id="inline-app-name">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">App Version:</span>
+                        <span class="info-value" id="inline-app-version">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">Electron Version:</span>
+                        <span class="info-value" id="inline-electron-version">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">Chrome Version:</span>
+                        <span class="info-value" id="inline-chrome-version">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">Node.js Version:</span>
+                        <span class="info-value" id="inline-node-version">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">Platform:</span>
+                        <span class="info-value" id="inline-platform">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">Architecture:</span>
+                        <span class="info-value" id="inline-architecture">Loading...</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- System Information Section -->
+                  <div class="info-section">
+                    <h4>System Information</h4>
+                    <div class="info-grid">
+                      <div class="info-item">
+                        <span class="info-label">CPU Model:</span>
+                        <span class="info-value" id="inline-cpu-model">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">CPU Cores:</span>
+                        <span class="info-value" id="inline-cpu-cores">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">Total Memory:</span>
+                        <span class="info-value" id="inline-total-memory">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">Free Memory:</span>
+                        <span class="info-value" id="inline-free-memory">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">OS Type:</span>
+                        <span class="info-value" id="inline-os-type">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">OS Release:</span>
+                        <span class="info-value" id="inline-os-release">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">Hostname:</span>
+                        <span class="info-value" id="inline-hostname">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">Uptime:</span>
+                        <span class="info-value" id="inline-uptime">Loading...</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- WebGL Information Section -->
+                  <div class="info-section">
+                    <h4>Hardware Acceleration</h4>
+                    <div class="info-grid">
+                      <div class="info-item">
+                        <span class="info-label">WebGL Status:</span>
+                        <span class="info-value" id="inline-webgl-status">Checking...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">WebGL Renderer:</span>
+                        <span class="info-value" id="inline-webgl-renderer">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">WebGL Vendor:</span>
+                        <span class="info-value" id="inline-webgl-vendor">Loading...</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">WebGL Version:</span>
+                        <span class="info-value" id="inline-webgl-version">Loading...</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Update Status Section -->
+                  <div class="info-section">
+                    <h4>Update Status</h4>
+                    <div class="info-grid">
+                      <div class="info-item">
+                        <span class="info-label">Auto-Update:</span>
+                        <span class="info-value" id="inline-update-status">Loading...</span>
+                      </div>
+                    </div>
+                    <div class="info-actions">
+                      <button id="check-updates-inline-btn" class="action-button small primary">
+                        <span class="button-text">Check for Updates</span>
+                        <span class="spinner"></span>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Developer Controls Section -->
+                  <div class="info-section">
+                    <h4>Developer Controls</h4>
+                    <div class="developer-controls">
+                      <div class="control-group">
+                        <label class="toggle">
+                          <input type="checkbox" id="welcome-test-mode-inline-toggle">
+                          <span class="toggle-label">Enable welcome screen test mode</span>
+                        </label>
+                        <div class="control-description">Show the welcome screen every time the browser starts (useful for testing)</div>
+                      </div>
+                      
+                      <div class="control-group">
+                        <button id="reset-welcome-inline-btn" class="action-button small">
+                          <span class="button-text">Reset Welcome Screen</span>
+                          <span class="spinner"></span>
+                        </button>
+                        <div class="control-description">Reset welcome screen completion status to show it again</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Application Logs Section -->
+                  <div class="info-section">
+                    <h4>Application Logs</h4>
+                    <div class="log-controls">
+                      <label class="toggle">
+                        <input type="checkbox" id="auto-scroll-inline-toggle" checked>
+                        <span class="toggle-label">Auto-scroll</span>
+                      </label>
+                      <label class="toggle">
+                        <input type="checkbox" id="auto-refresh-inline-toggle" checked>
+                        <span class="toggle-label">Auto-refresh</span>
+                      </label>
+                      <button id="refresh-logs-inline-btn" class="action-button small">
+                        <span class="button-text">Refresh</span>
+                        <span class="spinner"></span>
+                      </button>
+                      <button id="clear-logs-inline-btn" class="action-button small warning">
+                        <span class="button-text">Clear View</span>
+                      </button>
+                    </div>
+                    <div class="log-container-inline">
+                      <pre id="log-content-inline" class="log-content">Loading logs...</pre>
+                    </div>
+                  </div>
+                  
+                  <!-- Action Buttons -->
+                  <div class="info-actions">
+                    <button id="refresh-browser-info-btn" class="action-button small">Refresh Info</button>
+                    <button id="check-webgl-inline-btn" class="action-button small">Check WebGL</button>
+                  </div>
+                </div>
               </div>
             </div>
             

@@ -39,6 +39,9 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   deleteAllUserData: () => ipcRenderer.invoke('delete-all-user-data'),
   // Restart the application
   restartApp: () => ipcRenderer.invoke('restart-app'),
+  
+  // Development mode toggle
+  toggleDevelopmentMode: () => ipcRenderer.invoke('toggle-development-mode'),
 
   // Password Manager API
   initPasswordManager: () => ipcRenderer.invoke('init-password-manager'),

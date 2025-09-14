@@ -55,7 +55,11 @@ const DEFAULT_SETTINGS = {
   },
   // Welcome page completion status
   welcomeCompleted: false,
-  firstRun: true
+  firstRun: true,
+  // Developer settings
+  developerSettings: {
+    showWelcomeScreenOnStartup: false
+  }
 };
 
 let mainWindow;
@@ -1031,6 +1035,10 @@ ipcMain.handle('save-all-settings', (event, newSettings) => {
       settings.theme = newSettings.theme;
     }
 
+    // Update developer settings if provided
+    if (newSettings.developerSettings) {
+      settings.developerSettings = { ...settings.developerSettings, ...newSettings.developerSettings };
+    }
 
     // Update settings object with new values
     if (newSettings.browser) {
@@ -1328,6 +1336,45 @@ ipcMain.handle('reset-welcome', () => {
   }
 });
 
+// Alias for diagnostics window
+ipcMain.handle('reset-welcome-page', () => {
+  try {
+    settings.welcomeCompleted = false;
+    settings.firstRun = true;
+    saveSettings();
+    log.info('Welcome page reset for testing');
+    return { success: true };
+  } catch (error) {
+    log.error('Error resetting welcome page:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Set individual setting value
+ipcMain.handle('set-setting', (event, keyPath, value) => {
+  try {
+    const keys = keyPath.split('.');
+    let current = settings;
+    
+    // Navigate to the parent object
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (!current[keys[i]]) {
+        current[keys[i]] = {};
+      }
+      current = current[keys[i]];
+    }
+    
+    // Set the final value
+    current[keys[keys.length - 1]] = value;
+    saveSettings();
+    log.info(`Setting ${keyPath} updated to:`, value);
+    return { success: true };
+  } catch (error) {
+    log.error('Error setting individual setting:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.on('close-app', () => {
   if (mainWindow) {
     mainWindow.close();
@@ -1516,11 +1563,11 @@ app.whenReady().then(async () => {
                      (fs.existsSync(SETTINGS_PATH) && 
                       JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8')).firstRun !== false);
   
-  // FOR TESTING: Always show welcome page
-  const isTesting = true; // Set to false to restore normal behavior
+  // Check developer setting for welcome screen
+  const showWelcomeScreen = settings.developerSettings && settings.developerSettings.showWelcomeScreenOnStartup;
   
-  if (isFirstTime || isTesting) {
-    log.info('Showing welcome page (first-time user or testing mode)');
+  if (isFirstTime || showWelcomeScreen) {
+    log.info('Showing welcome page (first-time user or developer setting enabled)');
     // Mark as not first run
     settings.firstRun = false;
     saveSettings();
