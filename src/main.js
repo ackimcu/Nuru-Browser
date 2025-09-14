@@ -36,28 +36,22 @@ const DEFAULT_SETTINGS = {
     icon: 'fab fa-google'
   },
   // Default homepage for the Home button
-  homepage: 'https://www.google.com/',
+  homepage: 'nuru://start',
   theme: 'dark',
   development_mode: false,
-  // Default list of domains to exclude from theming
-  themeExcludedDomains: [
-    'google.com',
-    'googlevideo.com',
-    'ytimg.com',
-    'gstatic.com',
-    'googleusercontent.com',
-    'gmail.com',
-    'drive.google.com',
-    'docs.google.com',
-    'sheets.google.com',
-    'slides.google.com'
-  ],
+  // Whether to remember window state (position, size)
+  rememberWindowState: true,
+  // Whether viewports are hidden by default
+  viewportsHiddenByDefault: false,
+  // Whether autofill is enabled
+  autofillEnabled: true,
   features: {
     adblock: true
   },
   cards: {
     weatherLocation: '',
-    downloadHistoryCardVisible: false
+    downloadHistoryCardVisible: false,
+    weatherTemperatureUnit: 'celsius' // 'celsius' or 'fahrenheit'
   }
 };
 
@@ -186,11 +180,7 @@ app.on('web-contents-created', (event, contents) => {
         { label: 'Save As', click: () => contents.savePage(pageURL, { saveAs: true }) },
         { type: 'separator' },
         { role: 'copy', label: 'Copy', enabled: !!selectionText },
-        { role: 'paste', label: 'Paste' },
-        { type: 'separator' },
-        { label: 'Open Diagnostics', click: () => createDiagnosticsWindow() },
-        { label: 'Open Bookmarks', click: () => mainWindow.webContents.send('toggle-selects-modal') },
-        { label: 'Open Settings', click: () => mainWindow.webContents.send('show-settings') }
+        { role: 'paste', label: 'Paste' }
       ];
       const menu = Menu.buildFromTemplate(menuTemplate);
       menu.popup({ window: mainWindow });
@@ -250,11 +240,11 @@ async function createMainWindow() {
     y: y,
     backgroundColor: '#272727',
     frame: !settings.frameless,
-    transparent: true,
-    titleBarStyle: 'hidden',
-    roundedCorners: true,
-    vibrancy: 'ultra-dark',
-    visualEffectState: 'active',
+    transparent: settings.frameless, // Only transparent when frameless
+    titleBarStyle: settings.frameless ? 'hidden' : 'default',
+    roundedCorners: settings.frameless, // Only rounded corners when frameless
+    vibrancy: settings.frameless ? 'ultra-dark' : undefined, // Only vibrancy when frameless
+    visualEffectState: settings.frameless ? 'active' : undefined, // Only visual effects when frameless
     icon: nativeImage.createFromPath(path.join(__dirname, '..', 'logo', 'Nuru.png')).resize({ width: 48, height: 48 }),
     webPreferences: {
       nodeIntegration: false,
@@ -274,6 +264,74 @@ async function createMainWindow() {
   }
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+
+  // Handle geolocation permissions
+  mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    log.info(`Permission requested: ${permission}`);
+    
+    if (permission === 'geolocation') {
+      // Show a dialog to ask for geolocation permission
+      dialog.showMessageBox(mainWindow, {
+        type: 'question',
+        buttons: ['Allow', 'Deny'],
+        defaultId: 0,
+        title: 'Location Access Request',
+        message: 'Nuru Browser would like to access your location',
+        detail: 'This will be used to automatically detect your location for weather information. You can still manually enter your location if you prefer.',
+        noLink: true
+      }).then((result) => {
+        const allowed = result.response === 0; // 0 = Allow, 1 = Deny
+        log.info(`Geolocation permission ${allowed ? 'granted' : 'denied'}`);
+        callback(allowed);
+      }).catch((error) => {
+        log.error('Error showing permission dialog:', error);
+        callback(false); // Deny by default if dialog fails
+      });
+    } else {
+      // For other permissions, deny by default
+      callback(false);
+    }
+  });
+
+  // Configure geolocation to avoid Google services issues
+  mainWindow.webContents.session.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+    if (permission === 'geolocation') {
+      return true; // Allow geolocation permission checks
+    }
+    return false; // Deny other permissions
+  });
+
+  // Disable Google location services to prevent 403 errors
+  mainWindow.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+    if (details.url.includes('googleapis.com') && details.url.includes('location')) {
+      log.info('Blocking Google location services request to prevent 403 errors');
+      callback({ cancel: true });
+      return;
+    }
+    callback({});
+  });
+
+  // Allow IP-based geolocation services
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    if (details.url.includes('ipapi.co') || 
+        details.url.includes('ipinfo.io') || 
+        details.url.includes('ipgeolocation.io') ||
+        details.url.includes('ip-api.com') ||
+        details.url.includes('freegeoip.app') ||
+        details.url.includes('ipwho.is')) {
+      log.info('Allowing IP geolocation service:', details.url);
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Access-Control-Allow-Origin': ['*'],
+          'Access-Control-Allow-Methods': ['GET'],
+          'Access-Control-Allow-Headers': ['Content-Type']
+        }
+      });
+      return;
+    }
+    callback({});
+  });
 
   // Hardware acceleration check
   mainWindow.webContents.on('did-finish-load', () => {
@@ -741,6 +799,79 @@ ipcMain.handle('get-settings', () => {
   }
 });
 
+// Start page navigation handler
+ipcMain.handle('navigate-to-url', (event, url) => {
+  try {
+    log.info(`Start page navigation to: ${url}`);
+    
+    // Handle special URLs
+    if (url === 'nuru://start') {
+      // Send the start page URL to the renderer to load in webview
+      if (mainWindow) {
+        const startPagePath = path.join(__dirname, 'renderer', 'start-page.html').replace(/\\/g, '/');
+        mainWindow.webContents.send('navigate-to-url', 'file://' + startPagePath);
+        return { success: true };
+      }
+    }
+    
+    // Handle regular URLs - create a new tab
+    if (mainWindow) {
+      mainWindow.webContents.send('navigate-to-url', url);
+      return { success: true };
+    }
+    
+    return { success: false, error: 'Main window not available' };
+  } catch (error) {
+    log.error('Error navigating to URL:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Open new tab handler
+ipcMain.handle('open-new-tab', (event, url = 'https://www.google.com') => {
+  try {
+    log.info(`Opening new tab with URL: ${url}`);
+    if (mainWindow) {
+      mainWindow.webContents.send('open-new-tab', url);
+      return { success: true };
+    }
+    return { success: false, error: 'Main window not available' };
+  } catch (error) {
+    log.error('Error opening new tab:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Show downloads handler
+ipcMain.handle('show-downloads', () => {
+  try {
+    log.info('Showing downloads panel');
+    if (mainWindow) {
+      mainWindow.webContents.send('show-downloads');
+      return { success: true };
+    }
+    return { success: false, error: 'Main window not available' };
+  } catch (error) {
+    log.error('Error showing downloads:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Open settings handler
+ipcMain.handle('open-settings', () => {
+  try {
+    log.info('Opening settings');
+    if (mainWindow) {
+      mainWindow.webContents.send('show-settings');
+      return { success: true };
+    }
+    return { success: false, error: 'Main window not available' };
+  } catch (error) {
+    log.error('Error opening settings:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Handle intercepted links (middle-click, etc.)
 ipcMain.on('link-clicked', (event, url) => {
   if (mainWindow) {
@@ -814,10 +945,6 @@ ipcMain.handle('save-all-settings', (event, newSettings) => {
       settings.theme = newSettings.theme;
     }
 
-    // Update dynamic theme exclusion domains if provided
-    if (newSettings.themeExcludedDomains !== undefined) {
-      settings.themeExcludedDomains = newSettings.themeExcludedDomains;
-    }
 
     // Update settings object with new values
     if (newSettings.browser) {

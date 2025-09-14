@@ -92,6 +92,16 @@
       <div id="tabs-clock-container">
         <span id="tabs-time"></span>
         <span id="tabs-date"></span>
+        <div id="tabs-counter" style="display: none;">
+          <span id="tab-count">0</span>
+          <span id="tab-label">tabs</span>
+        </div>
+        <div id="tabs-weather" style="display: none;">
+          <div class="weather-info">
+            <span class="weather-temp"></span>
+            <span class="weather-location"></span>
+          </div>
+        </div>
       </div>
     </div>
     <!-- Modern search bar with suggestions wrapper -->
@@ -109,10 +119,63 @@
         </div>
       </div>
       <div id="card-container" class="card-container" style="display: none;">
-        <div class="weather-icon"><i class="fas fa-cloud-sun"></i></div>
-        <div class="weather-info">
-          <span class="weather-temp"></span>
-          <span class="weather-location"></span>
+        <img id="app-logo" src="../../logo/Nuru.png" alt="Nuru Browser" style="display: block; width: auto; object-fit: contain; margin: 0 auto;">
+      </div>
+      
+      <!-- Quick Actions Card -->
+      <div id="quick-actions-container" class="quick-actions-card" style="display: none;">
+        <div class="quick-actions-grid">
+          <button id="quick-new-tab" class="quick-action-btn" title="New Tab">
+            <i class="fas fa-plus"></i>
+          </button>
+          
+          <button id="quick-bookmark" class="quick-action-btn" title="Bookmark Page">
+            <i class="fas fa-bookmark"></i>
+          </button>
+          
+          <button id="quick-screenshot" class="quick-action-btn" title="Take Screenshot">
+            <i class="fas fa-camera"></i>
+          </button>
+          
+          <button id="quick-reading-mode" class="quick-action-btn" title="Reading Mode">
+            <i class="fas fa-book-open"></i>
+          </button>
+          
+          <button id="quick-clear-cache" class="quick-action-btn" title="Clear Cache">
+            <i class="fas fa-broom"></i>
+          </button>
+          
+          <button id="quick-refresh" class="quick-action-btn" title="Refresh Page">
+            <i class="fas fa-sync"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Media Player Card -->
+      <div id="media-player-container" class="card-container" style="display: none;">
+        <div class="media-player-info">
+          <div class="media-title">No media playing</div>
+          <div class="media-artist">Nuru Browser</div>
+        </div>
+        <div class="media-controls">
+          <button id="media-play-pause" class="media-btn" title="Play/Pause">
+            <i class="fas fa-play"></i>
+          </button>
+          <button id="media-stop" class="media-btn" title="Stop">
+            <i class="fas fa-stop"></i>
+          </button>
+          <button id="media-volume" class="media-btn" title="Volume">
+            <i class="fas fa-volume-up"></i>
+          </button>
+        </div>
+        <div class="media-progress">
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 0%"></div>
+          </div>
+          <div class="media-time">
+            <span class="current-time">0:00</span>
+            <span class="total-time">0:00</span>
+          </div>
         </div>
       </div>
       <div id="download-history-container" class="download-history-container" style="display: none;">
@@ -133,7 +196,7 @@
     <div id="pinned-apps-container"></div>
     
     <!-- Tabs List -->
-    <div class="tabs-list-header">Open Tabs</div>
+    <div class="tabs-list-header">Open Tabs <span id="tabs-count-display">0</span></div>
     <div class="tabs-list" id="tabs-list">
       <!-- Tab items will be dynamically added here -->
     </div>
@@ -255,6 +318,7 @@
               <h4>Homepage</h4>
               <div class="setting-control">
                 <select id="homepage-select">
+                  <option value="nuru://start">Nuru Start Page</option>
                   <option value="https://www.google.com/">Google</option>
                   <option value="https://www.bing.com/">Bing</option>
                   <option value="https://duckduckgo.com/">DuckDuckGo</option>
@@ -306,23 +370,30 @@
               </div>
             </div>
             
-            <div class="setting-group">
-              <h4>Social Login Warning</h4>
-              <div class="setting-control">
-                <label class="toggle-switch">
-                  <input type="checkbox" id="social-login-warning-toggle">
-                  <span class="slider"></span>
-                </label>
-                <span>Show social login warnings</span>
-              </div>
-            </div>
             
             <div class="setting-group">
               <h4>Weather Location</h4>
               <div class="setting-control">
                 <input type="text" id="weather-location-input" placeholder="Enter your city or address" list="weather-location-list">
                 <datalist id="weather-location-list"></datalist>
-                <button id="weather-save-btn" class="action-button">Save Location</button>
+                <div class="button-group" style="margin-top: 8px; display: flex; gap: 8px;">
+                  <button id="detect-location-btn" class="action-button" style="flex: 1;">
+                    <span class="button-icon">📍</span>
+                    Detect My Location
+                  </button>
+                  <button id="weather-save-btn" class="action-button" style="flex: 1;">Save Location</button>
+                </div>
+                <div id="location-status" class="location-status" style="margin-top: 8px; font-size: 0.9em; display: none;"></div>
+              </div>
+            </div>
+            
+            <div class="setting-group">
+              <h4>Temperature Unit</h4>
+              <div class="setting-control">
+                <select id="weather-temperature-unit-select">
+                  <option value="celsius">Celsius (°C)</option>
+                  <option value="fahrenheit">Fahrenheit (°F)</option>
+                </select>
               </div>
             </div>
           </div>
@@ -398,7 +469,7 @@
                   <input type="checkbox" id="frameless-toggle">
                   <span class="slider"></span>
                 </label>
-                <span>Frameless window</span>
+                <span>Show window frame and title bar</span>
               </div>
             </div>
             
@@ -434,29 +505,13 @@
               </div>
             </div>
             
-            <div class="setting-group">
-              <h4>Theme Exclusions</h4>
-              <div class="setting-control">
-                <textarea id="theme-exclusions-input" placeholder="Enter domains separated by commas (e.g., google.com, facebook.com)" rows="3"></textarea>
-                <button id="save-theme-exclusions-btn" class="action-button">Save Exclusions</button>
-              </div>
-            </div>
-            
-            <div class="setting-group">
+            <div class="setting-group" id="developer-tools-group" style="display: none;">
               <h4>Developer Tools</h4>
               <div class="setting-control">
                 <button id="diagnostics-btn" class="action-button">Open Diagnostics</button>
               </div>
             </div>
             
-            <div class="setting-group">
-              <h4>Reading Mode</h4>
-              <div class="setting-control">
-                <label for="reading-font-size">Font Size:</label>
-                <input type="range" id="reading-font-size" min="12" max="36" value="20">
-                <span id="reading-font-size-value">20px</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -479,7 +534,7 @@
     <div id="webview-container">
       <div id="webviews-container">
         <!-- All webviews will be dynamically added here -->
-        <webview id="webview-0" src="https://www.google.com/" class="active" partition="persist:browsing" webpreferences="javascript=yes" preload="../preload-webview.js"></webview>
+        <webview id="webview-0" src="" class="active" partition="persist:browsing" webpreferences="javascript=yes" preload="../preload-webview.js"></webview>
       </div>
     </div>
     

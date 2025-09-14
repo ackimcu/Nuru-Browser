@@ -109,6 +109,7 @@
         <div class="setting-control">
           <div class="form-group">
             <select id="homepage-select" class="form-select">
+              <option value="nuru://start">Nuru Start Page</option>
               <option value="https://www.google.com/">Google</option>
               <option value="https://www.bing.com/">Bing</option>
               <option value="https://duckduckgo.com/">DuckDuckGo</option>
@@ -197,24 +198,6 @@
         </div>
       </div>
       
-      <!-- Social Login Warning Card -->
-      <div class="setting-card">
-        <div class="setting-header">
-          <div class="setting-info">
-            <div class="setting-label">Social Login Warning</div>
-            <div class="setting-description">Show warning when social login is attempted</div>
-          </div>
-        </div>
-        <div class="setting-control">
-          <div class="toggle-container">
-            <label class="toggle-switch">
-              <input type="checkbox" id="social-login-warning-toggle">
-              <span class="slider"></span>
-            </label>
-            <span class="toggle-label">Show social login warnings</span>
-          </div>
-        </div>
-      </div>
       
       <!-- Weather Location Card -->
       <div class="setting-card">
@@ -228,7 +211,32 @@
           <div class="form-group">
             <input type="text" id="weather-location-input" class="form-input" list="weather-location-list" placeholder="Enter your city or address" autocomplete="off" />
             <datalist id="weather-location-list"></datalist>
-            <button id="weather-save-btn" class="action-button success" style="margin-top: var(--space-3);">Save Location</button>
+            <div class="button-group" style="margin-top: var(--space-3); display: flex; gap: var(--space-2);">
+              <button id="detect-location-btn" class="action-button" style="flex: 1;">
+                <span class="button-icon">📍</span>
+                Detect My Location
+              </button>
+              <button id="weather-save-btn" class="action-button success" style="flex: 1;">Save Location</button>
+            </div>
+            <div id="location-status" class="location-status" style="margin-top: var(--space-2); font-size: 0.9em; display: none;"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Weather Temperature Unit Card -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <div class="setting-label">Temperature Unit</div>
+            <div class="setting-description">Choose your preferred temperature scale</div>
+          </div>
+        </div>
+        <div class="setting-control">
+          <div class="form-group">
+            <select id="weather-temperature-unit-select" class="form-select">
+              <option value="celsius">Celsius (°C)</option>
+              <option value="fahrenheit">Fahrenheit (°F)</option>
+            </select>
           </div>
         </div>
       </div>
@@ -371,7 +379,7 @@
         <div class="setting-header">
           <div class="setting-info">
             <div class="setting-label">Window Frame</div>
-            <div class="setting-description">Show or hide the window frame</div>
+            <div class="setting-description">Show or hide the window frame and title bar</div>
           </div>
         </div>
         <div class="setting-control">
@@ -380,7 +388,7 @@
               <input type="checkbox" id="frameless-toggle">
               <span class="slider"></span>
             </label>
-            <span class="toggle-label">Frameless window</span>
+            <span class="toggle-label">Show window frame and title bar</span>
           </div>
         </div>
       </div>
@@ -445,24 +453,8 @@
         </div>
       </div>
       
-      <!-- Theme Exclusions Card -->
-      <div class="setting-card">
-        <div class="setting-header">
-          <div class="setting-info">
-            <div class="setting-label">Theme Exclusions</div>
-            <div class="setting-description">Domains where theme should not be applied</div>
-          </div>
-        </div>
-        <div class="setting-control">
-          <div class="form-group">
-            <textarea id="theme-exclusions-input" class="form-input" placeholder="Enter domains separated by commas (e.g., google.com, facebook.com)" rows="3"></textarea>
-            <button id="save-theme-exclusions-btn" class="action-button" style="margin-top: var(--space-3);">Save Exclusions</button>
-          </div>
-        </div>
-      </div>
-      
       <!-- Developer Tools Card -->
-      <div class="setting-card">
+      <div class="setting-card" id="developer-tools-card" style="display: none;">
         <div class="setting-header">
           <div class="setting-info">
             <div class="setting-label">Developer Tools</div>
@@ -474,22 +466,6 @@
         </div>
       </div>
       
-      <!-- Reading Mode Settings Card -->
-      <div class="setting-card">
-        <div class="setting-header">
-          <div class="setting-info">
-            <div class="setting-label">Reading Mode</div>
-            <div class="setting-description">Configure reading mode appearance</div>
-          </div>
-        </div>
-        <div class="setting-control">
-          <div class="form-group">
-            <label for="reading-font-size">Font Size:</label>
-            <input type="range" id="reading-font-size" class="range-slider" min="12" max="36" value="20" />
-            <span id="reading-font-size-value">20px</span>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </div>
