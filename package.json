@@ -1,6 +1,6 @@
 {
   "name": "nuru-browser",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Nuru Browser - A modern Electron-based browsing application",
   "main": "src/main.js",
   "scripts": {
