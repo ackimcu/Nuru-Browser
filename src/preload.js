@@ -58,6 +58,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   getAppInfo: () => ipcRenderer.invoke('get-app-info'),
   getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
+  
+  // Chrome version spoofing
+  checkChromeVersion: () => ipcRenderer.invoke('check-chrome-version'),
   readLogFile: () => ipcRenderer.invoke('read-log-file'),
   getWelcomeScreenSettings: () => ipcRenderer.invoke('get-welcome-screen-settings'),
   setWelcomeScreenTestMode: (enabled) => ipcRenderer.invoke('set-welcome-screen-test-mode', enabled),
@@ -68,7 +71,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // App control
   closeApp: () => ipcRenderer.send('close-app'),
-  checkForUpdates: () => ipcRenderer.send('check-for-updates'),
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   showSettings: () => ipcRenderer.send('show-settings'),
   onShowSettings: (callback) => ipcRenderer.on('show-settings', callback),
   onShowSettingsViewport: (callback) => ipcRenderer.on('show-settings-viewport', callback),
@@ -98,6 +101,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onCheckWebGL: (callback) => {
     ipcRenderer.on('check-webgl', () => callback());
+  },
+  onChromeVersionUpdated: (callback) => {
+    ipcRenderer.on('chrome-version-updated', (_, data) => callback(data));
   },
   
   // Update notifications

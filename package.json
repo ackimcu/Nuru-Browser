@@ -17,7 +17,7 @@
   "homepage": "https://nuru-browser.example.com",
   "devDependencies": {
     "cross-env": "^7.0.3",
-    "electron": "^38.1.0",
+    "electron": "^38.1.2",
     "electron-builder": "^24.13.3",
     "eslint": "^8.56.0",
     "jest": "^29.7.0"
@@ -37,8 +37,10 @@
     "files": [
       "src/**/*",
       "logo/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/**/*"
     ],
+    "asar": false,
     "publish": [
       {
         "provider": "github",
@@ -54,9 +56,7 @@
     },
     "linux": {
       "target": [
-        "AppImage",
-        "deb",
-        "rpm"
+        "AppImage"
       ],
       "category": "Network"
     }

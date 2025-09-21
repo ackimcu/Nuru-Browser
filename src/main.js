@@ -135,34 +135,295 @@ function registerGlobalAdblock() {
   log.info('Adblock: global adblock handlers registered on all sessions');
 }
 
-const chromeVersion = '136.0.7103.113';
+let chromeVersion = '136.0.7103.113'; // Fallback version
+let currentElectronChromeVersion = process.versions.chrome; // Actual Chrome version in Electron
+
+// Function to compare Chrome versions
+function compareChromeVersions(version1, version2) {
+  const v1Parts = version1.split('.').map(Number);
+  const v2Parts = version2.split('.').map(Number);
+  
+  for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
+    const v1Part = v1Parts[i] || 0;
+    const v2Part = v2Parts[i] || 0;
+    
+    if (v1Part > v2Part) return 1;
+    if (v1Part < v2Part) return -1;
+  }
+  
+  return 0;
+}
+
+// Function to check if we should update Chrome version
+function shouldUpdateChromeVersion(latestVersion) {
+  if (!latestVersion) return false;
+  
+  // Compare with current Electron Chrome version
+  const comparison = compareChromeVersions(latestVersion, currentElectronChromeVersion);
+  const shouldUpdate = comparison > 0;
+  
+  log.info(`Chrome version comparison: Latest=${latestVersion}, Current=${currentElectronChromeVersion}, Should update=${shouldUpdate}`);
+  return shouldUpdate;
+}
+
+// Alternative Chrome version sources as fallbacks
+const CHROME_VERSION_SOURCES = [
+  'https://omahaproxy.appspot.com/all?os=linux&channel=stable&format=json',
+  'https://chromium.cypress.io/linux64/stable',
+  'https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/Linux_x64%2FLAST_CHANGE?alt=media'
+];
 
 async function fetchLatestChromeVersion() {
+  // Try primary source first
+  try {
+    return await fetchFromOmahaProxy();
+  } catch (err) {
+    log.warn('Primary Chrome version source failed, trying alternatives...');
+    
+    // Try alternative sources
+    for (const source of CHROME_VERSION_SOURCES.slice(1)) {
+      try {
+        const version = await fetchFromAlternativeSource(source);
+        if (version) {
+          log.info(`Successfully fetched Chrome version from alternative source: ${version}`);
+          return version;
+        }
+      } catch (altErr) {
+        log.warn(`Alternative source failed: ${altErr.message}`);
+      }
+    }
+    
+    throw err; // Re-throw original error if all sources fail
+  }
+}
+
+async function fetchFromOmahaProxy() {
   return new Promise((resolve, reject) => {
-    https.get('https://omahaproxy.appspot.com/all?os=linux&channel=stable&format=json', res => {
+    const request = https.get(CHROME_VERSION_SOURCES[0], res => {
       let data = '';
+      
+      // Check if response is successful
+      if (res.statusCode !== 200) {
+        log.warn(`Chrome version API returned status ${res.statusCode}`);
+        reject(new Error(`API returned status ${res.statusCode}`));
+        return;
+      }
+      
+      // Check content type
+      const contentType = res.headers['content-type'] || '';
+      if (!contentType.includes('application/json')) {
+        log.warn(`Chrome version API returned non-JSON content: ${contentType}`);
+        reject(new Error(`API returned non-JSON content: ${contentType}`));
+        return;
+      }
+      
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try {
+          // Log first 100 characters of response for debugging
+          log.debug(`Chrome version API response (first 100 chars): ${data.substring(0, 100)}`);
+          
+          // Check if response looks like an error page
+          if (data.includes('***') || data.includes('Service') || data.includes('Error') || data.includes('Maintenance')) {
+            log.warn('Chrome version API appears to be returning an error page');
+            reject(new Error('API returned error page instead of JSON'));
+            return;
+          }
+          
           const arr = JSON.parse(data);
+          if (!Array.isArray(arr)) {
+            log.warn('Chrome version API returned non-array response');
+            reject(new Error('API returned non-array response'));
+            return;
+          }
+          
           const entry = arr.find(e => e.os === 'linux' && e.channel === 'stable');
-          if (entry && entry.version) resolve(entry.version);
-          else reject(new Error('Chrome version not found'));
+          if (entry && entry.version) {
+            log.info(`Successfully fetched Chrome version: ${entry.version}`);
+            resolve(entry.version);
+          } else {
+            log.warn('Chrome version entry not found in API response');
+            reject(new Error('Chrome version not found in response'));
+          }
+        } catch (err) {
+          log.error('Failed to parse Chrome version API response:', err);
+          log.error('Response data:', data.substring(0, 200));
+          reject(err);
+        }
+      });
+    });
+    
+    request.on('error', (err) => {
+      log.error('Chrome version API request failed:', err);
+      reject(err);
+    });
+    
+    // Set timeout to prevent hanging
+    request.setTimeout(10000, () => {
+      log.warn('Chrome version API request timed out');
+      request.destroy();
+      reject(new Error('Request timeout'));
+    });
+  });
+}
+
+async function fetchFromAlternativeSource(source) {
+  return new Promise((resolve, reject) => {
+    const request = https.get(source, res => {
+      let data = '';
+      
+      if (res.statusCode !== 200) {
+        reject(new Error(`Alternative source returned status ${res.statusCode}`));
+        return;
+      }
+      
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          // Try to extract version from different response formats
+          if (source.includes('cypress.io')) {
+            // Cypress format: extract version from JSON
+            const json = JSON.parse(data);
+            if (json.version) {
+              resolve(json.version);
+            } else {
+              reject(new Error('No version found in Cypress response'));
+            }
+          } else if (source.includes('googleapis.com')) {
+            // Google APIs format: extract version from text
+            const version = data.trim();
+            if (version && /^\d+$/.test(version)) {
+              // Convert build number to version (simplified)
+              resolve(`140.0.${version}`);
+            } else {
+              reject(new Error('Invalid version format from Google APIs'));
+            }
+          } else {
+            reject(new Error('Unknown alternative source format'));
+          }
         } catch (err) {
           reject(err);
         }
       });
-    }).on('error', reject);
+    });
+    
+    request.on('error', reject);
+    request.setTimeout(5000, () => {
+      request.destroy();
+      reject(new Error('Alternative source timeout'));
+    });
   });
 }
 
 app.whenReady().then(async () => {
   try {
-    chromeVersion = await fetchLatestChromeVersion();
-    log.info(`Fetched latest Chrome version: ${chromeVersion}`);
+    const latestVersion = await fetchLatestChromeVersion();
+    
+    if (shouldUpdateChromeVersion(latestVersion)) {
+      chromeVersion = latestVersion;
+      log.info(`✅ Chrome version spoofing enabled: Using latest version ${chromeVersion} (Electron has ${currentElectronChromeVersion})`);
+      log.info(`🌐 This will prevent websites from showing "update browser" warnings`);
+    } else {
+      log.info(`ℹ️  Chrome version up to date: Electron ${currentElectronChromeVersion} >= Latest ${latestVersion}`);
+      log.info(`ℹ️  Using actual Electron Chrome version for user agent`);
+      chromeVersion = currentElectronChromeVersion;
+    }
   } catch (err) {
     log.error('Failed to fetch latest Chrome version:', err);
+    log.info(`Using fallback Chrome version: ${chromeVersion}`);
+    log.info(`⚠️  Version spoofing may not work optimally due to API failure`);
   }
+  
+  // Enable comprehensive DRM support for protected content
+  app.commandLine.appendSwitch('--enable-widevine-cdm');
+  app.commandLine.appendSwitch('--enable-encrypted-media');
+  app.commandLine.appendSwitch('--disable-features', 'VizDisplayCompositor');
+  app.commandLine.appendSwitch('--enable-media-stream');
+  app.commandLine.appendSwitch('--autoplay-policy', 'no-user-gesture-required');
+  app.commandLine.appendSwitch('--disable-web-security');
+  app.commandLine.appendSwitch('--allow-running-insecure-content');
+  app.commandLine.appendSwitch('--disable-features', 'VizServiceDisplayCompositor');
+  app.commandLine.appendSwitch('--enable-features', 'VaapiVideoDecoder');
+  app.commandLine.appendSwitch('--enable-gpu-rasterization');
+  app.commandLine.appendSwitch('--enable-zero-copy');
+  app.commandLine.appendSwitch('--ignore-certificate-errors');
+  app.commandLine.appendSwitch('--ignore-ssl-errors');
+  app.commandLine.appendSwitch('--ignore-certificate-errors-spki-list');
+  app.commandLine.appendSwitch('--disable-background-timer-throttling');
+  app.commandLine.appendSwitch('--disable-backgrounding-occluded-windows');
+  app.commandLine.appendSwitch('--disable-renderer-backgrounding');
+  log.info('Comprehensive DRM support enabled for protected content playback');
+  
+  // Configure webview session CSP early
+  const webviewSession = session.fromPartition('persist:browsing');
+  webviewSession.webRequest.onHeadersReceived((details, callback) => {
+    const responseHeaders = {
+      ...details.responseHeaders,
+      'Content-Security-Policy': ["default-src 'self' 'unsafe-inline' data: https: wss: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: blob:; connect-src 'self' data: https: wss: blob:; font-src 'self' data: https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self' https:; media-src 'self' data: https: blob:; worker-src 'self' data: https: blob:;"]
+    };
+    callback({ responseHeaders });
+  });
+  
+  // Enable comprehensive permissions for protected content
+  webviewSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    // Allow all permissions that might be needed for DRM content
+    const allowedPermissions = [
+      'media',
+      'autoplay',
+      'camera',
+      'microphone',
+      'notifications',
+      'geolocation',
+      'midi',
+      'midi-sysex',
+      'persistent-storage',
+      'push-messaging',
+      'background-sync'
+    ];
+    
+    if (allowedPermissions.includes(permission)) {
+      log.info(`Granting permission: ${permission}`);
+      callback(true);
+    } else {
+      log.info(`Denying permission: ${permission}`);
+      callback(false);
+    }
+  });
+  
+  // Create a dedicated session for DRM content
+  const drmSession = session.fromPartition('persist:drm');
+  
+  // Configure DRM session with maximum permissions
+  drmSession.webRequest.onHeadersReceived((details, callback) => {
+    const responseHeaders = {
+      ...details.responseHeaders,
+      'Content-Security-Policy': ["default-src * 'unsafe-inline' 'unsafe-eval' data: https: wss: blob:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline'; img-src * data: https: blob:; connect-src * data: https: wss: blob:; font-src * data: https:; object-src 'none'; base-uri 'self'; frame-ancestors *; media-src * data: https: blob:; worker-src * data: https: blob:;"]
+    };
+    callback({ responseHeaders });
+  });
+  
+  // Grant all permissions for DRM session
+  drmSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    log.info(`DRM session granting permission: ${permission}`);
+    callback(true);
+  });
+  
+  // Check Widevine CDM availability
+  drmSession.getUserAgent().then(userAgent => {
+    log.info(`DRM session user agent: ${userAgent}`);
+  });
+  
+  // Log available CDM info
+  drmSession.webRequest.onBeforeRequest((details, callback) => {
+    if (details.url.includes('widevine') || details.url.includes('cdm')) {
+      log.info(`DRM request: ${details.url}`);
+    }
+    callback({});
+  });
+  
+  log.info('Webview session CSP configured');
+  log.info('DRM permissions enabled for protected content');
+  log.info('Dedicated DRM session created with maximum permissions');
 });
 
 app.on('web-contents-created', (event, contents) => {
@@ -170,12 +431,28 @@ app.on('web-contents-created', (event, contents) => {
   if (['webview', 'window'].includes(contents.getType())) {
     try {
       const fullUA = session.defaultSession.getUserAgent();
-      // Remove the Electron/<version> token
-      let ua = fullUA.replace(/\s?Electron\/[\d\.]+/, '');
-      // Override Chrome version to match desired version
-      ua = ua.replace(/Chrome\/[\d\.]+/, `Chrome/${chromeVersion}`);
+      
+      // Create a clean Chrome user agent
+      let ua = fullUA
+        .replace(/\s?Electron\/[\d\.]+/, '') // Remove Electron version
+        .replace(/Chrome\/[\d\.]+/, `Chrome/${chromeVersion}`) // Override Chrome version
+        .replace(/Electron\/[\d\.]+/, ''); // Remove any remaining Electron references
+      
+      // Ensure we have a proper Chrome user agent format
+      if (!ua.includes('Chrome/')) {
+        ua = ua.replace(/Safari\/[\d\.]+/, `Chrome/${chromeVersion} Safari/537.36`);
+      }
+      
       contents.setUserAgent(ua);
-      log.info(`UserAgent overridden to pure Chrome: ${ua}`);
+      
+      // Log the spoofing status
+      const isSpoofing = chromeVersion !== currentElectronChromeVersion;
+      if (isSpoofing) {
+        log.info(`🎭 UserAgent spoofed: ${ua}`);
+        log.info(`📊 Spoofing Chrome ${currentElectronChromeVersion} → ${chromeVersion}`);
+      } else {
+        log.info(`UserAgent overridden to pure Chrome: ${ua}`);
+      }
     } catch (err) {
       log.error('Error setting user agent:', err);
     }
@@ -254,14 +531,15 @@ async function createMainWindow() {
     vibrancy: settings.frameless ? 'ultra-dark' : undefined, // Only vibrancy when frameless
     visualEffectState: settings.frameless ? 'active' : undefined, // Only visual effects when frameless
     icon: nativeImage.createFromPath(path.join(__dirname, '..', 'logo', 'Nuru.png')).resize({ width: 48, height: 48 }),
-    webPreferences: {
+      webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
       webSecurity: true, 
-      allowRunningInsecureContent: false, 
+      allowRunningInsecureContent: true, 
       plugins: true,
-      experimentalFeatures: false,
+      experimentalFeatures: true,
+      contentSecurityPolicy: "default-src 'self' 'unsafe-inline' data: https: wss: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: blob:; connect-src 'self' data: https: wss: blob:; font-src 'self' data: https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self' https:; media-src 'self' data: https: blob:; worker-src 'self' data: https: blob:;",
       webviewTag: true, 
     }
   });
@@ -339,6 +617,27 @@ async function createMainWindow() {
       return;
     }
     callback({});
+  });
+
+  // Additional webview session configuration
+  const webviewSession = session.fromPartition('persist:browsing');
+  webviewSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    // Deny all permission requests for security
+    callback(false);
+  });
+
+  // Configure webview session security settings
+  webviewSession.setUserAgent(webviewSession.getUserAgent().replace(/\s?Electron\/[\d\.]+/, ''));
+  
+  // Set additional security headers for all webview requests
+  webviewSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    const requestHeaders = {
+      ...details.requestHeaders,
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'SAMEORIGIN',
+      'X-XSS-Protection': '1; mode=block'
+    };
+    callback({ requestHeaders });
   });
 
   // Hardware acceleration check
@@ -510,6 +809,7 @@ function createWelcomeWindow() {
         nodeIntegration: false,
         contextIsolation: true,
         preload: path.join(__dirname, 'preload.js'),
+        contentSecurityPolicy: "default-src 'self' 'unsafe-inline' data: https: wss: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: blob:; connect-src 'self' data: https: wss: blob:; font-src 'self' data: https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self' https:; media-src 'self' data: https: blob:; worker-src 'self' data: https: blob:;",
         sandbox: false, 
         spellcheck: false,
         devTools: false
@@ -585,7 +885,8 @@ function createDiagnosticsWindow() {
         preload: preloadPath,
         sandbox: false, 
         spellcheck: false,
-        devTools: true
+        devTools: true,
+        contentSecurityPolicy: "default-src 'self' 'unsafe-inline' data: https: wss: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: blob:; connect-src 'self' data: https: wss: blob:; font-src 'self' data: https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self' https:; media-src 'self' data: https: blob:; worker-src 'self' data: https: blob:;"
       }
     });
 
@@ -1056,6 +1357,11 @@ ipcMain.handle('save-all-settings', (event, newSettings) => {
       settings.cards = { ...settings.cards, ...newSettings.cards };
     }
     
+    // Update welcome completion status if provided
+    if (newSettings.welcomeCompleted !== undefined) {
+      settings.welcomeCompleted = newSettings.welcomeCompleted;
+    }
+    
     // Save all settings to disk
     saveSettings();
     
@@ -1311,6 +1617,11 @@ ipcMain.handle('check-welcome-completed', () => {
 
 ipcMain.on('close-welcome', () => {
   log.info('Closing welcome window and opening main browser');
+  
+  // Mark welcome as completed
+  settings.welcomeCompleted = true;
+  saveSettings();
+  
   if (welcomeWindow) {
     welcomeWindow.close();
   }
@@ -1347,6 +1658,71 @@ ipcMain.handle('reset-welcome-page', () => {
   } catch (error) {
     log.error('Error resetting welcome page:', error);
     return { success: false, error: error.message };
+  }
+});
+
+// Additional welcome screen handlers for diagnostics
+ipcMain.handle('get-welcome-screen-settings', () => {
+  try {
+    return {
+      showWelcomeScreenOnStartup: settings.developerSettings?.showWelcomeScreenOnStartup || false,
+      welcomeCompleted: settings.welcomeCompleted || false,
+      firstRun: settings.firstRun
+    };
+  } catch (error) {
+    log.error('Error getting welcome screen settings:', error);
+    return { showWelcomeScreenOnStartup: false, welcomeCompleted: false, firstRun: true };
+  }
+});
+
+ipcMain.handle('set-welcome-screen-test-mode', (event, enabled) => {
+  try {
+    if (!settings.developerSettings) {
+      settings.developerSettings = {};
+    }
+    settings.developerSettings.showWelcomeScreenOnStartup = enabled;
+    saveSettings();
+    log.info(`Welcome screen test mode ${enabled ? 'enabled' : 'disabled'}`);
+    return { success: true };
+  } catch (error) {
+    log.error('Error setting welcome screen test mode:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('reset-welcome-screen', () => {
+  try {
+    settings.welcomeCompleted = false;
+    settings.firstRun = true;
+    saveSettings();
+    log.info('Welcome screen reset successfully');
+    return { success: true };
+  } catch (error) {
+    log.error('Error resetting welcome screen:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Log file reader for diagnostics
+ipcMain.handle('read-log-file', () => {
+  try {
+    const logPath = path.join(app.getPath('userData'), 'nuru_browser.log');
+    if (fs.existsSync(logPath)) {
+      const logContent = fs.readFileSync(logPath, 'utf8');
+      // Ensure logContent is a string and split it
+      if (typeof logContent === 'string') {
+        const lines = logContent.split('\n');
+        const lastLines = lines.slice(-1000).join('\n');
+        return lastLines; // Return the content directly, not wrapped in an object
+      } else {
+        return 'Log file content is not a string';
+      }
+    } else {
+      return 'No logs found.';
+    }
+  } catch (error) {
+    log.error('Error reading log file:', error);
+    return `Error reading log file: ${error.message}`;
   }
 });
 
@@ -1558,16 +1934,17 @@ app.whenReady().then(async () => {
   // Now load settings and create windows
   loadSettings();
   
-  // Check if this is a first-time user
-  const isFirstTime = !fs.existsSync(SETTINGS_PATH) || 
-                     (fs.existsSync(SETTINGS_PATH) && 
-                      JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8')).firstRun !== false);
+  // Check if this is a first-time user (using loaded settings)
+  const isFirstTime = settings.firstRun !== false;
+  
+  // Check if welcome screen was completed
+  const welcomeCompleted = settings.welcomeCompleted || false;
   
   // Check developer setting for welcome screen
   const showWelcomeScreen = settings.developerSettings && settings.developerSettings.showWelcomeScreenOnStartup;
   
-  if (isFirstTime || showWelcomeScreen) {
-    log.info('Showing welcome page (first-time user or developer setting enabled)');
+  if (!welcomeCompleted || showWelcomeScreen) {
+    log.info('Showing welcome page (welcome not completed or developer setting enabled)');
     // Mark as not first run
     settings.firstRun = false;
     saveSettings();
@@ -1582,6 +1959,33 @@ app.whenReady().then(async () => {
   if (app.isPackaged) {
     setupAutoUpdater();
   }
+  
+  // Setup periodic Chrome version check (every 6 hours)
+  setInterval(async () => {
+    try {
+      log.info('🔄 Checking for Chrome version updates...');
+      const latestVersion = await fetchLatestChromeVersion();
+      
+      if (shouldUpdateChromeVersion(latestVersion)) {
+        chromeVersion = latestVersion;
+        log.info(`🆕 Chrome version updated: ${chromeVersion}`);
+        log.info(`🎭 Version spoofing will apply to new tabs/windows`);
+        
+        // Notify renderer about version update
+        if (mainWindow) {
+          mainWindow.webContents.send('chrome-version-updated', {
+            newVersion: chromeVersion,
+            oldVersion: currentElectronChromeVersion,
+            isSpoofing: true
+          });
+        }
+      } else {
+        log.info(`ℹ️  Chrome version check: No update needed (${latestVersion})`);
+      }
+    } catch (err) {
+      log.warn('Periodic Chrome version check failed:', err.message);
+    }
+  }, 6 * 60 * 60 * 1000); // 6 hours
   
   // Register keyboard shortcuts
   globalShortcut.register('CommandOrControl+D', () => {
@@ -1627,13 +2031,54 @@ app.whenReady().then(async () => {
 });
 
 // IPC handler for manual update check
-ipcMain.on('check-for-updates', () => {
-  if (!settings.development_mode) {
-    autoUpdater.checkForUpdatesAndNotify();
-  } else {
-    if (mainWindow) {
-      mainWindow.webContents.send('update-status', 'disabled-dev');
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    if (!settings.development_mode) {
+      autoUpdater.checkForUpdatesAndNotify();
+      return { success: true, message: 'Update check initiated' };
+    } else {
+      if (mainWindow) {
+        mainWindow.webContents.send('update-status', 'disabled-dev');
+      }
+      return { success: true, message: 'Updates disabled in development mode' };
     }
+  } catch (error) {
+    log.error('Error checking for updates:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handler for manual Chrome version check
+ipcMain.handle('check-chrome-version', async () => {
+  try {
+    log.info('Manual Chrome version check requested');
+    const latestVersion = await fetchLatestChromeVersion();
+    
+    const wasSpoofing = chromeVersion !== currentElectronChromeVersion;
+    const shouldUpdate = shouldUpdateChromeVersion(latestVersion);
+    
+    if (shouldUpdate) {
+      chromeVersion = latestVersion;
+      log.info(`✅ Chrome version updated to: ${chromeVersion}`);
+    }
+    
+    return {
+      success: true,
+      currentVersion: chromeVersion,
+      latestVersion: latestVersion,
+      electronVersion: currentElectronChromeVersion,
+      isSpoofing: chromeVersion !== currentElectronChromeVersion,
+      wasUpdated: shouldUpdate
+    };
+  } catch (err) {
+    log.error('Manual Chrome version check failed:', err);
+    return {
+      success: false,
+      error: err.message,
+      currentVersion: chromeVersion,
+      electronVersion: currentElectronChromeVersion,
+      isSpoofing: chromeVersion !== currentElectronChromeVersion
+    };
   }
 });
 

@@ -5,11 +5,16 @@
   /* styling moved to wrapper */
   display: flex;
   align-items: center;
-  padding: 0 3px;
-  min-height: 38px;
+  padding: 0 4px;
+  min-height: 42px;
   position: relative;
-  transition: box-shadow 0.25s cubic-bezier(.4,2,.6,1), transform 0.18s cubic-bezier(.4,2,.6,1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   /* z-index handled by wrapper */
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
 }
 
 .modern-search-bar:focus-within {
@@ -17,15 +22,24 @@
 }
 
 .search-icon, .mic-icon {
-  color: #bdbdbd;
-  font-size: 1.1em;
+  color: var(--text-color);
+  font-size: 1.2em;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: color 0.2s;
-  height: 32px;
-  width: 32px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 36px;
+  width: 36px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  opacity: 0.7;
+}
+
+.search-icon:hover, .mic-icon:hover {
+  background: var(--button-bg);
+  transform: scale(1.1);
+  opacity: 1;
 }
 
 .search-icon {
@@ -41,14 +55,14 @@
   flex: 1;
   font-family: 'Poppins', sans-serif;
   font-size: 1em;
-  font-weight: 700;
+  font-weight: 600;
   border: none !important;
   outline: none !important;
   background: transparent;
   color: var(--text-color);
-  padding: 12px 0;
-  letter-spacing: 0.5px;
-  transition: color 0.2s ease;
+  padding: 14px 8px;
+  letter-spacing: 0.3px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   min-width: 0;
   /* Force remove any browser default borders/outlines */
   -webkit-tap-highlight-color: transparent;
@@ -529,12 +543,20 @@
   max-width: none;
   left: 50%;
   transform: translateX(-50%);
-  margin: 4px 0 0 0;
-  padding: 0 1px 0 1px; /* inset content from edges */
-  background: var(--bg-color);
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 0.5px 2px rgba(0,0,0,0.10);
-  padding-bottom: 0px; /* reduced bottom space */
+  margin: 6px 0 0 0;
+  padding: 0;
+  background: var(--glass-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modern-search-wrapper:hover {
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: var(--shadow-xl);
 }
 
 /* Buttons container styling */
@@ -550,17 +572,24 @@
 /* Modernize pinned apps section: glassmorphic card and circular icons */
 #pinned-apps-container {
   display: flex;
-  gap: 12px;
-  padding: 8px;
-  background: rgba(255,255,255,0.1) !important;
+  gap: 10px;
+  padding: 10px;
+  background: var(--glass-bg) !important;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
   margin: 12px auto;
   overflow-x: auto;
   overflow-y: hidden;
   width: 200px !important;  /* match search container width */
+  border: 1px solid var(--glass-border);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#pinned-apps-container:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 #pinned-apps-container::-webkit-scrollbar {
   height: 4px;
@@ -570,20 +599,45 @@
   border-radius: 2px;
 }
 #pinned-apps-container .pinned-app {
-  width: 36px !important;
-  height: 36px !important;
-  background: rgba(255,255,255,0.2);
+  width: 38px !important;
+  height: 38px !important;
+  background: var(--button-bg);
+  border: 1px solid var(--glass-border);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
 }
+
+#pinned-apps-container .pinned-app::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 50%;
+  z-index: -1;
+}
+
 #pinned-apps-container .pinned-app:hover {
-  background: rgba(255,255,255,0.3);
-  transform: scale(1.1) translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  background: var(--button-hover);
+  transform: scale(1.15) translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+#pinned-apps-container .pinned-app:hover::before {
+  opacity: 0.1;
 }
 #pinned-apps-container .pinned-app img {
   width: 20px !important;

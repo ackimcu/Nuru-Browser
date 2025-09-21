@@ -4,27 +4,36 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 24px; /* Restored height for clock display */
+  height: 28px; /* Slightly increased for better visual balance */
   -webkit-app-region: drag;
   display: flex;
   align-items: center;
   z-index: 9000;
   opacity: 1; /* Visible titlebar */
+  background: transparent;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.titlebar-padding {
-  height: 10px;
-  width: 100%;
-  flex-shrink: 0;
-}
 
 /* Titlebar clock styling */
 #titlebar-clock {
   position: absolute;
-  right: var(--spacing-sm);
+  right: var(--spacing-md);
   top: 50%;
   transform: translateY(-50%);
   font-family: 'Poppins', sans-serif;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text-color);
+  opacity: 0.8;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+#titlebar-clock:hover {
+  opacity: 1;
+  background: var(--button-hover);
+  transform: translateY(-50%) scale(1.05);
 }

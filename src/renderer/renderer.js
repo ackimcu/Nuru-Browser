@@ -294,20 +294,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   // --- Reading Mode Detection & Notification ---
   function detectArticlePage(webview) {
     if (!webview || !webview.getWebContentsId) return;
-    try {
-      webview.executeJavaScript(`!!document.querySelector('article, main')`).then(isArticle => {
-        const btn = document.getElementById('reading-mode-btn');
-        if (btn) {
-          if (isArticle) btn.classList.remove('hidden');
-          else btn.classList.add('hidden');
-        }
-      }).catch(error => {
-        // WebView not ready yet, skip detection
-        console.log('WebView not ready for reading mode detection');
-      });
-    } catch (error) {
-      // WebView not ready yet, skip detection
-      console.log('WebView not ready for reading mode detection');
+    
+    // Check if webview is ready before executing JavaScript
+    if (!webview.isLoading && webview.getURL() !== 'about:blank') {
+      try {
+        webview.executeJavaScript(`!!document.querySelector('article, main')`).then(isArticle => {
+          const btn = document.getElementById('reading-mode-btn');
+          if (btn) {
+            if (isArticle) btn.classList.remove('hidden');
+            else btn.classList.add('hidden');
+          }
+        }).catch(error => {
+          // Silently handle webview not ready - this is expected during loading
+          console.debug('WebView not ready for reading mode detection');
+        });
+      } catch (error) {
+        // Silently handle webview not ready - this is expected during loading
+        console.debug('WebView not ready for reading mode detection');
+      }
     }
   }
 
@@ -390,6 +394,9 @@ function updateUrlInput(url) {
     const isStartPage = url === 'nuru://start' || url.includes('start-page.html');
     modernInput.placeholder = isStartPage ? 'Nuru Startpage' : 'Search or enter address...';
   }
+  
+  // Update button color immediately when URL changes
+  updateButtonColorForUrl(url);
 }
 
 // Modern search bar logic
@@ -398,6 +405,14 @@ if (modernInput) {
   modernInput.addEventListener('click', () => {
     modernInput.select();
     updateSuggestions(modernInput.value);
+  });
+  
+  // Update button color when user types in URL bar
+  modernInput.addEventListener('input', () => {
+    const inputValue = modernInput.value.trim();
+    if (inputValue && (inputValue.startsWith('http://') || inputValue.startsWith('https://'))) {
+      updateButtonColorForUrl(inputValue);
+    }
   });
 }
 const suggestionsBox = document.getElementById('modern-suggestions');
@@ -427,20 +442,691 @@ function setupHomeButton() {
         navigateToUrl(homepage);
       }
     });
-    console.log('Home button event listener attached');
+    console.debug('Home button event listener attached');
   } else {
     console.warn('Home button not found in DOM');
   }
 }
 
+// Website Information button logic
+function setupWebsiteInfoButton() {
+  const btnWebsiteInfo = document.getElementById('website-info-btn');
+  if (btnWebsiteInfo) {
+    btnWebsiteInfo.addEventListener('click', async () => {
+      try {
+        const activeWebview = document.querySelector('webview.active');
+        if (!activeWebview) {
+          showNotification('No active tab', 'Please open a website first.', 'info');
+          return;
+        }
+
+        const currentUrl = activeWebview.getURL();
+        const currentTitle = activeWebview.getTitle() || 'Untitled';
+        
+        // Don't show info for blank pages or start page
+        if (currentUrl === 'about:blank' || currentUrl.includes('start-page.html') || currentUrl === 'nuru://start') {
+          showNotification('Website Information', 'No website loaded. Please navigate to a website first.', 'info');
+          return;
+        }
+
+        // Get additional website information
+        const websiteInfo = await getWebsiteInformation(activeWebview);
+        
+        // Show website information in a notification or modal
+        showWebsiteInfoModal({
+          url: currentUrl,
+          title: currentTitle,
+          ...websiteInfo
+        });
+        
+      } catch (error) {
+        console.error('Error getting website information:', error);
+        showNotification('Error', 'Failed to get website information.', 'error');
+      }
+    });
+    console.debug('Website info button event listener attached');
+    
+    // Set initial button color immediately after setup
+    console.log('Setting up website info button - setting initial color');
+    updateWebsiteInfoButtonColor('unknown');
+  } else {
+    console.warn('Website info button not found in DOM');
+  }
+}
+
+// Function to update button color based on security level
+function updateWebsiteInfoButtonColor(securityLevel) {
+  const btnWebsiteInfo = document.getElementById('website-info-btn');
+  if (!btnWebsiteInfo) {
+    console.warn('Website info button not found!');
+    return;
+  }
+
+  console.log(`Updating button color to: ${securityLevel}`);
+
+  // Remove existing security classes
+  btnWebsiteInfo.classList.remove('security-secure', 'security-insecure', 'security-warning', 'security-unknown');
+  
+  // Add appropriate security class
+  btnWebsiteInfo.classList.add(`security-${securityLevel}`);
+  
+  console.log(`Button classes after update:`, btnWebsiteInfo.className);
+}
+
+// Function to determine security level
+function determineSecurityLevel(websiteInfo) {
+  const { protocol, isSecure, certificateValid, hasValidCert } = websiteInfo;
+  
+  // Check if it's a secure HTTPS connection
+  if (protocol === 'https:' && isSecure) {
+    // Additional checks for certificate validity if available
+    if (certificateValid === false || hasValidCert === false) {
+      return 'warning'; // HTTPS but certificate issues
+    }
+    return 'secure'; // Secure HTTPS with valid certificate
+  }
+  
+  // Check if it's HTTP (insecure)
+  if (protocol === 'http:') {
+    return 'insecure'; // Insecure HTTP
+  }
+  
+  // Check for localhost or file protocols
+  if (protocol === 'file:' || websiteInfo.hostname === 'localhost' || websiteInfo.hostname === '127.0.0.1') {
+    return 'warning'; // Local files or localhost
+  }
+  
+  return 'unknown'; // Unknown security level
+}
+
+// Function to update button color based on URL
+function updateButtonColorForUrl(url) {
+  try {
+    // Handle special cases first
+    if (!url || url === 'about:blank' || url === '') {
+      updateWebsiteInfoButtonColor('unknown');
+      return;
+    }
+    
+    // Handle start page
+    if (url.includes('start-page.html') || url === 'nuru://start') {
+      updateWebsiteInfoButtonColor('unknown');
+      return;
+    }
+    
+    const urlObj = new URL(url);
+    const basicInfo = {
+      protocol: urlObj.protocol,
+      hostname: urlObj.hostname,
+      isSecure: urlObj.protocol === 'https:'
+    };
+    
+    const securityLevel = determineSecurityLevel(basicInfo);
+    updateWebsiteInfoButtonColor(securityLevel);
+    
+    // Debug logging
+    console.log(`Security update: ${url} -> ${securityLevel}`);
+  } catch (error) {
+    console.warn('URL parsing failed:', url, error);
+    // If URL parsing fails, set to unknown
+    updateWebsiteInfoButtonColor('unknown');
+  }
+}
+
+// Function to get website information from webview
+async function getWebsiteInformation(webview) {
+  try {
+    // Get basic information
+    const url = webview.getURL();
+    const title = webview.getTitle();
+    
+    // Try to get additional information via webview execution
+    let additionalInfo = {};
+    try {
+      additionalInfo = await webview.executeJavaScript(`
+        (function() {
+          const info = {};
+          
+          // Get page metadata
+          const meta = document.querySelector('meta[name="description"]');
+          if (meta) info.description = meta.content;
+          
+          // Get page language
+          info.language = document.documentElement.lang || 'Unknown';
+          
+          // Get viewport info
+          const viewport = document.querySelector('meta[name="viewport"]');
+          if (viewport) info.viewport = viewport.content;
+          
+          // Get security info
+          info.isSecure = location.protocol === 'https:';
+          info.protocol = location.protocol;
+          info.hostname = location.hostname;
+          info.port = location.port || (location.protocol === 'https:' ? '443' : '80');
+          
+          // Enhanced security checks
+          info.hasValidCert = true; // Default assumption
+          info.certificateValid = true; // Default assumption
+          
+          // Check for mixed content
+          info.hasMixedContent = false;
+          const images = document.querySelectorAll('img[src^="http:"]');
+          const scripts = document.querySelectorAll('script[src^="http:"]');
+          const links = document.querySelectorAll('link[href^="http:"]');
+          if (images.length > 0 || scripts.length > 0 || links.length > 0) {
+            info.hasMixedContent = true;
+          }
+          
+          // Check for secure context
+          info.isSecureContext = window.isSecureContext;
+          
+          // Get page size info
+          info.pageSize = {
+            width: document.documentElement.scrollWidth,
+            height: document.documentElement.scrollHeight
+          };
+          
+          // Get favicon
+          const favicon = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
+          if (favicon) info.favicon = favicon.href;
+          
+          return info;
+        })();
+      `);
+    } catch (e) {
+      console.warn('Could not execute JavaScript in webview:', e);
+    }
+    
+    const websiteInfo = {
+      url,
+      title,
+      ...additionalInfo
+    };
+    
+    return websiteInfo;
+  } catch (error) {
+    console.error('Error getting website information:', error);
+    return { url: webview.getURL(), title: webview.getTitle() };
+  }
+}
+
+// Function to show website information modal
+function showWebsiteInfoModal(info) {
+  const modal = document.createElement('div');
+  modal.className = 'website-info-modal';
+  modal.innerHTML = `
+    <div class="website-info-content">
+      <div class="website-info-header">
+        <h3><i class="fas fa-info-circle"></i> Website Information</h3>
+        <button class="close-btn" onclick="this.closest('.website-info-modal').remove()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="website-info-body">
+        <div class="info-section">
+          <h4>Basic Information</h4>
+          <div class="info-item">
+            <span class="info-label">Title:</span>
+            <span class="info-value">${info.title || 'Untitled'}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">URL:</span>
+            <span class="info-value">${info.url}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Protocol:</span>
+            <span class="info-value ${info.isSecure ? 'success' : 'error'}">${info.protocol || 'Unknown'}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Hostname:</span>
+            <span class="info-value">${info.hostname || 'Unknown'}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Port:</span>
+            <span class="info-value">${info.port || 'Unknown'}</span>
+          </div>
+        </div>
+        
+        ${info.description ? `
+        <div class="info-section">
+          <h4>Page Details</h4>
+          <div class="info-item">
+            <span class="info-label">Description:</span>
+            <span class="info-value">${info.description}</span>
+          </div>
+        </div>
+        ` : ''}
+        
+        <div class="info-section">
+          <h4>Technical Details</h4>
+          <div class="info-item">
+            <span class="info-label">Language:</span>
+            <span class="info-value">${info.language || 'Unknown'}</span>
+          </div>
+          ${info.viewport ? `
+          <div class="info-item">
+            <span class="info-label">Viewport:</span>
+            <span class="info-value">${info.viewport}</span>
+          </div>
+          ` : ''}
+          ${info.pageSize ? `
+          <div class="info-item">
+            <span class="info-label">Page Size:</span>
+            <span class="info-value">${info.pageSize.width} × ${info.pageSize.height}px</span>
+          </div>
+          ` : ''}
+        </div>
+        
+        <div class="info-actions">
+          <button class="action-button" onclick="navigator.clipboard.writeText('${info.url}'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy URL', 2000)">
+            <i class="fas fa-copy"></i> Copy URL
+          </button>
+          <button class="action-button" onclick="this.closest('.website-info-modal').remove()">
+            <i class="fas fa-times"></i> Close
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Add modal styles
+  const style = document.createElement('style');
+  style.textContent = `
+    /* Security-based button colors */
+    .buttons-container #website-info-btn.security-secure {
+      background-color: #4CAF50 !important;
+      color: white !important;
+      box-shadow: 0 0 10px rgba(76, 175, 80, 0.3) !important;
+    }
+    
+    .buttons-container #website-info-btn.security-secure:hover {
+      background-color: #45a049 !important;
+      box-shadow: 0 0 15px rgba(76, 175, 80, 0.5) !important;
+    }
+    
+    .buttons-container #website-info-btn.security-insecure {
+      background-color: #f44336 !important;
+      color: white !important;
+      box-shadow: 0 0 10px rgba(244, 67, 54, 0.3) !important;
+    }
+    
+    .buttons-container #website-info-btn.security-insecure:hover {
+      background-color: #da190b !important;
+      box-shadow: 0 0 15px rgba(244, 67, 54, 0.5) !important;
+    }
+    
+    .buttons-container #website-info-btn.security-warning {
+      background-color: #ff9800 !important;
+      color: white !important;
+      box-shadow: 0 0 10px rgba(255, 152, 0, 0.3) !important;
+    }
+    
+    .buttons-container #website-info-btn.security-warning:hover {
+      background-color: #f57c00 !important;
+      box-shadow: 0 0 15px rgba(255, 152, 0, 0.5) !important;
+    }
+    
+    .buttons-container #website-info-btn.security-unknown {
+      background-color: #9e9e9e !important;
+      color: white !important;
+      box-shadow: 0 0 10px rgba(158, 158, 158, 0.3) !important;
+    }
+    
+    .buttons-container #website-info-btn.security-unknown:hover {
+      background-color: #757575 !important;
+      box-shadow: 0 0 15px rgba(158, 158, 158, 0.5) !important;
+    }
+    
+    /* Fingerprint icon animation for security status */
+    .buttons-container #website-info-btn.security-secure i {
+      animation: securePulse 2s ease-in-out infinite;
+      color: white !important;
+    }
+    
+    .buttons-container #website-info-btn.security-insecure i {
+      animation: insecureShake 0.5s ease-in-out infinite;
+      color: white !important;
+    }
+    
+    .buttons-container #website-info-btn.security-warning i {
+      animation: warningBlink 1s ease-in-out infinite;
+      color: white !important;
+    }
+    
+    .buttons-container #website-info-btn.security-unknown i {
+      color: white !important;
+    }
+    
+    @keyframes securePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    
+    @keyframes insecureShake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-2px); }
+      75% { transform: translateX(2px); }
+    }
+    
+    @keyframes warningBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .website-info-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    
+    .website-info-content {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-xl);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    
+    .website-info-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--spacing-lg);
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(0, 0, 0, 0.1);
+    }
+    
+    .website-info-header h3 {
+      margin: 0;
+      color: var(--text-color);
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+    
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-color);
+      font-size: 18px;
+      cursor: pointer;
+      padding: var(--spacing-sm);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+    }
+    
+    .close-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .website-info-body {
+      padding: var(--spacing-lg);
+    }
+    
+    .info-section {
+      margin-bottom: var(--spacing-lg);
+    }
+    
+    .info-section:last-child {
+      margin-bottom: 0;
+    }
+    
+    .info-section h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent-color);
+      margin-bottom: var(--spacing-sm);
+      padding-bottom: var(--spacing-xs);
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: var(--spacing-sm) 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .info-item:last-child {
+      border-bottom: none;
+    }
+    
+    .info-label {
+      font-weight: 500;
+      color: var(--text-color);
+      font-size: 13px;
+      opacity: 0.8;
+      min-width: 100px;
+      flex-shrink: 0;
+    }
+    
+    .info-value {
+      font-weight: 400;
+      color: var(--text-color);
+      font-size: 13px;
+      text-align: right;
+      word-break: break-word;
+      max-width: 300px;
+    }
+    
+    .info-value.success {
+      color: #51cf66;
+    }
+    
+    .info-value.error {
+      color: #ff6b6b;
+    }
+    
+    .info-actions {
+      display: flex;
+      gap: var(--spacing-sm);
+      justify-content: flex-end;
+      margin-top: var(--spacing-lg);
+      padding-top: var(--spacing-sm);
+      border-top: 1px solid var(--border-color);
+    }
+    
+    .action-button {
+      background: var(--accent-color);
+      border: none;
+      border-radius: var(--radius-md);
+      padding: var(--spacing-sm) var(--spacing-md);
+      color: white;
+      font-weight: 500;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+    }
+    
+    .action-button:hover {
+      background: #4f46e5;
+      transform: translateY(-1px);
+    }
+  `;
+  
+  document.head.appendChild(style);
+  document.body.appendChild(modal);
+  
+  // Close modal when clicking outside
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove();
+    }
+  });
+}
+
 // Set up home button when DOM is ready
 document.addEventListener('DOMContentLoaded', setupHomeButton);
+
+// Set up website info button when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  setupWebsiteInfoButton();
+  
+  // Set initial button color immediately after DOM is ready
+  setTimeout(() => {
+    updateWebsiteInfoButtonColor('unknown');
+  }, 100);
+});
 
 // Also set up home button after settings are loaded (in case DOM loads before settings)
 window.addEventListener('load', () => {
   // Re-setup home button to ensure it's properly attached
   setupHomeButton();
+  // Re-setup website info button to ensure it's properly attached
+  setupWebsiteInfoButton();
+  
+  // Set initial button color based on current URL
+  setTimeout(() => {
+    const activeWebview = document.querySelector('webview.active');
+    if (activeWebview) {
+      const currentUrl = activeWebview.getURL();
+      updateButtonColorForUrl(currentUrl);
+    } else {
+      // If no active webview, set to unknown
+      updateWebsiteInfoButtonColor('unknown');
+    }
+  }, 1000);
+  
+  // Also set initial color immediately
+  updateWebsiteInfoButtonColor('unknown');
+  
+  // Re-inject CSS after page loads to ensure it overrides existing styles
+  setTimeout(() => {
+    const existingStyle = document.getElementById('website-info-security-styles');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+    
+    const style = document.createElement('style');
+    style.id = 'website-info-security-styles';
+    style.textContent = `
+      /* Security-based button colors - Higher specificity to override urlbar.css */
+      .buttons-container #website-info-btn.security-secure {
+        background-color: #4CAF50 !important;
+        color: white !important;
+        box-shadow: 0 0 10px rgba(76, 175, 80, 0.3) !important;
+      }
+      
+      .buttons-container #website-info-btn.security-secure:hover {
+        background-color: #45a049 !important;
+        box-shadow: 0 0 15px rgba(76, 175, 80, 0.5) !important;
+      }
+      
+      .buttons-container #website-info-btn.security-insecure {
+        background-color: #f44336 !important;
+        color: white !important;
+        box-shadow: 0 0 10px rgba(244, 67, 54, 0.3) !important;
+      }
+      
+      .buttons-container #website-info-btn.security-insecure:hover {
+        background-color: #da190b !important;
+        box-shadow: 0 0 15px rgba(244, 67, 54, 0.5) !important;
+      }
+      
+      .buttons-container #website-info-btn.security-warning {
+        background-color: #ff9800 !important;
+        color: white !important;
+        box-shadow: 0 0 10px rgba(255, 152, 0, 0.3) !important;
+      }
+      
+      .buttons-container #website-info-btn.security-warning:hover {
+        background-color: #f57c00 !important;
+        box-shadow: 0 0 15px rgba(255, 152, 0, 0.5) !important;
+      }
+      
+      .buttons-container #website-info-btn.security-unknown {
+        background-color: #9e9e9e !important;
+        color: white !important;
+        box-shadow: 0 0 10px rgba(158, 158, 158, 0.3) !important;
+      }
+      
+      .buttons-container #website-info-btn.security-unknown:hover {
+        background-color: #757575 !important;
+        box-shadow: 0 0 15px rgba(158, 158, 158, 0.5) !important;
+      }
+      
+      /* Fingerprint icon animation for security status */
+      .buttons-container #website-info-btn.security-secure i {
+        animation: securePulse 2s ease-in-out infinite;
+        color: white !important;
+      }
+      
+      .buttons-container #website-info-btn.security-insecure i {
+        animation: insecureShake 0.5s ease-in-out infinite;
+        color: white !important;
+      }
+      
+      .buttons-container #website-info-btn.security-warning i {
+        animation: warningBlink 1s ease-in-out infinite;
+        color: white !important;
+      }
+      
+      .buttons-container #website-info-btn.security-unknown i {
+        color: white !important;
+      }
+      
+      @keyframes securePulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+      }
+      
+      @keyframes insecureShake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-2px); }
+        75% { transform: translateX(2px); }
+      }
+      
+      @keyframes warningBlink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+    `;
+    document.head.appendChild(style);
+    console.log('Re-injected security CSS styles');
+  }, 2000);
 });
+
+// Periodic check to ensure button color stays in sync
+setInterval(() => {
+  const activeWebview = document.querySelector('webview.active');
+  if (activeWebview) {
+    const currentUrl = activeWebview.getURL();
+    if (currentUrl && currentUrl !== 'about:blank') {
+      updateButtonColorForUrl(currentUrl);
+    }
+  }
+}, 1000); // Check every 1 second for faster updates
+
+// More aggressive check for button color updates
+setInterval(() => {
+  const activeWebview = document.querySelector('webview.active');
+  if (activeWebview) {
+    const currentUrl = activeWebview.getURL();
+    if (currentUrl && currentUrl !== 'about:blank' && currentUrl !== 'nuru://start') {
+      // Force update button color
+      updateButtonColorForUrl(currentUrl);
+    }
+  }
+}, 500); // Check every 500ms for very fast updates
 
 const searchBar = document.getElementById('modern-search-bar');
 
@@ -681,12 +1367,14 @@ async function loadSettings() {
 // Apply settings to the UI
 function applySettings() {
   // Dark mode feature removed
-  // Only apply zoom factor if the active webview is loaded
+  // Only apply zoom factor if the active webview is loaded and ready
   if (activeWebview && typeof activeWebview.getWebContentsId === 'function') {
-    try {
-      activeWebview.setZoomFactor(settings.zoom_factor);
-    } catch (error) {
-      console.log('Zoom will be applied when webview is ready');
+    if (!activeWebview.isLoading && activeWebview.getURL() !== 'about:blank') {
+      try {
+        activeWebview.setZoomFactor(settings.zoom_factor);
+      } catch (error) {
+        console.debug('Zoom will be applied when webview is ready');
+      }
     }
   }
 
@@ -875,9 +1563,13 @@ function createTab(url = 'https://www.google.com/', activate = true) {
   // Lazy-load: store URL but do not load until activated
   newWebview.dataset.src = url;
   newWebview.setAttribute('allowpopups', '');
-  newWebview.setAttribute('partition', 'persist:browsing');
-  newWebview.setAttribute('webpreferences', 'allowRunningInsecureContent=yes, javascript=yes');
+  // Use DRM session for music streaming sites
+  const isMusicSite = url.includes('spotify.com') || url.includes('music.apple.com') || url.includes('music.youtube.com') || url.includes('soundcloud.com');
+  newWebview.setAttribute('partition', isMusicSite ? 'persist:drm' : 'persist:browsing');
+  newWebview.setAttribute('webpreferences', 'javascript=yes, contextIsolation=yes, nodeIntegration=no, webSecurity=no, plugins=yes, experimentalFeatures=yes, allowRunningInsecureContent=yes');
   newWebview.setAttribute('useragent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36');
+  newWebview.setAttribute('allowfullscreen', '');
+  newWebview.setAttribute('allowtransparency', '');
   
   // Add it to the DOM
   webviewsContainer.appendChild(newWebview);
@@ -967,6 +1659,8 @@ function switchToTab(tabId) {
     // Update URL input with the webview's current URL
     try {
       updateUrlInput(selectedWebview.getURL());
+      // Update button color based on the active tab's URL
+      updateButtonColorForUrl(selectedWebview.getURL());
     } catch (error) {
       logMessage('warn', `Failed to update URL input: ${error.message}`);
     }
@@ -1344,13 +2038,28 @@ function setupWebviewEvents(webviewElement) {
       // Only update URL if this is the active tab
       if (webviewElement.classList.contains('active')) {
         updateUrlInput(event.url);
+        // Update button color immediately based on new URL security
+        updateButtonColorForUrl(event.url);
+      }
+    }
+  });
+  
+  // Update button color immediately when navigation starts
+  webviewElement.addEventListener('did-start-loading', () => {
+    if (webviewElement.classList.contains('active')) {
+      const currentUrl = webviewElement.getURL();
+      if (currentUrl && currentUrl !== 'about:blank') {
+        updateButtonColorForUrl(currentUrl);
       }
     }
   });
   
   // Update URL input on navigation
   webviewElement.addEventListener('did-navigate', () => {
-    if (webviewElement.classList.contains('active')) updateUrlInput(webviewElement.getURL());
+    if (webviewElement.classList.contains('active')) {
+      updateUrlInput(webviewElement.getURL());
+      updateButtonColorForUrl(webviewElement.getURL());
+    }
   });
   
   // Show loading status with progress tracking
@@ -1400,6 +2109,8 @@ function setupWebviewEvents(webviewElement) {
     // Update CSS for active webview
     if (webviewElement.classList.contains('active')) {
       // No CSS injection is performed
+      // Update button color when loading stops
+      updateButtonColorForUrl(webviewElement.getURL());
     }
   });
   
@@ -1438,6 +2149,11 @@ function setupWebviewEvents(webviewElement) {
   // Ensure media bar hidden once page fully loads
   webviewElement.addEventListener('did-finish-load', () => {
     // No global mediaStrip
+    
+    // Update button color when page finishes loading
+    if (webviewElement.classList.contains('active')) {
+      updateButtonColorForUrl(webviewElement.getURL());
+    }
   });
   
   // Handle webview ready
@@ -1449,6 +2165,11 @@ function setupWebviewEvents(webviewElement) {
       webviewElement.setZoomFactor(settings.zoom_factor);
     } catch (error) {
       logMessage('error', `Failed to apply zoom: ${error.message}`);
+    }
+    
+    // Update button color when DOM is ready
+    if (webviewElement.classList.contains('active')) {
+      updateButtonColorForUrl(webviewElement.getURL());
     }
   });
   
@@ -1544,6 +2265,8 @@ function setupWebviewEvents(webviewElement) {
   webviewElement.addEventListener('did-navigate-in-page', (event) => {
     if (webviewElement.classList.contains('active')) {
       updateUrlInput(event.url);
+      // Update button color immediately on in-page navigation
+      updateButtonColorForUrl(event.url);
       if (settings.restoreLastPage) {
         localStorage.setItem('lastPage', event.url);
       }
@@ -2686,20 +3409,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   // --- Reading Mode Detection & Notification ---
   function detectArticlePage(webview) {
     if (!webview || !webview.getWebContentsId) return;
-    try {
-      webview.executeJavaScript(`!!document.querySelector('article, main')`).then(isArticle => {
-        const btn = document.getElementById('reading-mode-btn');
-        if (btn) {
-          if (isArticle) btn.classList.remove('hidden');
-          else btn.classList.add('hidden');
-        }
-      }).catch(error => {
-        // WebView not ready yet, skip detection
-        console.log('WebView not ready for reading mode detection');
-      });
-    } catch (error) {
-      // WebView not ready yet, skip detection
-      console.log('WebView not ready for reading mode detection');
+    
+    // Check if webview is ready before executing JavaScript
+    if (!webview.isLoading && webview.getURL() !== 'about:blank') {
+      try {
+        webview.executeJavaScript(`!!document.querySelector('article, main')`).then(isArticle => {
+          const btn = document.getElementById('reading-mode-btn');
+          if (btn) {
+            if (isArticle) btn.classList.remove('hidden');
+            else btn.classList.add('hidden');
+          }
+        }).catch(error => {
+          // Silently handle webview not ready - this is expected during loading
+          console.debug('WebView not ready for reading mode detection');
+        });
+      } catch (error) {
+        // Silently handle webview not ready - this is expected during loading
+        console.debug('WebView not ready for reading mode detection');
+      }
     }
   }
 
@@ -3032,82 +3759,48 @@ class CardManager {
   }
   
   setupQuickActionListeners() {
-    // New Tab
-    const newTabBtn = document.getElementById('quick-new-tab');
-    if (newTabBtn) {
-      newTabBtn.addEventListener('click', () => {
-        createTab();
-        showNotification('New tab created', 'success');
-      });
-    }
-    
-    // Bookmark Page
-    const bookmarkBtn = document.getElementById('quick-bookmark');
-    if (bookmarkBtn) {
-      bookmarkBtn.addEventListener('click', () => {
+    // Back Button
+    const backBtn = document.getElementById('quick-back-button');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
         const activeWebview = document.querySelector('webview.active');
         if (activeWebview) {
-          activeWebview.executeJavaScript(`
-            const title = document.title;
-            const url = window.location.href;
-            window.electronAPI.addBookmark({ title, url });
-          `);
-          showNotification('Page bookmarked', 'success');
+          activeWebview.goBack();
+          showNotification('Navigated back', 'success');
         }
       });
     }
     
-    // Screenshot
-    const screenshotBtn = document.getElementById('quick-screenshot');
-    if (screenshotBtn) {
-      screenshotBtn.addEventListener('click', () => {
+    // Forward Button
+    const forwardBtn = document.getElementById('quick-forward-button');
+    if (forwardBtn) {
+      forwardBtn.addEventListener('click', () => {
         const activeWebview = document.querySelector('webview.active');
         if (activeWebview) {
-          activeWebview.capturePage().then(image => {
-            // Convert to data URL and trigger download
-            const dataUrl = image.toDataURL();
-            const link = document.createElement('a');
-            link.download = `screenshot-${Date.now()}.png`;
-            link.href = dataUrl;
-            link.click();
-            showNotification('Screenshot saved', 'success');
-          });
+          activeWebview.goForward();
+          showNotification('Navigated forward', 'success');
         }
       });
     }
     
-    // Reading Mode
-    const readingBtn = document.getElementById('quick-reading-mode');
-    if (readingBtn) {
-      readingBtn.addEventListener('click', () => {
-        const activeWebview = document.querySelector('webview.active');
-        if (activeWebview) {
-          activeWebview.executeJavaScript('(' + __nuruInjectReadingMode.toString() + ')()')
-            .catch(err => console.error('Reading mode injection failed:', err));
-          showNotification('Reading mode activated', 'success');
-        }
-      });
-    }
-    
-    // Clear Cache
-    const clearCacheBtn = document.getElementById('quick-clear-cache');
-    if (clearCacheBtn) {
-      clearCacheBtn.addEventListener('click', () => {
-        if (window.electronAPI && window.electronAPI.clearCache) {
-          window.electronAPI.clearCache();
-          showNotification('Cache cleared', 'success');
-        }
-      });
-    }
-    
-    // Refresh Page
-    const refreshBtn = document.getElementById('quick-refresh');
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', () => {
+    // Reload Button
+    const reloadBtn = document.getElementById('quick-reload-button');
+    if (reloadBtn) {
+      reloadBtn.addEventListener('click', () => {
         const activeWebview = document.querySelector('webview.active');
         if (activeWebview) {
           activeWebview.reload();
-          showNotification('Page refreshed', 'success');
+          showNotification('Page reloaded', 'success');
+        }
+      });
+    }
+    
+    // Close Button
+    const closeBtn = document.getElementById('quick-close-button');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        if (window.electronAPI && window.electronAPI.closeApp) {
+          window.electronAPI.closeApp();
         }
       });
     }

@@ -594,9 +594,16 @@ class WelcomePage {
         this.saveUserData();
         await this.applySettings();
 
-        // Mark welcome as completed
+        // Mark welcome as completed in both localStorage and main process
         localStorage.setItem('nuru-welcome-completed', 'true');
         localStorage.setItem('nuru-welcome-skipped', 'true');
+
+        // Also save to main process settings
+        if (window.electronAPI && window.electronAPI.saveAllSettings) {
+            await window.electronAPI.saveAllSettings({
+                welcomeCompleted: true
+            });
+        }
 
         // Redirect to browser
         this.redirectToBrowser();
